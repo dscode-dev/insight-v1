@@ -17,7 +17,7 @@ httpx = "^0.28.0"
 pydantic = "^2.12.0"
 pydantic-settings = "^2.7.0"
 orjson = "^3.10.15"
-pyarrow = "^19.0.0"
+pyarrow = "^3.12"
 
 # Persistence
 redis = "^5.2.0"
