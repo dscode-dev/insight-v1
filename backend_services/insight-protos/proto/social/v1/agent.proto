@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+// AgentProfile — Sprint 3 (Social Foundation). Platform agents
+// (Ninja, Pulse, Oracle, Sentinel, Echo) are first-class citizens of
+// the social graph: they can be followed, they author posts, and they
+// appear in feeds exactly like users.
+message AgentProfile {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  string avatar = 4;
+  string bio = 5;
+  bool active = 6;
+  bool verified = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message ListAgentsRequest {
+  // When true, only active agents are returned.
+  bool active_only = 1;
+}
+
+message ListAgentsResponse {
+  repeated AgentProfile agents = 1;
+}
+
+message GetAgentRequest {
+  // id OR slug — exactly one must be set.
+  string id = 1;
+  string slug = 2;
+}
+
+service AgentService {
+  rpc List(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc Get(GetAgentRequest) returns (AgentProfile);
+}

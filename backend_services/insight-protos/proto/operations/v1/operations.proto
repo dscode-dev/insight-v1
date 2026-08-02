@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package operations.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/operations/v1;operationsv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum OperationalStatus {
+  OPERATIONAL_STATUS_UNSPECIFIED = 0;
+  OPERATIONAL_STATUS_HEALTHY = 1;
+  OPERATIONAL_STATUS_DEGRADED = 2;
+  OPERATIONAL_STATUS_UNHEALTHY = 3;
+  OPERATIONAL_STATUS_UNAVAILABLE = 4;
+}
+
+enum ServiceType {
+  SERVICE_TYPE_UNSPECIFIED = 0;
+  SERVICE_TYPE_LLM = 1;
+  SERVICE_TYPE_DATA_INGESTION = 2;
+  SERVICE_TYPE_AGENT_RUNTIME = 3;
+  SERVICE_TYPE_PUBLICATION = 4;
+  SERVICE_TYPE_OPERATIONS_GATEWAY = 5;
+  SERVICE_TYPE_STORAGE = 6;
+}
+
+message ServiceIdentity {
+  string service_id = 1;
+  string service_name = 2;
+  ServiceType service_type = 3;
+  string version = 4;
+  string environment = 5;
+  repeated string tags = 6;
+}
+
+message OperationError {
+  string code = 1;
+  string message = 2;
+  string detail = 3;
+  bool retryable = 4;
+}
+
+message HealthRequest {
+  string request_id = 1;
+}
+
+message HealthResponse {
+  ServiceIdentity identity = 1;
+  OperationalStatus status = 2;
+  string reason = 3;
+  google.protobuf.Timestamp checked_at = 4;
+}
+
+message StatusRequest {
+  string request_id = 1;
+}
+
+message StatusResponse {
+  ServiceIdentity identity = 1;
+  OperationalStatus status = 2;
+  uint64 uptime_seconds = 3;
+  string detail = 4;
+  google.protobuf.Timestamp checked_at = 5;
+}
+
+message CapabilitiesRequest {
+  string request_id = 1;
+}
+
+message Capability {
+  string name = 1;
+  string version = 2;
+  bool enabled = 3;
+  string description = 4;
+}
+
+message CapabilitiesResponse {
+  ServiceIdentity identity = 1;
+  repeated Capability capabilities = 2;
+  google.protobuf.Timestamp checked_at = 3;
+}
+
+message MetricsRequest {
+  string request_id = 1;
+}
+
+message MetricsResponse {
+  ServiceIdentity identity = 1;
+  double cpu_percent = 2;
+  double memory_mb = 3;
+  uint64 active_jobs = 4;
+  map<string, double> counters = 5;
+  google.protobuf.Timestamp checked_at = 6;
+  uint64 uptime_seconds = 7;
+}
+
+message PingRequest {
+  string request_id = 1;
+  google.protobuf.Timestamp sent_at = 2;
+}
+
+message PingResponse {
+  ServiceIdentity identity = 1;
+  int64 latency_ms = 2;
+  google.protobuf.Timestamp checked_at = 3;
+}
+
+service OperationsService {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc Status(StatusRequest) returns (StatusResponse);
+  rpc Capabilities(CapabilitiesRequest) returns (CapabilitiesResponse);
+  rpc Metrics(MetricsRequest) returns (MetricsResponse);
+}

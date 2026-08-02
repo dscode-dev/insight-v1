@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+// State of a community signal as it's evaluated against outcomes.
+enum SignalState {
+  SIGNAL_STATE_UNSPECIFIED = 0;
+  SIGNAL_STATE_PENDING = 1;
+  SIGNAL_STATE_VALIDATED = 2;
+  SIGNAL_STATE_FLAGGED = 3;
+  SIGNAL_STATE_INVALIDATED = 4;
+}
+
+// Source of the signal, drives the lateral stripe color in the feed.
+enum SignalSource {
+  SIGNAL_SOURCE_UNSPECIFIED = 0;
+  SIGNAL_SOURCE_COMMUNITY = 1;  // human user post
+  SIGNAL_SOURCE_EXPERT = 2;     // tipster tier
+  SIGNAL_SOURCE_MODEL = 3;      // agent
+}
+
+message Signal {
+  string id = 1;
+  string author_id = 2;
+  string match_id = 3;
+  SignalSource source = 4;
+  string label = 5;
+  string body = 6;
+  double confidence = 7;  // 0..1
+  SignalState state = 8;
+  google.protobuf.Timestamp ts = 9;
+}
+
+// ---- requests ----
+
+message CreateSignalRequest {
+  string author_id = 1;
+  string match_id = 2;
+  SignalSource source = 3;
+  string label = 4;
+  string body = 5;
+  double confidence = 6;
+}
+
+message ListForMatchRequest {
+  string match_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListForMatchResponse {
+  repeated Signal signals = 1;
+  optional string next_cursor = 2;
+}
+
+message ListForUserRequest {
+  string user_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListForUserResponse {
+  repeated Signal signals = 1;
+  optional string next_cursor = 2;
+}
+
+service SignalService {
+  rpc Create(CreateSignalRequest) returns (Signal);
+  rpc ListForMatch(ListForMatchRequest) returns (ListForMatchResponse);
+  rpc ListForUser(ListForUserRequest) returns (ListForUserResponse);
+}

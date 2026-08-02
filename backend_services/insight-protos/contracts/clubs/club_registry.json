@@ -1,0 +1,3375 @@
+{
+  "version": "1.0.0",
+  "generated_by": "scripts/club_logo_crawler +ml-c-conmebol +ml-c-conmebol +ml-c-conmebol",
+  "count": 219,
+  "clubs": [
+    {
+      "club_id": "ac_milan",
+      "name": "AC Milan",
+      "short_name": "MIL",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/ac_milan.png",
+      "aliases": [
+        "AC Milan",
+        "Associazione Calcio Milan",
+        "Milan"
+      ]
+    },
+    {
+      "club_id": "amazonas",
+      "name": "Amazonas",
+      "short_name": "AMA",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/amazonas.png",
+      "aliases": [
+        "Amazonas",
+        "Amazonas FC"
+      ]
+    },
+    {
+      "club_id": "america_mineiro",
+      "name": "América Mineiro",
+      "short_name": "AME",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/america_mineiro.png",
+      "aliases": [
+        "America Mineiro",
+        "América Mineiro",
+        "América-MG"
+      ]
+    },
+    {
+      "club_id": "argentina",
+      "name": "Argentina",
+      "short_name": "ARG",
+      "country": "AR",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/argentina.png",
+      "aliases": [
+        "Argentina",
+        "Selección Argentina"
+      ]
+    },
+    {
+      "club_id": "arsenal",
+      "name": "Arsenal",
+      "short_name": "ARS",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/arsenal.png",
+      "aliases": [
+        "Arsenal",
+        "Arsenal FC"
+      ]
+    },
+    {
+      "club_id": "as_monaco",
+      "name": "AS Monaco",
+      "short_name": "MON",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/as_monaco.png",
+      "aliases": [
+        "AS Monaco",
+        "Monaco"
+      ]
+    },
+    {
+      "club_id": "as_roma",
+      "name": "AS Roma",
+      "short_name": "ROM",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/as_roma.png",
+      "aliases": [
+        "AS Roma",
+        "Roma"
+      ]
+    },
+    {
+      "club_id": "aston_villa",
+      "name": "Aston Villa",
+      "short_name": "AVL",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/aston_villa.png",
+      "aliases": [
+        "Aston Villa",
+        "Aston Villa FC"
+      ]
+    },
+    {
+      "club_id": "atalanta",
+      "name": "Atalanta",
+      "short_name": "ATA",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/atalanta.png",
+      "aliases": [
+        "Atalanta",
+        "Atalanta BC"
+      ]
+    },
+    {
+      "club_id": "athletic_bilbao",
+      "name": "Athletic Bilbao",
+      "short_name": "ATH",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/athletic_bilbao.png",
+      "aliases": [
+        "Athletic Bilbao",
+        "Athletic Club"
+      ]
+    },
+    {
+      "club_id": "athletico_paranaense",
+      "name": "Athletico Paranaense",
+      "short_name": "CAP",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/athletico_paranaense.png",
+      "aliases": [
+        "Athletico Paranaense",
+        "Athletico-PR",
+        "Furacão"
+      ]
+    },
+    {
+      "club_id": "atletico_madrid",
+      "name": "Atlético Madrid",
+      "short_name": "ATM",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/atletico_madrid.png",
+      "aliases": [
+        "Atletico Madrid",
+        "Atlético Madrid",
+        "Atlético de Madrid"
+      ]
+    },
+    {
+      "club_id": "atletico_mineiro",
+      "name": "Atlético Mineiro",
+      "short_name": "CAM",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/atletico_mineiro.png",
+      "aliases": [
+        "Atletico Mineiro",
+        "Atlético Mineiro",
+        "Atlético-MG",
+        "Galo"
+      ]
+    },
+    {
+      "club_id": "avai",
+      "name": "Avaí",
+      "short_name": "AVA",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/avai.png",
+      "aliases": [
+        "Avai",
+        "Avaí",
+        "Avaí FC"
+      ]
+    },
+    {
+      "club_id": "bahia",
+      "name": "Bahia",
+      "short_name": "BAH",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/bahia.png",
+      "aliases": [
+        "Bahia",
+        "EC Bahia"
+      ]
+    },
+    {
+      "club_id": "barcelona",
+      "name": "Barcelona",
+      "short_name": "BAR",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/barcelona.png",
+      "aliases": [
+        "Barca",
+        "Barcelona",
+        "Barça",
+        "FC Barcelona"
+      ]
+    },
+    {
+      "club_id": "bayer_leverkusen",
+      "name": "Bayer Leverkusen",
+      "short_name": "LEV",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/bayer_leverkusen.png",
+      "aliases": [
+        "Bayer 04 Leverkusen",
+        "Bayer Leverkusen",
+        "Leverkusen"
+      ]
+    },
+    {
+      "club_id": "bayern_munich",
+      "name": "Bayern Munich",
+      "short_name": "BAY",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/bayern_munich.png",
+      "aliases": [
+        "Bayern",
+        "Bayern Muenchen",
+        "Bayern Munich",
+        "FC Bayern München"
+      ]
+    },
+    {
+      "club_id": "belgium",
+      "name": "Belgium",
+      "short_name": "BEL",
+      "country": "BE",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/belgium.png",
+      "aliases": [
+        "Belgique",
+        "Belgium",
+        "Red Devils"
+      ]
+    },
+    {
+      "club_id": "bologna",
+      "name": "Bologna",
+      "short_name": "BOL",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/bologna.png",
+      "aliases": [
+        "Bologna",
+        "Bologna FC"
+      ]
+    },
+    {
+      "club_id": "borussia_dortmund",
+      "name": "Borussia Dortmund",
+      "short_name": "BVB",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/borussia_dortmund.png",
+      "aliases": [
+        "BVB",
+        "Borussia Dortmund",
+        "Dortmund"
+      ]
+    },
+    {
+      "club_id": "borussia_monchengladbach",
+      "name": "Borussia Mönchengladbach",
+      "short_name": "BMG",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/borussia_monchengladbach.png",
+      "aliases": [
+        "Borussia Mönchengladbach",
+        "Gladbach",
+        "Monchengladbach"
+      ]
+    },
+    {
+      "club_id": "botafogo",
+      "name": "Botafogo",
+      "short_name": "BOT",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/botafogo.png",
+      "aliases": [
+        "Botafogo",
+        "Botafogo FR"
+      ]
+    },
+    {
+      "club_id": "bragantino",
+      "name": "Bragantino",
+      "short_name": "RBB",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/bragantino.png",
+      "aliases": [
+        "Bragantino",
+        "RB Bragantino",
+        "Red Bull Bragantino"
+      ]
+    },
+    {
+      "club_id": "brazil",
+      "name": "Brazil",
+      "short_name": "BRA",
+      "country": "BR",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/brazil.png",
+      "aliases": [
+        "Brasil",
+        "Brazil",
+        "Seleção Brasileira"
+      ]
+    },
+    {
+      "club_id": "brentford",
+      "name": "Brentford",
+      "short_name": "BRE",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/brentford.png",
+      "aliases": [
+        "Brentford",
+        "Brentford FC"
+      ]
+    },
+    {
+      "club_id": "brighton_hove_albion",
+      "name": "Brighton & Hove Albion",
+      "short_name": "BHA",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/brighton_hove_albion.png",
+      "aliases": [
+        "Brighton",
+        "Brighton & Hove Albion"
+      ]
+    },
+    {
+      "club_id": "ceara",
+      "name": "Ceará",
+      "short_name": "CEA",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/ceara.png",
+      "aliases": [
+        "Ceara",
+        "Ceará",
+        "Ceará SC"
+      ]
+    },
+    {
+      "club_id": "chapecoense",
+      "name": "Chapecoense",
+      "short_name": "CHA",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/chapecoense.png",
+      "aliases": [
+        "Chapecoense",
+        "Chapecoense AF"
+      ]
+    },
+    {
+      "club_id": "chelsea",
+      "name": "Chelsea",
+      "short_name": "CHE",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/chelsea.png",
+      "aliases": [
+        "Chelsea",
+        "Chelsea FC"
+      ]
+    },
+    {
+      "club_id": "corinthians",
+      "name": "Corinthians",
+      "short_name": "COR",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/corinthians.png",
+      "aliases": [
+        "Corinthians",
+        "SC Corinthians",
+        "Sport Club Corinthians Paulista"
+      ]
+    },
+    {
+      "club_id": "coritiba",
+      "name": "Coritiba",
+      "short_name": "CFC",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/coritiba.png",
+      "aliases": [
+        "Coritiba",
+        "Coritiba FBC"
+      ]
+    },
+    {
+      "club_id": "criciuma",
+      "name": "Criciúma",
+      "short_name": "CRI",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/criciuma.png",
+      "aliases": [
+        "Criciuma",
+        "Criciúma",
+        "Criciúma EC"
+      ]
+    },
+    {
+      "club_id": "croatia",
+      "name": "Croatia",
+      "short_name": "CRO",
+      "country": "HR",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/croatia.png",
+      "aliases": [
+        "Croatia",
+        "Hrvatska"
+      ]
+    },
+    {
+      "club_id": "cruzeiro",
+      "name": "Cruzeiro",
+      "short_name": "CRU",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/cruzeiro.png",
+      "aliases": [
+        "Cruzeiro",
+        "Cruzeiro EC"
+      ]
+    },
+    {
+      "club_id": "crystal_palace",
+      "name": "Crystal Palace",
+      "short_name": "CRY",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/crystal_palace.png",
+      "aliases": [
+        "Crystal Palace",
+        "Crystal Palace FC"
+      ]
+    },
+    {
+      "club_id": "cuiaba",
+      "name": "Cuiabá",
+      "short_name": "CUI",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/cuiaba.png",
+      "aliases": [
+        "Cuiaba",
+        "Cuiabá",
+        "Cuiabá EC"
+      ]
+    },
+    {
+      "club_id": "eintracht_frankfurt",
+      "name": "Eintracht Frankfurt",
+      "short_name": "SGE",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/eintracht_frankfurt.png",
+      "aliases": [
+        "Eintracht Frankfurt",
+        "Frankfurt"
+      ]
+    },
+    {
+      "club_id": "england",
+      "name": "England",
+      "short_name": "ENG",
+      "country": "EN",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/england.png",
+      "aliases": [
+        "England",
+        "Three Lions"
+      ]
+    },
+    {
+      "club_id": "everton",
+      "name": "Everton",
+      "short_name": "EVE",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/everton.png",
+      "aliases": [
+        "Everton",
+        "Everton FC"
+      ]
+    },
+    {
+      "club_id": "fiorentina",
+      "name": "Fiorentina",
+      "short_name": "FIO",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/fiorentina.png",
+      "aliases": [
+        "ACF Fiorentina",
+        "Fiorentina"
+      ]
+    },
+    {
+      "club_id": "flamengo",
+      "name": "Flamengo",
+      "short_name": "FLA",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/flamengo.png",
+      "aliases": [
+        "CR Flamengo",
+        "Clube de Regatas do Flamengo",
+        "Flamengo"
+      ]
+    },
+    {
+      "club_id": "fluminense",
+      "name": "Fluminense",
+      "short_name": "FLU",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/fluminense.png",
+      "aliases": [
+        "Fluminense",
+        "Fluminense FC"
+      ]
+    },
+    {
+      "club_id": "fortaleza",
+      "name": "Fortaleza",
+      "short_name": "FOR",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/fortaleza.png",
+      "aliases": [
+        "Fortaleza",
+        "Fortaleza EC"
+      ]
+    },
+    {
+      "club_id": "france",
+      "name": "France",
+      "short_name": "FRA",
+      "country": "FR",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/france.png",
+      "aliases": [
+        "France",
+        "Les Bleus",
+        "Équipe de France"
+      ]
+    },
+    {
+      "club_id": "fulham",
+      "name": "Fulham",
+      "short_name": "FUL",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/fulham.png",
+      "aliases": [
+        "Fulham",
+        "Fulham FC"
+      ]
+    },
+    {
+      "club_id": "germany",
+      "name": "Germany",
+      "short_name": "GER",
+      "country": "DE",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/germany.png",
+      "aliases": [
+        "Deutschland",
+        "Die Mannschaft",
+        "Germany"
+      ]
+    },
+    {
+      "club_id": "girona",
+      "name": "Girona",
+      "short_name": "GIR",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/girona.png",
+      "aliases": [
+        "Girona",
+        "Girona FC"
+      ]
+    },
+    {
+      "club_id": "goias",
+      "name": "Goiás",
+      "short_name": "GOI",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/goias.png",
+      "aliases": [
+        "Goias",
+        "Goiás",
+        "Goiás EC"
+      ]
+    },
+    {
+      "club_id": "gremio",
+      "name": "Grêmio",
+      "short_name": "GRE",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/gremio.png",
+      "aliases": [
+        "Gremio",
+        "Grêmio",
+        "Grêmio FBPA"
+      ]
+    },
+    {
+      "club_id": "inter_milan",
+      "name": "Inter Milan",
+      "short_name": "INT",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/inter_milan.png",
+      "aliases": [
+        "FC Internazionale Milano",
+        "Inter Milan",
+        "Internazionale"
+      ]
+    },
+    {
+      "club_id": "internacional",
+      "name": "Internacional",
+      "short_name": "INT",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/internacional.png",
+      "aliases": [
+        "Inter",
+        "Internacional",
+        "SC Internacional"
+      ]
+    },
+    {
+      "club_id": "italy",
+      "name": "Italy",
+      "short_name": "ITA",
+      "country": "IT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/italy.png",
+      "aliases": [
+        "Azzurri",
+        "Italia",
+        "Italy"
+      ]
+    },
+    {
+      "club_id": "japan",
+      "name": "Japan",
+      "short_name": "JPN",
+      "country": "JP",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/japan.png",
+      "aliases": [
+        "Japan",
+        "Samurai Blue"
+      ]
+    },
+    {
+      "club_id": "juventude",
+      "name": "Juventude",
+      "short_name": "JUV",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/juventude.png",
+      "aliases": [
+        "EC Juventude",
+        "Juventude"
+      ]
+    },
+    {
+      "club_id": "juventus",
+      "name": "Juventus",
+      "short_name": "JUV",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/juventus.png",
+      "aliases": [
+        "Juve",
+        "Juventus",
+        "Juventus FC"
+      ]
+    },
+    {
+      "club_id": "lazio",
+      "name": "Lazio",
+      "short_name": "LAZ",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/lazio.png",
+      "aliases": [
+        "Lazio",
+        "SS Lazio"
+      ]
+    },
+    {
+      "club_id": "lens",
+      "name": "Lens",
+      "short_name": "LEN",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/lens.png",
+      "aliases": [
+        "Lens",
+        "RC Lens"
+      ]
+    },
+    {
+      "club_id": "lille",
+      "name": "Lille",
+      "short_name": "LIL",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/lille.png",
+      "aliases": [
+        "LOSC Lille",
+        "Lille"
+      ]
+    },
+    {
+      "club_id": "liverpool",
+      "name": "Liverpool",
+      "short_name": "LIV",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/liverpool.png",
+      "aliases": [
+        "Liverpool",
+        "Liverpool FC"
+      ]
+    },
+    {
+      "club_id": "manchester_city",
+      "name": "Manchester City",
+      "short_name": "MCI",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/manchester_city.png",
+      "aliases": [
+        "Man City",
+        "Manchester City",
+        "Manchester City FC"
+      ]
+    },
+    {
+      "club_id": "manchester_united",
+      "name": "Manchester United",
+      "short_name": "MUN",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/manchester_united.png",
+      "aliases": [
+        "Man United",
+        "Man Utd",
+        "Manchester United",
+        "Manchester United FC"
+      ]
+    },
+    {
+      "club_id": "mexico",
+      "name": "Mexico",
+      "short_name": "MEX",
+      "country": "MX",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/mexico.png",
+      "aliases": [
+        "El Tri",
+        "Mexico"
+      ]
+    },
+    {
+      "club_id": "mirassol",
+      "name": "Mirassol",
+      "short_name": "MIR",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/mirassol.png",
+      "aliases": [
+        "Mirassol",
+        "Mirassol FC"
+      ]
+    },
+    {
+      "club_id": "morocco",
+      "name": "Morocco",
+      "short_name": "MAR",
+      "country": "MA",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/morocco.png",
+      "aliases": [
+        "Atlas Lions",
+        "Maroc",
+        "Morocco"
+      ]
+    },
+    {
+      "club_id": "napoli",
+      "name": "Napoli",
+      "short_name": "NAP",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/napoli.png",
+      "aliases": [
+        "Napoli",
+        "SSC Napoli"
+      ]
+    },
+    {
+      "club_id": "netherlands",
+      "name": "Netherlands",
+      "short_name": "NED",
+      "country": "NL",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/netherlands.png",
+      "aliases": [
+        "Holland",
+        "Netherlands",
+        "Oranje"
+      ]
+    },
+    {
+      "club_id": "newcastle_united",
+      "name": "Newcastle United",
+      "short_name": "NEW",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/newcastle_united.png",
+      "aliases": [
+        "Newcastle",
+        "Newcastle United",
+        "Newcastle Utd"
+      ]
+    },
+    {
+      "club_id": "nice",
+      "name": "Nice",
+      "short_name": "NIC",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/nice.png",
+      "aliases": [
+        "Nice",
+        "OGC Nice"
+      ]
+    },
+    {
+      "club_id": "nottingham_forest",
+      "name": "Nottingham Forest",
+      "short_name": "NFO",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/nottingham_forest.png",
+      "aliases": [
+        "Forest",
+        "Nottingham Forest",
+        "Notts Forest"
+      ]
+    },
+    {
+      "club_id": "novorizontino",
+      "name": "Novorizontino",
+      "short_name": "NOV",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/novorizontino.png",
+      "aliases": [
+        "Grêmio Novorizontino",
+        "Novorizontino"
+      ]
+    },
+    {
+      "club_id": "olympique_de_marseille",
+      "name": "Olympique de Marseille",
+      "short_name": "OM",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/olympique_de_marseille.png",
+      "aliases": [
+        "Marseille",
+        "Olympique de Marseille"
+      ]
+    },
+    {
+      "club_id": "olympique_lyonnais",
+      "name": "Olympique Lyonnais",
+      "short_name": "OL",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/olympique_lyonnais.png",
+      "aliases": [
+        "Lyon",
+        "Olympique Lyonnais"
+      ]
+    },
+    {
+      "club_id": "operario",
+      "name": "Operário",
+      "short_name": "OPE",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/operario.png",
+      "aliases": [
+        "Operario",
+        "Operário",
+        "Operário Ferroviário"
+      ]
+    },
+    {
+      "club_id": "palmeiras",
+      "name": "Palmeiras",
+      "short_name": "PAL",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/palmeiras.png",
+      "aliases": [
+        "Palmeiras",
+        "SE Palmeiras",
+        "Sociedade Esportiva Palmeiras"
+      ]
+    },
+    {
+      "club_id": "paris_saint_germain",
+      "name": "Paris Saint-Germain",
+      "short_name": "PSG",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/paris_saint_germain.png",
+      "aliases": [
+        "PSG",
+        "Paris",
+        "Paris SG",
+        "Paris Saint-Germain"
+      ]
+    },
+    {
+      "club_id": "paysandu",
+      "name": "Paysandu",
+      "short_name": "PAY",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/paysandu.png",
+      "aliases": [
+        "Paysandu",
+        "Paysandu SC"
+      ]
+    },
+    {
+      "club_id": "portugal",
+      "name": "Portugal",
+      "short_name": "POR",
+      "country": "PT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/portugal.png",
+      "aliases": [
+        "Portugal",
+        "Seleção Portuguesa"
+      ]
+    },
+    {
+      "club_id": "rb_leipzig",
+      "name": "RB Leipzig",
+      "short_name": "RBL",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/rb_leipzig.png",
+      "aliases": [
+        "Leipzig",
+        "RB Leipzig"
+      ]
+    },
+    {
+      "club_id": "real_betis",
+      "name": "Real Betis",
+      "short_name": "BET",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/real_betis.png",
+      "aliases": [
+        "Betis",
+        "Real Betis"
+      ]
+    },
+    {
+      "club_id": "real_madrid",
+      "name": "Real Madrid",
+      "short_name": "RMA",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/real_madrid.png",
+      "aliases": [
+        "Real Madrid",
+        "Real Madrid CF"
+      ]
+    },
+    {
+      "club_id": "real_sociedad",
+      "name": "Real Sociedad",
+      "short_name": "RSO",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/real_sociedad.png",
+      "aliases": [
+        "Real Sociedad",
+        "Real Sociedad de Fútbol"
+      ]
+    },
+    {
+      "club_id": "rennes",
+      "name": "Rennes",
+      "short_name": "REN",
+      "country": "FR",
+      "competition": "ligue_1",
+      "competitions": [
+        "ligue_1"
+      ],
+      "logo_path": "/clubs/rennes.png",
+      "aliases": [
+        "Rennes",
+        "Stade Rennais"
+      ]
+    },
+    {
+      "club_id": "santos",
+      "name": "Santos",
+      "short_name": "SAN",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a",
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/santos.png",
+      "aliases": [
+        "Santos",
+        "Santos FC"
+      ]
+    },
+    {
+      "club_id": "sao_paulo",
+      "name": "São Paulo",
+      "short_name": "SAO",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/sao_paulo.png",
+      "aliases": [
+        "SPFC",
+        "Sao Paulo",
+        "São Paulo",
+        "São Paulo FC"
+      ]
+    },
+    {
+      "club_id": "sevilla",
+      "name": "Sevilla",
+      "short_name": "SEV",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/sevilla.png",
+      "aliases": [
+        "Sevilla",
+        "Sevilla FC"
+      ]
+    },
+    {
+      "club_id": "spain",
+      "name": "Spain",
+      "short_name": "ESP",
+      "country": "ES",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/spain.png",
+      "aliases": [
+        "España",
+        "La Roja",
+        "Spain"
+      ]
+    },
+    {
+      "club_id": "sport_recife",
+      "name": "Sport Recife",
+      "short_name": "SPT",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/sport_recife.png",
+      "aliases": [
+        "Sport",
+        "Sport Club do Recife",
+        "Sport Recife"
+      ]
+    },
+    {
+      "club_id": "torino",
+      "name": "Torino",
+      "short_name": "TOR",
+      "country": "IT",
+      "competition": "serie_a",
+      "competitions": [
+        "serie_a"
+      ],
+      "logo_path": "/clubs/torino.png",
+      "aliases": [
+        "Torino",
+        "Torino FC"
+      ]
+    },
+    {
+      "club_id": "tottenham_hotspur",
+      "name": "Tottenham Hotspur",
+      "short_name": "TOT",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/tottenham_hotspur.png",
+      "aliases": [
+        "Spurs",
+        "Tottenham",
+        "Tottenham Hotspur"
+      ]
+    },
+    {
+      "club_id": "united_states",
+      "name": "United States",
+      "short_name": "USA",
+      "country": "US",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/united_states.png",
+      "aliases": [
+        "USMNT",
+        "United States",
+        "United States of America"
+      ]
+    },
+    {
+      "club_id": "uruguay",
+      "name": "Uruguay",
+      "short_name": "URU",
+      "country": "UY",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/uruguay.png",
+      "aliases": [
+        "La Celeste",
+        "Uruguay"
+      ]
+    },
+    {
+      "club_id": "valencia",
+      "name": "Valencia",
+      "short_name": "VAL",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/valencia.png",
+      "aliases": [
+        "Valencia",
+        "Valencia CF"
+      ]
+    },
+    {
+      "club_id": "vasco_da_gama",
+      "name": "Vasco da Gama",
+      "short_name": "VAS",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/vasco_da_gama.png",
+      "aliases": [
+        "CR Vasco da Gama",
+        "Vasco",
+        "Vasco da Gama"
+      ]
+    },
+    {
+      "club_id": "vfb_stuttgart",
+      "name": "VfB Stuttgart",
+      "short_name": "VFB",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/vfb_stuttgart.png",
+      "aliases": [
+        "Stuttgart",
+        "VfB Stuttgart"
+      ]
+    },
+    {
+      "club_id": "vfl_wolfsburg",
+      "name": "VfL Wolfsburg",
+      "short_name": "WOB",
+      "country": "DE",
+      "competition": "bundesliga",
+      "competitions": [
+        "bundesliga"
+      ],
+      "logo_path": "/clubs/vfl_wolfsburg.png",
+      "aliases": [
+        "VfL Wolfsburg",
+        "Wolfsburg"
+      ]
+    },
+    {
+      "club_id": "vila_nova",
+      "name": "Vila Nova",
+      "short_name": "VNO",
+      "country": "BR",
+      "competition": "brasileirao_serie_b",
+      "competitions": [
+        "brasileirao_serie_b"
+      ],
+      "logo_path": "/clubs/vila_nova.png",
+      "aliases": [
+        "Vila Nova",
+        "Vila Nova FC"
+      ]
+    },
+    {
+      "club_id": "villarreal",
+      "name": "Villarreal",
+      "short_name": "VIL",
+      "country": "ES",
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": "/clubs/villarreal.png",
+      "aliases": [
+        "Villarreal",
+        "Villarreal CF"
+      ]
+    },
+    {
+      "club_id": "vitoria",
+      "name": "Vitória",
+      "short_name": "VIT",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": "/clubs/vitoria.png",
+      "aliases": [
+        "EC Vitória",
+        "Vitoria",
+        "Vitória"
+      ]
+    },
+    {
+      "club_id": "west_ham_united",
+      "name": "West Ham United",
+      "short_name": "WHU",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/west_ham_united.png",
+      "aliases": [
+        "West Ham",
+        "West Ham United",
+        "West Ham Utd"
+      ]
+    },
+    {
+      "club_id": "wolverhampton_wanderers",
+      "name": "Wolverhampton Wanderers",
+      "short_name": "WOL",
+      "country": "EN",
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": "/clubs/wolverhampton_wanderers.png",
+      "aliases": [
+        "Wolverhampton Wanderers",
+        "Wolves"
+      ]
+    },
+    {
+      "club_id": "alianza_lima",
+      "name": "Alianza Lima",
+      "short_name": "ALI",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/alianza_lima.png",
+      "aliases": [
+        "Alianza Lima"
+      ]
+    },
+    {
+      "club_id": "always_ready",
+      "name": "Always Ready",
+      "short_name": "ALW",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/always_ready.png",
+      "aliases": [
+        "Always Ready"
+      ]
+    },
+    {
+      "club_id": "junior",
+      "name": "Atlético Junior",
+      "short_name": "JUN",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/junior.png",
+      "aliases": [
+        "Atlético Junior",
+        "Junior",
+        "Junior Barranquilla",
+        "CD Popular Junior"
+      ]
+    },
+    {
+      "club_id": "atletico_nacional",
+      "name": "Atlético Nacional",
+      "short_name": "NAC",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/atletico_nacional.png",
+      "aliases": [
+        "Atlético Nacional"
+      ]
+    },
+    {
+      "club_id": "aucas",
+      "name": "Aucas",
+      "short_name": "AUC",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/aucas.png",
+      "aliases": [
+        "Aucas",
+        "SD Aucas"
+      ]
+    },
+    {
+      "club_id": "aurora",
+      "name": "Aurora",
+      "short_name": "AUR",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/aurora.png",
+      "aliases": [
+        "Aurora",
+        "Club Aurora"
+      ]
+    },
+    {
+      "club_id": "bolivar",
+      "name": "Bolívar",
+      "short_name": "BOL",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/bolivar.png",
+      "aliases": [
+        "Bolívar",
+        "Club Bolívar"
+      ]
+    },
+    {
+      "club_id": "boston_river",
+      "name": "Boston River",
+      "short_name": "BOS",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/boston_river.png",
+      "aliases": [
+        "Boston River"
+      ]
+    },
+    {
+      "club_id": "caracas",
+      "name": "Caracas FC",
+      "short_name": "CAR",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/caracas.png",
+      "aliases": [
+        "Caracas FC",
+        "Caracas"
+      ]
+    },
+    {
+      "club_id": "cerro_porteno",
+      "name": "Cerro Porteño",
+      "short_name": "CER",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/cerro_porteno.png",
+      "aliases": [
+        "Cerro Porteño"
+      ]
+    },
+    {
+      "club_id": "cobresal",
+      "name": "Cobresal",
+      "short_name": "COB",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/cobresal.png",
+      "aliases": [
+        "Cobresal",
+        "CD Cobresal"
+      ]
+    },
+    {
+      "club_id": "colo_colo",
+      "name": "Colo Colo",
+      "short_name": "COL",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/colo_colo.png",
+      "aliases": [
+        "Colo Colo",
+        "Colo-Colo"
+      ]
+    },
+    {
+      "club_id": "curico_unido",
+      "name": "Curicó Unido",
+      "short_name": "CUR",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/curico_unido.png",
+      "aliases": [
+        "Curicó Unido",
+        "Provincial Curicó Unido"
+      ]
+    },
+    {
+      "club_id": "defensor_sporting",
+      "name": "Defensor Sporting",
+      "short_name": "DEF",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/defensor_sporting.png",
+      "aliases": [
+        "Defensor Sporting"
+      ]
+    },
+    {
+      "club_id": "deportes_tolima",
+      "name": "Deportes Tolima",
+      "short_name": "TOL",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/deportes_tolima.png",
+      "aliases": [
+        "Deportes Tolima"
+      ]
+    },
+    {
+      "club_id": "deportivo_tachira",
+      "name": "Deportivo Táchira",
+      "short_name": "TAC",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/deportivo_tachira.png",
+      "aliases": [
+        "Deportivo Táchira"
+      ]
+    },
+    {
+      "club_id": "el_nacional",
+      "name": "El Nacional",
+      "short_name": "ELN",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/el_nacional.png",
+      "aliases": [
+        "El Nacional",
+        "CD El Nacional"
+      ]
+    },
+    {
+      "club_id": "estudiantes",
+      "name": "Estudiantes de La Plata",
+      "short_name": "EST",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/estudiantes.png",
+      "aliases": [
+        "Estudiantes de La Plata",
+        "Estudiantes",
+        "Estudiantes LP"
+      ]
+    },
+    {
+      "club_id": "godoy_cruz",
+      "name": "Godoy Cruz Antonio Tomba",
+      "short_name": "GOD",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/godoy_cruz.png",
+      "aliases": [
+        "Godoy Cruz Antonio Tomba",
+        "Godoy Cruz"
+      ]
+    },
+    {
+      "club_id": "huachipato",
+      "name": "Huachipato",
+      "short_name": "HUA",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/huachipato.png",
+      "aliases": [
+        "Huachipato",
+        "CD Huachipato"
+      ]
+    },
+    {
+      "club_id": "independiente_medellin",
+      "name": "Independiente Medellín",
+      "short_name": "DIM",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/independiente_medellin.png",
+      "aliases": [
+        "Independiente Medellín",
+        "DIM",
+        "Medellín"
+      ]
+    },
+    {
+      "club_id": "independiente_del_valle",
+      "name": "Independiente del Valle",
+      "short_name": "IDV",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/independiente_del_valle.png",
+      "aliases": [
+        "Independiente del Valle",
+        "IDV"
+      ]
+    },
+    {
+      "club_id": "libertad",
+      "name": "Libertad",
+      "short_name": "LIB",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/libertad.png",
+      "aliases": [
+        "Libertad",
+        "Club Libertad"
+      ]
+    },
+    {
+      "club_id": "ldu_quito",
+      "name": "Liga de Quito",
+      "short_name": "LDU",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/ldu_quito.png",
+      "aliases": [
+        "Liga de Quito",
+        "LDU Quito",
+        "LDU",
+        "Liga Deportiva Universitaria"
+      ]
+    },
+    {
+      "club_id": "macara",
+      "name": "Macará",
+      "short_name": "MAC",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/macara.png",
+      "aliases": [
+        "Macará",
+        "CSD Macará"
+      ]
+    },
+    {
+      "club_id": "melgar",
+      "name": "Melgar",
+      "short_name": "MEL",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/melgar.png",
+      "aliases": [
+        "Melgar",
+        "FBC Melgar"
+      ]
+    },
+    {
+      "club_id": "millonarios",
+      "name": "Millonarios",
+      "short_name": "MIL",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/millonarios.png",
+      "aliases": [
+        "Millonarios",
+        "Millonarios FC"
+      ]
+    },
+    {
+      "club_id": "nacional",
+      "name": "Nacional",
+      "short_name": "NAC",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/nacional.png",
+      "aliases": [
+        "Nacional",
+        "Club Nacional de Football",
+        "Nacional Montevideo"
+      ]
+    },
+    {
+      "club_id": "nacional_asuncion",
+      "name": "Nacional Asunción",
+      "short_name": "NAS",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/nacional_asuncion.png",
+      "aliases": [
+        "Nacional Asunción",
+        "Nacional (Paraguay)"
+      ]
+    },
+    {
+      "club_id": "nacional_potosi",
+      "name": "Nacional Potosí",
+      "short_name": "NPO",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/nacional_potosi.png",
+      "aliases": [
+        "Nacional Potosí"
+      ]
+    },
+    {
+      "club_id": "palestino",
+      "name": "Palestino",
+      "short_name": "PAL",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/palestino.png",
+      "aliases": [
+        "Palestino",
+        "CD Palestino"
+      ]
+    },
+    {
+      "club_id": "penarol",
+      "name": "Peñarol",
+      "short_name": "PEN",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/penarol.png",
+      "aliases": [
+        "Peñarol",
+        "CA Peñarol"
+      ]
+    },
+    {
+      "club_id": "portuguesa",
+      "name": "Portuguesa",
+      "short_name": "POR",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/portuguesa.png",
+      "aliases": [
+        "Portuguesa",
+        "Portuguesa FC"
+      ]
+    },
+    {
+      "club_id": "river_plate",
+      "name": "River Plate",
+      "short_name": "RIV",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/river_plate.png",
+      "aliases": [
+        "River Plate",
+        "CA River Plate"
+      ]
+    },
+    {
+      "club_id": "rosario_central",
+      "name": "Rosario Central",
+      "short_name": "ROS",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/rosario_central.png",
+      "aliases": [
+        "Rosario Central"
+      ]
+    },
+    {
+      "club_id": "sporting_cristal",
+      "name": "Sporting Cristal",
+      "short_name": "CRI",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/sporting_cristal.png",
+      "aliases": [
+        "Sporting Cristal",
+        "Club Sporting Cristal"
+      ]
+    },
+    {
+      "club_id": "sportivo_trinidense",
+      "name": "Sportivo Trinidense",
+      "short_name": "TRI",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/sportivo_trinidense.png",
+      "aliases": [
+        "Sportivo Trinidense"
+      ]
+    },
+    {
+      "club_id": "talleres",
+      "name": "Talleres (Córdoba)",
+      "short_name": "TAL",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/talleres.png",
+      "aliases": [
+        "Talleres (Córdoba)",
+        "Talleres",
+        "Talleres de Córdoba"
+      ]
+    },
+    {
+      "club_id": "the_strongest",
+      "name": "The Strongest",
+      "short_name": "STR",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/the_strongest.png",
+      "aliases": [
+        "The Strongest",
+        "Club The Strongest"
+      ]
+    },
+    {
+      "club_id": "universidad_de_chile",
+      "name": "Universidad de Chile",
+      "short_name": "UCH",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/universidad_de_chile.png",
+      "aliases": [
+        "Universidad de Chile",
+        "U de Chile",
+        "Universidad Chile"
+      ]
+    },
+    {
+      "club_id": "universitario",
+      "name": "Universitario",
+      "short_name": "UNI",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/universitario.png",
+      "aliases": [
+        "Universitario",
+        "Universitario de Deportes"
+      ]
+    },
+    {
+      "club_id": "zamora",
+      "name": "Zamora FC",
+      "short_name": "ZAM",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/zamora.png",
+      "aliases": [
+        "Zamora FC",
+        "Zamora"
+      ]
+    },
+    {
+      "club_id": "aguilas_doradas",
+      "name": "Águilas Doradas",
+      "short_name": "AGU",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/aguilas_doradas.png",
+      "aliases": [
+        "Águilas Doradas",
+        "Rionegro Águilas",
+        "Aguilas Doradas"
+      ]
+    },
+    {
+      "club_id": "academia_puerto_cabello",
+      "name": "Academia Puerto Cabello",
+      "short_name": "APC",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/academia_puerto_cabello.png",
+      "aliases": [
+        "Academia Puerto Cabello",
+        "Puerto Cabello"
+      ]
+    },
+    {
+      "club_id": "ar_nt",
+      "name": "Argentina",
+      "short_name": "ARG",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ar_nt.png",
+      "aliases": [
+        "Argentina"
+      ]
+    },
+    {
+      "club_id": "br_nt",
+      "name": "Brazil",
+      "short_name": "BRA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/br_nt.png",
+      "aliases": [
+        "Brazil"
+      ]
+    },
+    {
+      "club_id": "uy_nt",
+      "name": "Uruguay",
+      "short_name": "URU",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/uy_nt.png",
+      "aliases": [
+        "Uruguay"
+      ]
+    },
+    {
+      "club_id": "cl_nt",
+      "name": "Chile",
+      "short_name": "CHI",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/cl_nt.png",
+      "aliases": [
+        "Chile"
+      ]
+    },
+    {
+      "club_id": "co_nt",
+      "name": "Colombia",
+      "short_name": "COL",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/co_nt.png",
+      "aliases": [
+        "Colombia"
+      ]
+    },
+    {
+      "club_id": "pe_nt",
+      "name": "Peru",
+      "short_name": "PER",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/pe_nt.png",
+      "aliases": [
+        "Peru"
+      ]
+    },
+    {
+      "club_id": "ec_nt",
+      "name": "Ecuador",
+      "short_name": "ECU",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ec_nt.png",
+      "aliases": [
+        "Ecuador"
+      ]
+    },
+    {
+      "club_id": "py_nt",
+      "name": "Paraguay",
+      "short_name": "PAR",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/py_nt.png",
+      "aliases": [
+        "Paraguay"
+      ]
+    },
+    {
+      "club_id": "bo_nt",
+      "name": "Bolivia",
+      "short_name": "BOL",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/bo_nt.png",
+      "aliases": [
+        "Bolivia"
+      ]
+    },
+    {
+      "club_id": "ve_nt",
+      "name": "Venezuela",
+      "short_name": "VEN",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ve_nt.png",
+      "aliases": [
+        "Venezuela"
+      ]
+    },
+    {
+      "club_id": "fr_nt",
+      "name": "France",
+      "short_name": "FRA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/fr_nt.png",
+      "aliases": [
+        "France"
+      ]
+    },
+    {
+      "club_id": "de_nt",
+      "name": "Germany",
+      "short_name": "GER",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/de_nt.png",
+      "aliases": [
+        "Germany"
+      ]
+    },
+    {
+      "club_id": "es_nt",
+      "name": "Spain",
+      "short_name": "SPA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/es_nt.png",
+      "aliases": [
+        "Spain"
+      ]
+    },
+    {
+      "club_id": "pt_nt",
+      "name": "Portugal",
+      "short_name": "POR",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/pt_nt.png",
+      "aliases": [
+        "Portugal"
+      ]
+    },
+    {
+      "club_id": "en_nt",
+      "name": "England",
+      "short_name": "ENG",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/en_nt.png",
+      "aliases": [
+        "England"
+      ]
+    },
+    {
+      "club_id": "nl_nt",
+      "name": "Netherlands",
+      "short_name": "NET",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/nl_nt.png",
+      "aliases": [
+        "Netherlands"
+      ]
+    },
+    {
+      "club_id": "hr_nt",
+      "name": "Croatia",
+      "short_name": "CRO",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/hr_nt.png",
+      "aliases": [
+        "Croatia"
+      ]
+    },
+    {
+      "club_id": "be_nt",
+      "name": "Belgium",
+      "short_name": "BEL",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/be_nt.png",
+      "aliases": [
+        "Belgium"
+      ]
+    },
+    {
+      "club_id": "it_nt",
+      "name": "Italy",
+      "short_name": "ITA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/it_nt.png",
+      "aliases": [
+        "Italy"
+      ]
+    },
+    {
+      "club_id": "mx_nt",
+      "name": "Mexico",
+      "short_name": "MEX",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/mx_nt.png",
+      "aliases": [
+        "Mexico"
+      ]
+    },
+    {
+      "club_id": "us_nt",
+      "name": "United States",
+      "short_name": "UNI",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/us_nt.png",
+      "aliases": [
+        "United States"
+      ]
+    },
+    {
+      "club_id": "jp_nt",
+      "name": "Japan",
+      "short_name": "JAP",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/jp_nt.png",
+      "aliases": [
+        "Japan"
+      ]
+    },
+    {
+      "club_id": "kr_nt",
+      "name": "South Korea",
+      "short_name": "SOU",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/kr_nt.png",
+      "aliases": [
+        "South Korea"
+      ]
+    },
+    {
+      "club_id": "ma_nt",
+      "name": "Morocco",
+      "short_name": "MOR",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ma_nt.png",
+      "aliases": [
+        "Morocco"
+      ]
+    },
+    {
+      "club_id": "sn_nt",
+      "name": "Senegal",
+      "short_name": "SEN",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/sn_nt.png",
+      "aliases": [
+        "Senegal"
+      ]
+    },
+    {
+      "club_id": "gh_nt",
+      "name": "Ghana",
+      "short_name": "GHA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/gh_nt.png",
+      "aliases": [
+        "Ghana"
+      ]
+    },
+    {
+      "club_id": "ng_nt",
+      "name": "Nigeria",
+      "short_name": "NIG",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ng_nt.png",
+      "aliases": [
+        "Nigeria"
+      ]
+    },
+    {
+      "club_id": "au_nt",
+      "name": "Australia",
+      "short_name": "AUS",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/au_nt.png",
+      "aliases": [
+        "Australia"
+      ]
+    },
+    {
+      "club_id": "ca_nt",
+      "name": "Canada",
+      "short_name": "CAN",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ca_nt.png",
+      "aliases": [
+        "Canada"
+      ]
+    },
+    {
+      "club_id": "ch_nt",
+      "name": "Switzerland",
+      "short_name": "SWI",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ch_nt.png",
+      "aliases": [
+        "Switzerland"
+      ]
+    },
+    {
+      "club_id": "dk_nt",
+      "name": "Denmark",
+      "short_name": "DEN",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/dk_nt.png",
+      "aliases": [
+        "Denmark"
+      ]
+    },
+    {
+      "club_id": "pl_nt",
+      "name": "Poland",
+      "short_name": "POL",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/pl_nt.png",
+      "aliases": [
+        "Poland"
+      ]
+    },
+    {
+      "club_id": "rs_nt",
+      "name": "Serbia",
+      "short_name": "SER",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/rs_nt.png",
+      "aliases": [
+        "Serbia"
+      ]
+    },
+    {
+      "club_id": "sa_nt",
+      "name": "Saudi Arabia",
+      "short_name": "SAU",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/sa_nt.png",
+      "aliases": [
+        "Saudi Arabia"
+      ]
+    },
+    {
+      "club_id": "qa_nt",
+      "name": "Qatar",
+      "short_name": "QAT",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/qa_nt.png",
+      "aliases": [
+        "Qatar"
+      ]
+    },
+    {
+      "club_id": "ir_nt",
+      "name": "Iran",
+      "short_name": "IRA",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/ir_nt.png",
+      "aliases": [
+        "Iran"
+      ]
+    },
+    {
+      "club_id": "cr_nt",
+      "name": "Costa Rica",
+      "short_name": "COS",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/cr_nt.png",
+      "aliases": [
+        "Costa Rica"
+      ]
+    },
+    {
+      "club_id": "tn_nt",
+      "name": "Tunisia",
+      "short_name": "TUN",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/tn_nt.png",
+      "aliases": [
+        "Tunisia"
+      ]
+    },
+    {
+      "club_id": "cm_nt",
+      "name": "Cameroon",
+      "short_name": "CAM",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/cm_nt.png",
+      "aliases": [
+        "Cameroon"
+      ]
+    },
+    {
+      "club_id": "wal_nt",
+      "name": "Wales",
+      "short_name": "WAL",
+      "country": "INT",
+      "competition": "world_cup",
+      "competitions": [
+        "world_cup"
+      ],
+      "logo_path": "/clubs/wal_nt.png",
+      "aliases": [
+        "Wales"
+      ]
+    },
+    {
+      "club_id": "argentinos_juniors",
+      "name": "Argentinos Juniors",
+      "short_name": "ARG",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/argentinos_juniors.png",
+      "aliases": [
+        "Argentinos Juniors",
+        "AA Argentinos Juniors"
+      ]
+    },
+    {
+      "club_id": "atletico_tucuman",
+      "name": "Atlético Tucumán",
+      "short_name": "ATU",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/atletico_tucuman.png",
+      "aliases": [
+        "Atlético Tucumán"
+      ]
+    },
+    {
+      "club_id": "boca_juniors",
+      "name": "Boca Juniors",
+      "short_name": "BOC",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/boca_juniors.png",
+      "aliases": [
+        "Boca Juniors",
+        "CA Boca Juniors",
+        "Boca"
+      ]
+    },
+    {
+      "club_id": "carabobo",
+      "name": "Carabobo",
+      "short_name": "CBO",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/carabobo.png",
+      "aliases": [
+        "Carabobo",
+        "Carabobo FC"
+      ]
+    },
+    {
+      "club_id": "cerro_largo",
+      "name": "Cerro Largo",
+      "short_name": "CLA",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/cerro_largo.png",
+      "aliases": [
+        "Cerro Largo"
+      ]
+    },
+    {
+      "club_id": "olimpia",
+      "name": "Club Olimpia",
+      "short_name": "OLI",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/olimpia.png",
+      "aliases": [
+        "Club Olimpia",
+        "Olimpia",
+        "Olimpia Asunción"
+      ]
+    },
+    {
+      "club_id": "cesar_vallejo",
+      "name": "César Vallejo",
+      "short_name": "CVA",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/cesar_vallejo.png",
+      "aliases": [
+        "César Vallejo",
+        "Universidad César Vallejo"
+      ]
+    },
+    {
+      "club_id": "deportivo_lara",
+      "name": "Deportivo Lara",
+      "short_name": "DLA",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/deportivo_lara.png",
+      "aliases": [
+        "Deportivo Lara"
+      ]
+    },
+    {
+      "club_id": "deportivo_maldonado",
+      "name": "Deportivo Maldonado",
+      "short_name": "DMA",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/deportivo_maldonado.png",
+      "aliases": [
+        "Deportivo Maldonado"
+      ]
+    },
+    {
+      "club_id": "deportivo_pereira",
+      "name": "Deportivo Pereira",
+      "short_name": "DPE",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/deportivo_pereira.png",
+      "aliases": [
+        "Deportivo Pereira"
+      ]
+    },
+    {
+      "club_id": "guarani_py",
+      "name": "Guaraní",
+      "short_name": "GUA",
+      "country": "PY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/guarani_py.png",
+      "aliases": [
+        "Guaraní",
+        "Club Guaraní",
+        "Guarani (Paraguay)"
+      ]
+    },
+    {
+      "club_id": "huracan",
+      "name": "Huracán",
+      "short_name": "HUR",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/huracan.png",
+      "aliases": [
+        "Huracán",
+        "CA Huracán"
+      ]
+    },
+    {
+      "club_id": "magallanes",
+      "name": "Magallanes",
+      "short_name": "MAG",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/magallanes.png",
+      "aliases": [
+        "Magallanes"
+      ]
+    },
+    {
+      "club_id": "metropolitanos",
+      "name": "Metropolitanos",
+      "short_name": "MET",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/metropolitanos.png",
+      "aliases": [
+        "Metropolitanos",
+        "Metropolitanos FC"
+      ]
+    },
+    {
+      "club_id": "monagas",
+      "name": "Monagas SC",
+      "short_name": "MON",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/monagas.png",
+      "aliases": [
+        "Monagas SC",
+        "Monagas"
+      ]
+    },
+    {
+      "club_id": "montevideo_city_torque",
+      "name": "Montevideo City Torque",
+      "short_name": "MCT",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/montevideo_city_torque.png",
+      "aliases": [
+        "Montevideo City Torque",
+        "City Torque"
+      ]
+    },
+    {
+      "club_id": "patronato",
+      "name": "Patronato",
+      "short_name": "PAT",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/patronato.png",
+      "aliases": [
+        "Patronato"
+      ]
+    },
+    {
+      "club_id": "plaza_colonia",
+      "name": "Plaza Colonia",
+      "short_name": "PLA",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/plaza_colonia.png",
+      "aliases": [
+        "Plaza Colonia"
+      ]
+    },
+    {
+      "club_id": "racing_club",
+      "name": "Racing Club",
+      "short_name": "RAC",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/racing_club.png",
+      "aliases": [
+        "Racing Club",
+        "Racing",
+        "Racing Club de Avellaneda"
+      ]
+    },
+    {
+      "club_id": "royal_pari",
+      "name": "Royal Pari",
+      "short_name": "ROY",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/royal_pari.png",
+      "aliases": [
+        "Royal Pari"
+      ]
+    },
+    {
+      "club_id": "universidad_catolica_quito",
+      "name": "Universidad Católica (Quito)",
+      "short_name": "UCQ",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/universidad_catolica_quito.png",
+      "aliases": [
+        "Universidad Católica (Quito)",
+        "U. Católica (Ecuador)"
+      ]
+    },
+    {
+      "club_id": "nublense",
+      "name": "Ñublense",
+      "short_name": "NUB",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/nublense.png",
+      "aliases": [
+        "Ñublense",
+        "Nublense"
+      ]
+    },
+    {
+      "club_id": "america_de_cali",
+      "name": "América de Cali",
+      "short_name": "AME",
+      "country": "CO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/america_de_cali.png",
+      "aliases": [
+        "América de Cali",
+        "America de Cali"
+      ]
+    },
+    {
+      "club_id": "audax_italiano",
+      "name": "Audax Italiano",
+      "short_name": "AUD",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/audax_italiano.png",
+      "aliases": [
+        "Audax Italiano"
+      ]
+    },
+    {
+      "club_id": "ayacucho",
+      "name": "Ayacucho FC",
+      "short_name": "AYA",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/ayacucho.png",
+      "aliases": [
+        "Ayacucho FC",
+        "Ayacucho"
+      ]
+    },
+    {
+      "club_id": "defensa_y_justicia",
+      "name": "Defensa y Justicia",
+      "short_name": "DYJ",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/defensa_y_justicia.png",
+      "aliases": [
+        "Defensa y Justicia"
+      ]
+    },
+    {
+      "club_id": "delfin",
+      "name": "Delfín",
+      "short_name": "DEL",
+      "country": "EC",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/delfin.png",
+      "aliases": [
+        "Delfín",
+        "Delfin SC"
+      ]
+    },
+    {
+      "club_id": "binacional",
+      "name": "Deportivo Binacional",
+      "short_name": "BIN",
+      "country": "PE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/binacional.png",
+      "aliases": [
+        "Deportivo Binacional",
+        "Binacional"
+      ]
+    },
+    {
+      "club_id": "montevideo_wanderers",
+      "name": "Montevideo Wanderers",
+      "short_name": "MWA",
+      "country": "UY",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/montevideo_wanderers.png",
+      "aliases": [
+        "Montevideo Wanderers",
+        "Wanderers"
+      ]
+    },
+    {
+      "club_id": "tigre",
+      "name": "Tigre",
+      "short_name": "TIG",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/tigre.png",
+      "aliases": [
+        "Tigre",
+        "CA Tigre"
+      ]
+    },
+    {
+      "club_id": "universidad_catolica",
+      "name": "Universidad Católica",
+      "short_name": "UCA",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/universidad_catolica.png",
+      "aliases": [
+        "Universidad Católica",
+        "U. Católica",
+        "Universidad Católica (Chile)"
+      ]
+    },
+    {
+      "club_id": "union_espanola",
+      "name": "Unión Española",
+      "short_name": "UES",
+      "country": "CL",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/union_espanola.png",
+      "aliases": [
+        "Unión Española",
+        "Union Espanola"
+      ]
+    },
+    {
+      "club_id": "velez_sarsfield",
+      "name": "Vélez Sarsfield",
+      "short_name": "VEL",
+      "country": "AR",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/velez_sarsfield.png",
+      "aliases": [
+        "Vélez Sarsfield",
+        "Vélez",
+        "Velez Sarsfield"
+      ]
+    },
+    {
+      "club_id": "jorge_wilstermann",
+      "name": "Wilstermann",
+      "short_name": "WIL",
+      "country": "BO",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/jorge_wilstermann.png",
+      "aliases": [
+        "Wilstermann",
+        "Jorge Wilstermann"
+      ]
+    }
+  ]
+}

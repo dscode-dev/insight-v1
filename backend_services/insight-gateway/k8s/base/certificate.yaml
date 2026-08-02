@@ -1,0 +1,40 @@
+# mTLS cert for the gateway's outbound gRPC clients.
+#
+# W1.0 doesn't open any gRPC client connections yet — the upstream is
+# the legacy BFF over plain HTTP. The cert is provisioned now so when
+# Social/Sports/etc. land we just mount it.
+#
+# The Deployment mounts the Secret at /var/run/secrets/tls/ (read by
+# grpcclient.Dial when initialised in W1.2+).
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: insight-gateway-tls
+  namespace: insight
+  labels:
+    app.kubernetes.io/name: insight-gateway
+    app.kubernetes.io/part-of: insight
+spec:
+  secretName: insight-gateway-tls
+  duration: 720h     # 30d
+  renewBefore: 168h  # 7d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  subject:
+    organizations: ["konohalabs"]
+  commonName: insight-gateway.insight.svc.cluster.local
+  dnsNames:
+    - insight-gateway
+    - insight-gateway.insight
+    - insight-gateway.insight.svc
+    - insight-gateway.insight.svc.cluster.local
+  usages:
+    - server auth
+    - client auth
+  issuerRef:
+    name: insight-internal-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

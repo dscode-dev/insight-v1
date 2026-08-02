@@ -1,0 +1,300 @@
+# Robozão operations stack.
+# Image-only deployment: the host pulls images from Docker Hub and never builds
+# from source. No source mounts, no git checkout, no local repository on host.
+name: insight-explorer
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: insight-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    volumes:
+      - /home/insight/data/postgres:/var/lib/postgresql/data
+      - /home/insight/configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - robozao-ops
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: insight-redis
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - /home/insight/data/redis:/data
+      - /home/insight/configs/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - robozao-ops
+
+  insight-console:
+    image: konohalabs/insight-console:0.2.3@sha256:d70003de1d42fb5f5c6ac5bfac8c1f0b60b95c7a3c4f600c7327e1e285ad1882
+    container_name: insight-console
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:?NEXT_PUBLIC_BASE_PATH is required}
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+      ADMIN_API_BASE_URL: ${ADMIN_API_BASE_URL:?ADMIN_API_BASE_URL is required}
+      ADMIN_API_INTERNAL_TOKEN: ${ADMIN_API_INTERNAL_TOKEN:?ADMIN_API_INTERNAL_TOKEN is required}
+      ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+      COOKIE_SECURE: ${COOKIE_SECURE:?COOKIE_SECURE is required}
+    expose:
+      - "3001"
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      robozao-gateway:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3001/console/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - robozao-ops
+
+  robozao-gateway:
+    image: konohalabs/insight-robozao-gateway:0.0.1@sha256:36a7848a7be6d928ae5a0cf19b85cf22258a6726e5d5bc787d7d64b33d79a5ed
+    container_name: insight-robozao-gateway
+    restart: unless-stopped
+    environment:
+      HTTP_ADDR: ":8095"
+      INSIGHT_GATEWAY_URL: ${INSIGHT_GATEWAY_URL:?INSIGHT_GATEWAY_URL is required}
+      OPERATIONS_DATABASE_URL: ${OPERATIONS_DATABASE_URL:?OPERATIONS_DATABASE_URL is required}
+      OPS_INGEST_TOKEN: ${OPS_INGEST_TOKEN:?OPS_INGEST_TOKEN is required}
+      EXPLORER_URL: ${EXPLORER_URL:?EXPLORER_URL is required}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      GATEWAY_OPS_URL: ${GATEWAY_OPS_URL:?GATEWAY_OPS_URL is required}
+      GATEWAY_OPS_TOKEN: ${GATEWAY_OPS_TOKEN:?GATEWAY_OPS_TOKEN is required}
+      ROBOZAO_ALLOWED_CIDRS: ${ROBOZAO_ALLOWED_CIDRS:?ROBOZAO_ALLOWED_CIDRS is required}
+      ATLAS_OPERATIONS_GRPC_ADDR: ${ATLAS_OPERATIONS_GRPC_ADDR:?ATLAS_OPERATIONS_GRPC_ADDR is required}
+      EXPLORER_OPERATIONS_GRPC_ADDR: ${EXPLORER_OPERATIONS_GRPC_ADDR:?EXPLORER_OPERATIONS_GRPC_ADDR is required}
+      SPORT_HUB_OPERATIONS_GRPC_ADDR: ${SPORT_HUB_OPERATIONS_GRPC_ADDR:?SPORT_HUB_OPERATIONS_GRPC_ADDR is required}
+      NEXUS_OPERATIONS_GRPC_ADDR: ${NEXUS_OPERATIONS_GRPC_ADDR:?NEXUS_OPERATIONS_GRPC_ADDR is required}
+      QWEN_OPERATIONS_GRPC_ADDR: ${QWEN_OPERATIONS_GRPC_ADDR:?QWEN_OPERATIONS_GRPC_ADDR is required}
+      QWEN_OPERATIONS_ENABLED: ${QWEN_OPERATIONS_ENABLED:?QWEN_OPERATIONS_ENABLED is required}
+    expose:
+      - "8095"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      atlas:
+        condition: service_started
+      insight-explorer:
+        condition: service_started
+      sport-hub:
+        condition: service_started
+      insight-nexus:
+        condition: service_started
+      qwen-runtime:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8095/healthz | grep -q ok"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - robozao-ops
+
+  atlas-migrate:
+    image: konohalabs/insight-atlas:0.0.6@sha256:8420574b685b798a601af974d1515b923d3138bf59f2fece5ee95cd7d92fb47f
+    restart: "no"
+    user: "999:987"
+    environment:
+      DATABASE_URL: ${ATLAS_DATABASE_URL:?ATLAS_DATABASE_URL is required}
+    entrypoint: ["python", "scripts/migrate.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  atlas:
+    image: konohalabs/insight-atlas:0.0.6@sha256:8420574b685b798a601af974d1515b923d3138bf59f2fece5ee95cd7d92fb47f
+    container_name: insight-atlas
+    restart: unless-stopped
+    user: "999:987"
+    environment:
+      INTERNAL_TOKEN: ${ATLAS_INTERNAL_TOKEN:?ATLAS_INTERNAL_TOKEN is required}
+      DATABASE_URL: ${ATLAS_DATABASE_URL:?ATLAS_DATABASE_URL is required}
+      REDIS_URL: ${ATLAS_REDIS_URL:?ATLAS_REDIS_URL is required}
+      ATLAS_ANVIL_API_BASE_URL: ${ATLAS_ANVIL_API_BASE_URL:?ATLAS_ANVIL_API_BASE_URL is required}
+      ATLAS_ANVIL_API_KEY: ${ATLAS_ANVIL_API_KEY:?ATLAS_ANVIL_API_KEY is required}
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "8085"
+      HEALTH_HOST: "0.0.0.0"
+      HEALTH_PORT: "8085"
+      OPERATIONS_GRPC_ADDR: "[::]:9081"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    expose:
+      - "8085"
+      - "9081"
+    volumes:
+      - /home/insight/data/atlas:/var/atlas
+      - /home/insight/data/atlas/artifacts:/var/atlas/artifacts
+      - /home/insight/data/atlas/datasets:/var/atlas/datasets
+    depends_on:
+      atlas-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  insight-explorer:
+    image: konohalabs/insight-explorer:0.0.6@sha256:e33379f9d7a8f6ff6bd9d68cafc33695fbd4a656fbd8c4ed4f5ba02936aebe45
+    container_name: insight-explorer
+    restart: unless-stopped
+    environment:
+      EXPLORER_RUN_SCHEDULER: ${EXPLORER_RUN_SCHEDULER:?EXPLORER_RUN_SCHEDULER is required}
+      EXPLORER_USE_AI: ${EXPLORER_USE_AI:?EXPLORER_USE_AI is required}
+      EXPLORER_OLLAMA_HOST: ${EXPLORER_OLLAMA_HOST:?EXPLORER_OLLAMA_HOST is required}
+      EXPLORER_QWEN_MODEL: ${EXPLORER_QWEN_MODEL:?EXPLORER_QWEN_MODEL is required}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      OPERATIONS_GRPC_ADDR: "[::]:9082"
+    expose:
+      - "8090"
+      - "9082"
+    volumes:
+      - /home/insight/data/explorer:/home/insight/data/explorer
+      - /home/insight/reports:/home/insight/reports
+      - /home/insight/logs:/home/insight/logs
+    networks:
+      - robozao-ops
+
+  sport-hub:
+    image: konohalabs/insight-sport-hub:0.0.3@sha256:92f70db948c763930876a46d034563caceb7eda893a4b31781f8a49c2d2e4b06
+    container_name: insight-sport-hub
+    restart: unless-stopped
+    environment:
+      INSIGHT_SERVICE: insight-sport-hub
+      INSIGHT_VERSION: "0.0.3"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      HTTP_ADDR: ":8080"
+      OPERATIONS_GRPC_ADDR: ":9080"
+      DATABASE_URL: ${SPORT_HUB_DATABASE_URL:?SPORT_HUB_DATABASE_URL is required}
+      REDIS_URL: ${SPORT_HUB_REDIS_URL:?SPORT_HUB_REDIS_URL is required}
+      QUEUE_BACKEND: ${SPORT_HUB_QUEUE_BACKEND:?SPORT_HUB_QUEUE_BACKEND is required}
+      PUBLISHER_BACKEND: ${SPORT_HUB_PUBLISHER_BACKEND:?SPORT_HUB_PUBLISHER_BACKEND is required}
+      SPORT_HUB_OPS_TOKEN: ${SPORT_HUB_OPS_TOKEN:?SPORT_HUB_OPS_TOKEN is required}
+      API_FOOTBALL_KEY: ${API_FOOTBALL_KEY:-}
+      FOOTBALL_DATA_KEY: ${FOOTBALL_DATA_KEY:-}
+      THE_ODDS_API_KEY: ${THE_ODDS_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "8080"
+      - "9080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  nexus-migrate:
+    image: konohalabs/insight-nexus:0.0.1@sha256:def4963551ff6a04cee501e475b8522632b5588c9dd4301298a0abc788631f7f
+    restart: "no"
+    environment:
+      DATABASE_URL: ${NEXUS_DATABASE_URL:?NEXUS_DATABASE_URL is required}
+    entrypoint: ["/usr/local/bin/nexus-migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  insight-nexus:
+    image: konohalabs/insight-nexus:0.0.1@sha256:def4963551ff6a04cee501e475b8522632b5588c9dd4301298a0abc788631f7f
+    container_name: insight-nexus
+    restart: unless-stopped
+    environment:
+      INSIGHT_SERVICE: insight-nexus
+      INSIGHT_VERSION: "0.0.1"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      HTTP_ADDR: ":8090"
+      OPERATIONS_GRPC_ADDR: ":9090"
+      DATABASE_URL: ${NEXUS_DATABASE_URL:?NEXUS_DATABASE_URL is required}
+      REDIS_ADDR: ${NEXUS_REDIS_ADDR:?NEXUS_REDIS_ADDR is required}
+      REDIS_PASSWORD: ${NEXUS_REDIS_PASSWORD:-}
+      REDIS_DB: ${NEXUS_REDIS_DB:?NEXUS_REDIS_DB is required}
+      OLLAMA_BASE_URL: ${NEXUS_OLLAMA_BASE_URL:?NEXUS_OLLAMA_BASE_URL is required}
+      NEXUS_QWEN_MODEL: ${NEXUS_QWEN_MODEL:?NEXUS_QWEN_MODEL is required}
+      NEXUS_LLAMA_MODEL: ${NEXUS_LLAMA_MODEL:?NEXUS_LLAMA_MODEL is required}
+      NEXUS_PUBLISHER_ENABLED: ${NEXUS_PUBLISHER_ENABLED:?NEXUS_PUBLISHER_ENABLED is required}
+      SOCIAL_GRPC_ADDR: ${NEXUS_SOCIAL_GRPC_ADDR:?NEXUS_SOCIAL_GRPC_ADDR is required}
+      NEXUS_SCHEMA_VERSION: "0005"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "8090"
+      - "9090"
+    depends_on:
+      nexus-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qwen-runtime:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz | grep -q healthy"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+  qwen-runtime:
+    image: ollama/ollama:latest@sha256:bfc9c6d53cc6989aa5131a6fde6b162b2802d4d337657f3253b5f69579bddeee
+    container_name: insight-qwen-runtime
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_KEEP_ALIVE: "30m"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    gpus: all
+    expose:
+      - "11434"
+    volumes:
+      - /home/insight/models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+networks:
+  robozao-ops:
+    name: robozao-ops

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package admin.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/admin/v1;adminv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+enum SourceState {
+  SOURCE_STATE_UNSPECIFIED = 0;
+  SOURCE_STATE_HEALTHY = 1;
+  SOURCE_STATE_LAGGING = 2;
+  SOURCE_STATE_DOWN = 3;
+}
+
+message SourceHealth {
+  string source_id = 1;       // e.g. "oddsapi", "sportradar"
+  SourceState state = 2;
+  // Seconds since last successful poll.
+  int32 lag_seconds = 3;
+  // Rolling error rate (0..1) over the last 5min window.
+  double error_rate = 4;
+  google.protobuf.Timestamp checked_at = 5;
+}
+
+message ListSourcesResponse {
+  repeated SourceHealth sources = 1;
+}
+
+message GetSourceRequest {
+  string source_id = 1;
+}
+
+service SourceMonitorService {
+  rpc ListSources(google.protobuf.Empty) returns (ListSourcesResponse);
+  rpc GetSource(GetSourceRequest) returns (SourceHealth);
+}

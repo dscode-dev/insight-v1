@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insight-social
+spec:
+  # Single replica — k3d laptop loop, no need for HA.
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: insight-social
+          imagePullPolicy: Never  # image side-loaded with `k3d image import`
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

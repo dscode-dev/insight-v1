@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Insight Console — design tokens.
+ *
+ * Sprint 8: aligned with the reference set (Linear, Vercel, Stripe).
+ * Muted neutrals, single signal accent, density-friendly defaults.
+ *
+ * Dark mode is the default for operational UIs (lower eye strain
+ * during long incident sessions). Light theme is provided for
+ * print + accessibility.
+ */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+
+  /* GitHub-Dark inspired palette (Console-X). Deep neutral darks, subtle
+     borders, soft contrast, a single blue accent — no neon, minimal gradient. */
+  .dark {
+    --background: 216 28% 6%;          /* canvas         #0d1117-ish */
+    --foreground: 210 25% 92%;         /* text default   #e6edf3 */
+    --card: 215 21% 11%;               /* elevated panel #161b22 */
+    --card-foreground: 210 25% 92%;
+    --primary: 212 92% 58%;            /* accent         #2f81f7 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 18% 15%;          /* #1c2128 */
+    --secondary-foreground: 210 25% 92%;
+    --muted: 215 19% 12%;
+    --muted-foreground: 212 10% 60%;   /* fg.muted       #8b949e */
+    --accent: 213 18% 18%;             /* hover surface  #21262d */
+    --accent-foreground: 210 25% 95%;
+    --destructive: 4 90% 63%;          /* danger         #f85149 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 137 55% 49%;            /* success        #3fb950 */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 70% 48%;             /* attention      #d29922 */
+    --warning-foreground: 0 0% 0%;
+    --border: 213 12% 22%;             /* border.default #30363d */
+    --input: 213 12% 22%;
+    --ring: 212 92% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+}
+
+/* ---- Motion system (Console-X) ----------------------------------------
+   Subtle, premium, fast. No flashy animation; respects reduced-motion. */
+@layer utilities {
+  @keyframes ix-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ix-page {
+    animation: ix-fade-in 0.22s ease-out both;
+  }
+  .ix-transition {
+    transition: background-color 0.15s ease, color 0.15s ease,
+                border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Operational tables: tight density, monospace numerics. */
+@layer components {
+  .table-operational {
+    @apply w-full text-sm;
+  }
+  .table-operational thead th {
+    @apply px-3 py-2 text-left font-medium text-muted-foreground border-b border-border;
+  }
+  .table-operational tbody td {
+    @apply px-3 py-2 border-b border-border/50;
+  }
+  .table-operational tbody tr:hover {
+    @apply bg-muted/30;
+  }
+  .mono {
+    font-family: var(--font-geist-mono, ui-monospace, monospace);
+  }
+  .input {
+    @apply h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring;
+  }
+}

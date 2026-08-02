@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay:
+#   * 3 replicas behind the headless Service (gRPC round-robin)
+#   * migrations Job runs before each release (Argo PreSync hook)
+#   * NetworkPolicy locks ingress to insight-gateway + Prometheus
+#   * Image tag pinned by the release pipeline (set by `argocd app set`).
+namespace: insight
+
+resources:
+  - ../../base
+  - migrations-job.yaml
+  - networkpolicy.yaml
+  - poddisruptionbudget.yaml
+
+patches:
+  - path: deployment-patch.yaml
+    target:
+      kind: Deployment
+      name: insight-social
+
+# Image tag is set by the release pipeline. Defaulting to "stable"
+# here so a manual `kustomize build` produces a reviewable YAML.
+images:
+  - name: ghcr.io/konoha-labs/insight-social
+    newTag: stable

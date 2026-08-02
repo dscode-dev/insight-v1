@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# local-lab overlay: single-tenant cluster (k3d), no mTLS, in-process
+# goose migrations on boot. Mirrors the lab posture used by
+# insight-gateway so the whole stack boots with `make k8s-lab-up`.
+namespace: insight
+
+resources:
+  - ../../base
+
+patches:
+  - path: deployment-patch.yaml
+    target:
+      kind: Deployment
+      name: insight-social
+  - path: configmap-patch.yaml
+    target:
+      kind: ConfigMap
+      name: insight-social-config
+
+images:
+  - name: ghcr.io/konoha-labs/insight-social
+    newName: insight-social
+    newTag: dev

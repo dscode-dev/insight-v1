@@ -1,0 +1,95 @@
+{
+  "priority": true,
+  "schema_version": "v4",
+  "trend": {
+    "agent": "market",
+    "canonical_match_id": "f1e40000-0000-4000-8000-000000000002",
+    "category": "ninja",
+    "chart_data": {
+      "series": [
+        {
+          "t": 0,
+          "v": 0.5
+        },
+        {
+          "t": 600,
+          "v": 0.85
+        }
+      ]
+    },
+    "competition_context": {
+      "confidence": 0.7,
+      "fragmentation": 0.2,
+      "trend_density": 1.6,
+      "volatility": 0.4
+    },
+    "competition_id": "f1e40000-0000-4000-8000-000000000003",
+    "confidence": 0.81,
+    "continuation": {
+      "continuation_probability": 0.7,
+      "expected_duration_seconds": 600.0,
+      "sample": 33,
+      "termination_probability": 0.3
+    },
+    "correlation_ids": [
+      "f1e40000-0000-4000-8000-000000000009"
+    ],
+    "created_at": "2026-06-01T12:00:00+00:00",
+    "detected_at": "2026-06-01T12:00:00+00:00",
+    "direction": 1,
+    "historical_context": {
+      "confirmed_rate": 0.66,
+      "expired_rate": 0.12,
+      "failed_rate": 0.22,
+      "sample": 41
+    },
+    "lifecycle_state": "confirmed",
+    "market_memory": {
+      "avg_confidence": 0.74,
+      "avg_duration_seconds": 540.0,
+      "avg_strength": 0.61,
+      "confirmations": 8,
+      "expirations": 1,
+      "failures": 3,
+      "occurrences": 12
+    },
+    "match_id": "f1e40000-0000-4000-8000-000000000002",
+    "meaning": "Mercado convergiu rapidamente para o favorito",
+    "meaning_category": "market_consensus",
+    "meaning_confidence": 0.8,
+    "metrics": {
+      "books": 5,
+      "consensus_after": 0.85,
+      "consensus_before": 0.5
+    },
+    "minute": 63,
+    "pattern": {
+      "historical_success_rate": 0.75,
+      "occurrences": 4,
+      "pattern_id": "p-1"
+    },
+    "publication_tier": "priority_publish",
+    "publish_score": 0.78,
+    "regime": "STABLE",
+    "schema_version": "v4",
+    "severity": "high",
+    "signals": [
+      "consensus_rise",
+      "multi_book"
+    ],
+    "strength": 0.72,
+    "summary": "Consenso subiu de 50% para 85% em três janelas de observação.",
+    "timeline": {
+      "instance_id": "f1e40000-0000-4000-8000-00000000000a",
+      "observation_count": 3,
+      "previous_states": [
+        "active",
+        "strengthening"
+      ]
+    },
+    "title": "Consenso de mercado crescendo",
+    "trend_id": "f1e40000-0000-4000-8000-000000000001",
+    "trend_type": "market_shift",
+    "window_seconds": 600
+  }
+}

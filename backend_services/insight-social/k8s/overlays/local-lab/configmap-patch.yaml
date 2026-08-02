@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: insight-social-config
+data:
+  # Lab DX: pretty logs, verbose level, auto-apply migrations so the
+  # boot loop produces a working schema with no extra step.
+  LOG_LEVEL: "debug"
+  LOG_PRETTY: "true"
+  AUTO_APPLY_MIGRATIONS: "true"
+  # Plaintext gRPC — k3d cluster is single-tenant + isolated.
+  # Empty values disable the mTLS code path in buildGrpcServer().
+  TLS_CERT_PATH: ""
+  TLS_KEY_PATH: ""
+  TLS_CA_PATH: ""

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.event.v1.json",
+  "title": "explorer.event.v1",
+  "description": "One in-match event (goal, card, substitution). entity_type='event'. A match has many; each is its own envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "type", "minute", "team_side"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["goal", "own_goal", "penalty_goal", "penalty_missed", "yellow_card", "red_card", "second_yellow", "substitution", "var"] },
+    "minute": { "type": "integer", "minimum": 0, "maximum": 200 },
+    "minute_extra": { "type": ["integer", "null"], "minimum": 0, "description": "Stoppage-time offset, e.g. 90+3 -> 3." },
+    "team_side": { "enum": ["home", "away"] },
+    "team": { "$ref": "explorer.fixture.v1.json#/$defs/team" },
+    "player": { "type": ["string", "null"] },
+    "player_external_id": { "type": ["string", "null"] },
+    "assist": { "type": ["string", "null"] },
+    "player_out": { "type": ["string", "null"], "description": "For substitutions." },
+    "player_in": { "type": ["string", "null"], "description": "For substitutions." },
+    "detail": { "type": ["string", "null"] }
+  }
+}

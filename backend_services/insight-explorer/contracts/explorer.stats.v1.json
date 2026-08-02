@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.stats.v1.json",
+  "title": "explorer.stats.v1",
+  "description": "Team-level match statistics. entity_type='stats'. One envelope carries BOTH sides for a fixture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "home", "away"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "home": { "$ref": "#/$defs/teamStats" },
+    "away": { "$ref": "#/$defs/teamStats" }
+  },
+  "$defs": {
+    "teamStats": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "possession": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Percent." },
+        "shots": { "type": ["integer", "null"], "minimum": 0 },
+        "shots_on_target": { "type": ["integer", "null"], "minimum": 0 },
+        "corners": { "type": ["integer", "null"], "minimum": 0 },
+        "fouls": { "type": ["integer", "null"], "minimum": 0 },
+        "offsides": { "type": ["integer", "null"], "minimum": 0 },
+        "yellow_cards": { "type": ["integer", "null"], "minimum": 0 },
+        "red_cards": { "type": ["integer", "null"], "minimum": 0 },
+        "passes": { "type": ["integer", "null"], "minimum": 0 },
+        "pass_accuracy": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "expected_goals": { "type": ["number", "null"], "minimum": 0, "description": "xG when the source provides it (best_effort)." }
+      }
+    }
+  }
+}

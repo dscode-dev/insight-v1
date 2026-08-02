@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package campaign.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/campaign/v1;campaignv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "campaign/v1/campaign.proto";
+
+// Context the Gateway sends to the Placement service when assembling
+// a feed page. Lets Placement target without going back to Social.
+message FeedContext {
+  string user_id = 1;
+  repeated string competition_ids = 2;
+  repeated string community_ids = 3;
+  optional string country_code = 4;
+  optional string tier = 5;
+  // The page index — controls cadence (we splice one sponsored per N
+  // organic items; first page may skip injection if cadence demands).
+  int32 page_index = 6;
+}
+
+message Placement {
+  string campaign_id = 1;
+  // Body + creative pulled from Campaign — duplicated here so the
+  // Gateway can render without an extra round-trip.
+  Creative creative = 2;
+  // 0-based index inside the organic page where this should be inserted.
+  // Gateway is responsible for actually inserting.
+  int32 insert_at = 3;
+  string placement_token = 4;  // signed, used by RecordImpression
+}
+
+message PickPlacementsRequest {
+  FeedContext context = 1;
+  // Hint of how many organic items the Gateway has — drives cadence.
+  int32 organic_count = 2;
+}
+
+message PickPlacementsResponse {
+  repeated Placement placements = 1;
+}
+
+message ImpressionEvent {
+  string placement_token = 1;
+  string user_id = 2;
+  google.protobuf.Timestamp viewed_at = 3;
+}
+
+message ClickEvent {
+  string placement_token = 1;
+  string user_id = 2;
+  google.protobuf.Timestamp clicked_at = 3;
+}
+
+service PlacementService {
+  rpc Pick(PickPlacementsRequest) returns (PickPlacementsResponse);
+  rpc RecordImpression(ImpressionEvent) returns (google.protobuf.Empty);
+  rpc RecordClick(ClickEvent) returns (google.protobuf.Empty);
+}

@@ -1,0 +1,38 @@
+# Insight Explorer — Robozão stack (ML-B.5)
+# Runs ONLY the published image. No build, no bind-mounted source.
+services:
+  insight-explorer:
+    image: konohalabs/insight-explorer:0.0.2
+    container_name: insight-explorer
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./data:/home/insight/data/explorer
+      - ./logs:/home/insight/logs
+      - ./reports:/home/insight/reports
+    networks:
+      - insight-ai            # reach insight-ollama by name
+      - insight-observability # scrapeable by the monitoring stack
+    # Read-only NVML access for live GPU/VRAM/temp visibility (Part 7).
+    # Shares the RTX 4060 with insight-ollama; queries only, reserves nothing.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  insight-ai:
+    external: true
+  insight-observability:
+    external: true

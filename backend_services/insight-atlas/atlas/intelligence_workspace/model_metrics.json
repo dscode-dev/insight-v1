@@ -1,0 +1,62 @@
+{
+  "outcome_v2": {
+    "status": "candidate_unpromoted",
+    "dataset": "outcome_v2-mld1-20260622",
+    "holdout": 0.4992,
+    "balanced_accuracy": 0.4158,
+    "uncertainty": 0.9424,
+    "ece": 0.0451,
+    "draw_recall": 0.2717,
+    "source": "ML-D.3"
+  },
+  "outcome_v3": {
+    "status": "candidate_unpromoted",
+    "dataset": "market_v1-football-data-mld1-20260622",
+    "holdout": 0.5423,
+    "balanced_accuracy": 0.4812,
+    "uncertainty": 0.8849,
+    "ece": 0.0164,
+    "draw_recall": 0.051,
+    "source": "ML-D.4"
+  },
+  "outcome_v4": {
+    "status": "candidate_unpromoted",
+    "dataset": "outcome_v4-mld6-20260623",
+    "holdout": 0.4638447971781305,
+    "balanced_accuracy": 0.43888878499739375,
+    "uncertainty": 0.9588137865066528,
+    "ece": 0.037452088076531505,
+    "draw_recall": 0.2528473804100228,
+    "source": "ML-D.6"
+  },
+  "outcome_league_v1": {
+    "status": "candidate_unpromoted",
+    "dataset": "dataset_leagues",
+    "holdout": 0.4581430745814307,
+    "balanced_accuracy": 0.4377186856451806,
+    "uncertainty": 0.9661792516708374,
+    "ece": 0.03703475708377235,
+    "draw_recall": 0.3313782991202346,
+    "source": "ML-E.0"
+  },
+  "outcome_continental_v1": {
+    "status": "candidate_unpromoted",
+    "dataset": "dataset_continental",
+    "holdout": 0.46131805157593125,
+    "balanced_accuracy": 0.4373528274789262,
+    "uncertainty": 0.9368076324462891,
+    "ece": 0.02101509849458166,
+    "draw_recall": 0.28735632183908044,
+    "source": "ML-E.0"
+  },
+  "outcome_international_v1": {
+    "status": "candidate_unpromoted",
+    "dataset": "dataset_international",
+    "holdout": 0.5,
+    "balanced_accuracy": 0.47474747474747475,
+    "uncertainty": 0.9483567476272583,
+    "ece": 0.11038101425296379,
+    "draw_recall": 0.09090909090909091,
+    "source": "ML-E.0"
+  }
+}

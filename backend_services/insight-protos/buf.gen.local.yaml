@@ -1,0 +1,14 @@
+# Local-plugin variant of buf.gen.yaml — used when generating stubs in
+# the workspace (CI uses the remote plugins in buf.gen.yaml). Output is
+# identical: gen/go is the Go module consumed via path replace.
+version: v2
+plugins:
+  - local: protoc-gen-go
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-go-grpc
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false

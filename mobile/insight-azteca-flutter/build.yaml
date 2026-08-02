@@ -1,0 +1,19 @@
+# Build config for code-gen.
+# Freezed + json_serializable + riverpod_generator run via build_runner.
+# Generated files are committed (so CI doesn't have to gen them).
+
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Snake-case from Atrium wire format → camelCase in Dart.
+          field_rename: snake
+          explicit_to_json: true
+          create_to_json: true
+          include_if_null: false
+      freezed:
+        options:
+          # Freezed-3 union syntax is opt-in; keep classic sealed unions for now.
+          union_key: kind
+          generic_argument_factories: true

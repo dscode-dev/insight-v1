@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sports.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/sports/v1;sportsv1";
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string short_name = 3;   // 3-letter code like "PAL", "FLA"
+  string crest_color = 4;  // hex
+  string country_code = 5; // ISO-3166-1 alpha-2
+}
+
+message GetTeamRequest {
+  string id = 1;
+}
+
+message SearchTeamsRequest {
+  string query = 1;
+  optional int32 limit = 2;
+}
+
+message SearchTeamsResponse {
+  repeated Team teams = 1;
+}
+
+service TeamService {
+  rpc Get(GetTeamRequest) returns (Team);
+  rpc Search(SearchTeamsRequest) returns (SearchTeamsResponse);
+}

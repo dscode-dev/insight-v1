@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: insight-gateway-config
+  namespace: insight
+  labels:
+    app.kubernetes.io/name: insight-gateway
+    app.kubernetes.io/component: edge-gateway
+    app.kubernetes.io/part-of: insight
+data:
+  # --- Service identity ---
+  INSIGHT_SERVICE: "insight-gateway"
+
+  # --- HTTP ---
+  HTTP_ADDR: ":8080"
+  REQUEST_TIMEOUT_SECONDS: "10"
+  DEFAULT_BODY_MAX_BYTES: "1048576"
+
+  # --- Router mode ---
+  # Standalone (consolidated platform): no legacy upstream. Setting
+  # LEGACY_UPSTREAM_BASE_URL re-enables the Strangler proxy fallback.
+  LEGACY_UPSTREAM_BASE_URL: ""
+
+  # --- Auth DB pool ---
+  DATABASE_POOL_SIZE: "10"
+  DATABASE_MAX_OVERFLOW: "20"
+  # Production overlay flips this to "false" — migrations run as a
+  # dedicated Job, not as part of the gateway boot path.
+  AUTO_APPLY_MIGRATIONS: "false"
+
+  # --- Auth (JWT) ---
+  JWT_ALGORITHM: "HS256"
+  JWT_ISSUER: "insight.gateway"
+  JWT_AUDIENCE: "insight.client"
+  JWT_ACCESS_TTL_SECONDS: "900"
+  JWT_REFRESH_TTL_SECONDS: "2592000"
+  JWT_REGISTRATION_TTL_SECONDS: "600"
+
+  # --- Auth (OTP) ---
+  OTP_CODE_LENGTH: "6"
+  OTP_TTL_SECONDS: "600"
+  OTP_MAX_ATTEMPTS: "5"
+  OTP_RESEND_COOLDOWN_SECONDS: "60"
+  PHONE_DEFAULT_REGION: "BR"
+
+  # --- SMS provider ---
+  # "null" (lab default) | "zenvia" (prod BR) | "twilio" (sandbox)
+  SMS_PROVIDER: "null"
+  SMS_MESSAGE_TEMPLATE: "Seu código Insight é {code}. Não compartilhe com ninguém."
+  ZENVIA_SENDER_ID: "Insight"
+
+  # --- Social gRPC client (W2.2 — Strangler target for migrated BFFs) ---
+  # `dns:///` prefix selects grpc-go's DNS resolver so the LB policy
+  # spreads across all backend pods. Headless Service (no ClusterIP)
+  # publishes one A-record per pod.
+  SOCIAL_GRPC_ADDR: "dns:///insight-social-headless.insight.svc.cluster.local:50051"
+  SOCIAL_TLS_CERT_PATH: "/var/run/secrets/social-tls/tls.crt"
+  SOCIAL_TLS_KEY_PATH:  "/var/run/secrets/social-tls/tls.key"
+  SOCIAL_TLS_CA_PATH:   "/var/run/secrets/social-tls/ca.crt"
+  # SNI override — empty means "use the address". Set if the gRPC
+  # target points at an IP and the cert was issued for a DNS name.
+  SOCIAL_TLS_SERVER_NAME: "insight-social.insight.svc.cluster.local"
+  SOCIAL_UPSTREAM_TIMEOUT_SECONDS: "6"
+
+  # --- Atlas -> Gateway -> Anvil analytics bridge ---
+  # The Atlas-facing and Anvil-facing API keys come from the gateway Secret.
+  ANVIL_API_BASE_URL: "http://insight-anvil.insight.svc.cluster.local:8081"
+
+  # --- Realtime (SSE broker tailing derived streams) ---
+  # Must match Atlas's DerivedPublisher (insight:stream:derived:p0..pN-1).
+  DERIVED_STREAM_BASE_KEY: "insight:stream:derived"
+  STREAM_PARTITIONS: "8"
+  REALTIME_BLOCK_MS: "2000"
+  REALTIME_SUBSCRIBER_QUEUE_MAX: "1000"
+  SSE_KEEPALIVE_SECONDS: "15"
+
+  # --- Rollout flags (legacy-overlap only; ignored in standalone) ---
+  # With no legacy upstream every registered route is served natively.
+  ENABLE_GO_AUTH_OTP_REQUEST: ""
+  ENABLE_GO_AUTH_OTP_VERIFY:  ""
+  ENABLE_GO_AUTH_REGISTER:    ""
+  ENABLE_GO_AUTH_REFRESH:     ""
+  ENABLE_GO_REALTIME_SSE:     ""
+
+  # W2.2 social BFF flags — default off; flip per-endpoint via
+  # `kubectl set env deploy/insight-gateway ENABLE_GO_SOCIAL_FEED=shadow`
+  # (or `=10` for 10% rollout, `=100` for full cutover). The Strangler
+  # uses these verbatim — no service restart needed because the env is
+  # read at boot and the pod auto-rolls on configmap change (annotation
+  # below). See internal/interfaces/proxy/strangler.go.
+  ENABLE_GO_SOCIAL_FEED:             ""
+  ENABLE_GO_SOCIAL_HUB_BUNDLE:       ""
+  ENABLE_GO_SOCIAL_COMMUNITY_DETAIL: ""
+  ENABLE_GO_SOCIAL_PROFILE_BUNDLE:   ""
+
+  # --- Observability ---
+  LOG_LEVEL: "INFO"
+  LOG_PRETTY: "false"
+  INSIGHT_OTLP_ENDPOINT: "otel-collector.observability.svc.cluster.local:4317"
+  INSIGHT_OTLP_SAMPLE_RATIO: "1.0"
+
+  # --- AppSec ---
+  ENABLE_HSTS: "false"
+  CSP_OVERRIDE: ""

@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Rolling community sentiment per match. Derived from signals; mutated
+// only by the SentimentService (Social Domain owns the rollup).
+message SentimentSnapshot {
+  string match_id = 1;
+  // -1..1 — negative favours away, positive favours home.
+  double home_lean = 2;
+  // 0..1 — width of the disagreement (low = consensus, high = split).
+  double dispersion = 3;
+  // 0..1 — composite "engagement heat".
+  double pressure = 4;
+  int64 signal_count = 5;
+  google.protobuf.Timestamp computed_at = 6;
+}
+
+message SentimentPoint {
+  google.protobuf.Timestamp ts = 1;
+  double home_lean = 2;
+  double pressure = 3;
+}
+
+// ---- requests ----
+
+message GetSentimentRequest {
+  string match_id = 1;
+}
+
+message GetSentimentHistoryRequest {
+  string match_id = 1;
+  // Inclusive lower bound. Default = now() - 1h.
+  optional google.protobuf.Timestamp from = 2;
+  optional int32 max_points = 3;
+}
+
+message GetSentimentHistoryResponse {
+  repeated SentimentPoint points = 1;
+}
+
+service SentimentService {
+  rpc GetForMatch(GetSentimentRequest) returns (SentimentSnapshot);
+  rpc HistoryForMatch(GetSentimentHistoryRequest) returns (GetSentimentHistoryResponse);
+}

@@ -1,0 +1,479 @@
+diff --git a/internal/adapters/httpapi/providers_status.go b/internal/adapters/httpapi/providers_status.go
+index 34ec3ad..d02286c 100644
+--- a/internal/adapters/httpapi/providers_status.go
++++ b/internal/adapters/httpapi/providers_status.go
+@@ -55,12 +55,28 @@ type ProviderEntry struct {
+ 
+ // CapabilitiesEntry — wire mirror of source.ProviderCapability.
+ type CapabilitiesEntry struct {
+-	SupportsFixtures  bool `json:"supports_fixtures"`
+-	SupportsResults   bool `json:"supports_results"`
+-	SupportsStandings bool `json:"supports_standings"`
+-	SupportsOdds      bool `json:"supports_odds"`
+-	SupportsLineups   bool `json:"supports_lineups"`
+-	SupportsNews      bool `json:"supports_news"`
++	SupportsFixtures           bool `json:"supports_fixtures"`
++	SupportsHistoricalFixtures bool `json:"supports_historical_fixtures"`
++
++	SupportsResults           bool `json:"supports_results"`
++	SupportsHistoricalResults bool `json:"supports_historical_results"`
++
++	SupportsStandings           bool `json:"supports_standings"`
++	SupportsHistoricalStandings bool `json:"supports_historical_standings"`
++
++	SupportsOdds           bool `json:"supports_odds"`
++	SupportsHistoricalOdds bool `json:"supports_historical_odds"`
++
++	SupportsPlayers           bool `json:"supports_players"`
++	SupportsHistoricalPlayers bool `json:"supports_historical_players"`
++
++	SupportsLineups           bool `json:"supports_lineups"`
++	SupportsHistoricalLineups bool `json:"supports_historical_lineups"`
++
++	SupportsInjuries           bool `json:"supports_injuries"`
++	SupportsHistoricalInjuries bool `json:"supports_historical_injuries"`
++
++	SupportsNews bool `json:"supports_news"`
+ }
+ 
+ // RatePolicyEntry — wire mirror of sync.RateLimitPolicy. Zero
+@@ -134,12 +150,21 @@ func toEntry(s ports.HealthSnapshot) ProviderEntry {
+ 
+ func toCapabilitiesEntry(c source.ProviderCapability) CapabilitiesEntry {
+ 	return CapabilitiesEntry{
+-		SupportsFixtures:  c.SupportsFixtures,
+-		SupportsResults:   c.SupportsResults,
+-		SupportsStandings: c.SupportsStandings,
+-		SupportsOdds:      c.SupportsOdds,
+-		SupportsLineups:   c.SupportsLineups,
+-		SupportsNews:      c.SupportsNews,
++		SupportsFixtures:            c.SupportsFixtures,
++		SupportsHistoricalFixtures:  c.SupportsHistoricalFixtures,
++		SupportsResults:             c.SupportsResults,
++		SupportsHistoricalResults:   c.SupportsHistoricalResults,
++		SupportsStandings:           c.SupportsStandings,
++		SupportsHistoricalStandings: c.SupportsHistoricalStandings,
++		SupportsOdds:                c.SupportsOdds,
++		SupportsHistoricalOdds:      c.SupportsHistoricalOdds,
++		SupportsPlayers:             c.SupportsPlayers,
++		SupportsHistoricalPlayers:   c.SupportsHistoricalPlayers,
++		SupportsLineups:             c.SupportsLineups,
++		SupportsHistoricalLineups:   c.SupportsHistoricalLineups,
++		SupportsInjuries:            c.SupportsInjuries,
++		SupportsHistoricalInjuries:  c.SupportsHistoricalInjuries,
++		SupportsNews:                c.SupportsNews,
+ 	}
+ }
+ 
+diff --git a/internal/domain/source/capability.go b/internal/domain/source/capability.go
+index 76e3fae..a3f25bb 100644
+--- a/internal/domain/source/capability.go
++++ b/internal/domain/source/capability.go
+@@ -1,55 +1,78 @@
+-// ProviderCapability — Sprint 2.1 architectural contract.
++// ProviderCapability — provider capability contract.
+ //
+-// A static declaration of which data classes each provider can serve.
+-// Owned by the adapter and exposed through `ports.AdapterIdentity`
+-// at registration time; consumed by:
++// A static declaration of which data classes each provider adapter can
++// currently serve. This is an adapter capability, not a marketing claim
++// about the provider's website or paid plans: a field should only be true
++// when the adapter actually implements the corresponding fetch path.
+ //
+-//   - The future Scheduler (Sprint 3) to skip a provider for
+-//     unsupported SyncTypes instead of issuing an HTTP request that
+-//     would 404.
+-//   - The /v1/providers/status response (Sprint 2.1) so the admin UI
+-//     can render a capability matrix per source.
+-//
+-// Architectural rule: capability checks live BEHIND this type — code
+-// that wants to ask "can this provider serve odds?" reads
+-// `cap.SupportsOdds`, not a hardcoded slug list. The provider layer
+-// owns the source of truth; consumers do not branch on adapter
+-// identity.
++// Architectural rule: capability checks live behind this type. Code that
++// wants to ask "can this provider serve historical odds?" calls Supports
++// with the stable SyncType slug instead of branching on provider identity.
+ package source
+ 
+-// ProviderCapability declares which data classes a provider can
+-// serve. Boolean per class — additive evolution: new fields are
+-// safe because the zero value is "unsupported".
++// ProviderCapability declares which data classes a provider adapter can
++// serve. Boolean per class — additive evolution: new fields are safe because
++// the zero value is "unsupported".
+ type ProviderCapability struct {
+-	SupportsFixtures  bool
+-	SupportsResults   bool
+-	SupportsStandings bool
+-	SupportsOdds      bool
+-	SupportsLineups   bool
+-	SupportsNews      bool
++	SupportsFixtures           bool
++	SupportsHistoricalFixtures bool
++
++	SupportsResults           bool
++	SupportsHistoricalResults bool
++
++	SupportsStandings           bool
++	SupportsHistoricalStandings bool
++
++	SupportsOdds           bool
++	SupportsHistoricalOdds bool
++
++	SupportsPlayers           bool
++	SupportsHistoricalPlayers bool
++
++	SupportsLineups           bool
++	SupportsHistoricalLineups bool
++
++	SupportsInjuries           bool
++	SupportsHistoricalInjuries bool
++
++	SupportsNews bool
+ }
+ 
+-// Supports returns true iff the named SyncType-style data class is
+-// declared on this capability set. The string keys mirror the
+-// SyncType slugs (sync.TypeFixtures, sync.TypeResults, …) so the
+-// scheduler can pass through values it already has without importing
+-// the source package.
++// Supports returns true iff the named SyncType-style data class is declared on
++// this capability set. The string keys mirror the sync.SyncType wire slugs.
+ //
+-// Returns false for unknown classes — strict by design. Future
+-// classes need a new field on ProviderCapability + a matching case
+-// here.
++// Unknown classes return false — strict by design. Future classes need a new
++// field on ProviderCapability + a matching case here.
+ func (c ProviderCapability) Supports(class string) bool {
+ 	switch class {
+ 	case "fixtures":
+ 		return c.SupportsFixtures
++	case "historical_fixtures":
++		return c.SupportsHistoricalFixtures
+ 	case "results":
+ 		return c.SupportsResults
++	case "historical_results":
++		return c.SupportsHistoricalResults
+ 	case "standings":
+ 		return c.SupportsStandings
++	case "historical_standings":
++		return c.SupportsHistoricalStandings
+ 	case "odds":
+ 		return c.SupportsOdds
++	case "historical_odds":
++		return c.SupportsHistoricalOdds
++	case "players":
++		return c.SupportsPlayers
++	case "historical_players":
++		return c.SupportsHistoricalPlayers
+ 	case "lineups":
+ 		return c.SupportsLineups
++	case "historical_lineups":
++		return c.SupportsHistoricalLineups
++	case "injuries":
++		return c.SupportsInjuries
++	case "historical_injuries":
++		return c.SupportsHistoricalInjuries
+ 	case "news":
+ 		return c.SupportsNews
+ 	default:
+diff --git a/internal/domain/sync/sync_type.go b/internal/domain/sync/sync_type.go
+index 1a1f5ab..d7c0a27 100644
+--- a/internal/domain/sync/sync_type.go
++++ b/internal/domain/sync/sync_type.go
+@@ -1,15 +1,4 @@
+-// Package sync — Sprint 2.1 architectural contracts for the future
+-// Scheduler/Sync Engine (Sprint 3).
+-//
+-// IMPORTANT: this package defines CONTRACTS ONLY.
+-//   - No scheduler is executed.
+-//   - No HTTP request is issued from here.
+-//   - No rate limiting is enforced.
+-//   - No polling cadence is consumed.
+-//
+-// The contracts exist now so adapter capability declaration,
+-// provider-status response shape, and admin-tooling models are
+-// stable before Sprint 3 wires the execution engine.
++// Package sync — architectural contracts for the Scheduler/Sync Engine.
+ package sync
+ 
+ import (
+@@ -17,44 +6,64 @@ import (
+ 	"fmt"
+ )
+ 
+-// SyncType — the data class one SyncJob refreshes. Mirrors the
+-// boolean fields on source.ProviderCapability one-to-one so the
+-// Scheduler can ask `capability.Supports(string(jobType))` without
+-// importing both packages together.
+-//
+-// String values are stable wire identifiers — admin tooling, the
+-// status endpoint, and future Redis stream keys all use them.
++// SyncType — the data class one SyncJob refreshes. Values are stable wire
++// identifiers used by admin tooling, status endpoints, and future stream keys.
+ type SyncType string
+ 
+ const (
+-	TypeFixtures  SyncType = "fixtures"
+-	TypeResults   SyncType = "results"
+-	TypeStandings SyncType = "standings"
+-	TypeOdds      SyncType = "odds"
+-	TypeLineups   SyncType = "lineups"
+-	TypeNews      SyncType = "news"
++	TypeFixtures           SyncType = "fixtures"
++	TypeHistoricalFixtures SyncType = "historical_fixtures"
++
++	TypeResults           SyncType = "results"
++	TypeHistoricalResults SyncType = "historical_results"
++
++	TypeStandings           SyncType = "standings"
++	TypeHistoricalStandings SyncType = "historical_standings"
++
++	TypeOdds           SyncType = "odds"
++	TypeHistoricalOdds SyncType = "historical_odds"
++
++	TypePlayers           SyncType = "players"
++	TypeHistoricalPlayers SyncType = "historical_players"
++
++	TypeLineups           SyncType = "lineups"
++	TypeHistoricalLineups SyncType = "historical_lineups"
++
++	TypeInjuries           SyncType = "injuries"
++	TypeHistoricalInjuries SyncType = "historical_injuries"
++
++	TypeNews SyncType = "news"
+ )
+ 
+ var ErrUnknownSyncType = errors.New("sync: unknown sync_type")
+ 
+ // ParseSyncType validates a wire string and returns the typed value.
+-// Strict by design — unknown values fail loud so a typo doesn't
+-// silently disable a job.
+ func ParseSyncType(s string) (SyncType, error) {
+ 	switch SyncType(s) {
+-	case TypeFixtures, TypeResults, TypeStandings,
+-		TypeOdds, TypeLineups, TypeNews:
++	case TypeFixtures, TypeHistoricalFixtures,
++		TypeResults, TypeHistoricalResults,
++		TypeStandings, TypeHistoricalStandings,
++		TypeOdds, TypeHistoricalOdds,
++		TypePlayers, TypeHistoricalPlayers,
++		TypeLineups, TypeHistoricalLineups,
++		TypeInjuries, TypeHistoricalInjuries,
++		TypeNews:
+ 		return SyncType(s), nil
+ 	default:
+ 		return "", fmt.Errorf("%w: %q", ErrUnknownSyncType, s)
+ 	}
+ }
+ 
+-// All — every defined SyncType. Used by admin tooling enumerating
+-// possible jobs and by tests verifying capability/job parity.
++// All — every defined SyncType in stable display order. Additive-only.
+ func All() []SyncType {
+ 	return []SyncType{
+-		TypeFixtures, TypeResults, TypeStandings,
+-		TypeOdds, TypeLineups, TypeNews,
++		TypeFixtures, TypeHistoricalFixtures,
++		TypeResults, TypeHistoricalResults,
++		TypeStandings, TypeHistoricalStandings,
++		TypeOdds, TypeHistoricalOdds,
++		TypePlayers, TypeHistoricalPlayers,
++		TypeLineups, TypeHistoricalLineups,
++		TypeInjuries, TypeHistoricalInjuries,
++		TypeNews,
+ 	}
+ }
+diff --git a/internal/ports/source_adapter.go b/internal/ports/source_adapter.go
+index ad7130b..ccf70ee 100644
+--- a/internal/ports/source_adapter.go
++++ b/internal/ports/source_adapter.go
+@@ -162,6 +162,84 @@ type StandingsFetchRequest struct {
+ 	Season        string
+ }
+ 
++// HistoricalFetchRequest is the shared shape for historical/backfill reads.
++// It intentionally lives in ports because adapters receive it, while the
++// validation logic lives in the sync domain package.
++type HistoricalFetchRequest struct {
++	CompetitionID uuid.UUID
++	Season        string
++	Window        syncdom.HistoricalWindow
++}
++
++// HistoricalOddsFetchRequest is separate because odds providers often need
++// provider-specific market/region filters. Those values stay generic here and
++// provider mapping remains inside the adapter.
++type HistoricalOddsFetchRequest struct {
++	CompetitionID uuid.UUID
++	Season        string
++	Window        syncdom.HistoricalWindow
++	Markets       []string
++	Regions       []string
++}
++
++// OddsFetchRequest describes a realtime/current odds fetch. MatchID is optional
++// because some providers expose competition-level odds first and fixture-level
++// filtering later.
++type OddsFetchRequest struct {
++	CompetitionID uuid.UUID
++	MatchID       uuid.UUID
++	Markets       []string
++	Regions       []string
++}
++
++// Optional adapter interfaces. SourceAdapter remains backward-compatible for
++// existing providers. New providers implement only the extra interfaces they
++// truly support; capabilities must mirror actual implementation, not provider
++// marketing claims.
++type HistoricalFixturesAdapter interface {
++	FetchHistoricalFixtures(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalResultsAdapter interface {
++	FetchHistoricalResults(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalStandingsAdapter interface {
++	FetchHistoricalStandings(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type OddsAdapter interface {
++	FetchOdds(ctx context.Context, req OddsFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalOddsAdapter interface {
++	FetchHistoricalOdds(ctx context.Context, req HistoricalOddsFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type PlayersAdapter interface {
++	FetchPlayers(ctx context.Context, req FixtureFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalPlayersAdapter interface {
++	FetchHistoricalPlayers(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type LineupsAdapter interface {
++	FetchLineups(ctx context.Context, req FixtureFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalLineupsAdapter interface {
++	FetchHistoricalLineups(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type InjuriesAdapter interface {
++	FetchInjuries(ctx context.Context, req FixtureFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
++type HistoricalInjuriesAdapter interface {
++	FetchHistoricalInjuries(ctx context.Context, req HistoricalFetchRequest) ([]*event.RawSportsEvent, error)
++}
++
+ // HealthSnapshot — the operational state the HTTP /providers/status
+ // endpoint exposes. All fields are best-effort; an adapter that's
+ // never been called returns the zero value.
+diff --git a/tests/domain/capability_test.go b/tests/domain/capability_test.go
+index 007440e..8f54b07 100644
+--- a/tests/domain/capability_test.go
++++ b/tests/domain/capability_test.go
+@@ -1,10 +1,4 @@
+-// ProviderCapability — Sprint 2.1 contract.
+-//
+-// The capability table is the source of truth for "which provider
+-// can serve which class of data". Behaviour we lock in:
+-//   - Supports(class) returns the matching field, never a default.
+-//   - Unknown class strings return false — strict by design so a
+-//     typo doesn't accidentally enable a job.
++// ProviderCapability contract.
+ package domain_test
+ 
+ import (
+@@ -15,20 +9,38 @@ import (
+ 
+ func TestProviderCapabilitySupportsReturnsField(t *testing.T) {
+ 	c := source.ProviderCapability{
+-		SupportsFixtures:  true,
+-		SupportsResults:   true,
+-		SupportsStandings: false,
+-		SupportsOdds:      false,
+-		SupportsLineups:   false,
+-		SupportsNews:      false,
++		SupportsFixtures:            true,
++		SupportsHistoricalFixtures:  false,
++		SupportsResults:             true,
++		SupportsHistoricalResults:   false,
++		SupportsStandings:           true,
++		SupportsHistoricalStandings: false,
++		SupportsOdds:                true,
++		SupportsHistoricalOdds:      false,
++		SupportsPlayers:             true,
++		SupportsHistoricalPlayers:   false,
++		SupportsLineups:             true,
++		SupportsHistoricalLineups:   false,
++		SupportsInjuries:            true,
++		SupportsHistoricalInjuries:  false,
++		SupportsNews:                true,
+ 	}
+ 	cases := map[string]bool{
+-		"fixtures":  true,
+-		"results":   true,
+-		"standings": false,
+-		"odds":      false,
+-		"lineups":   false,
+-		"news":      false,
++		"fixtures":             true,
++		"historical_fixtures":  false,
++		"results":              true,
++		"historical_results":   false,
++		"standings":            true,
++		"historical_standings": false,
++		"odds":                 true,
++		"historical_odds":      false,
++		"players":              true,
++		"historical_players":   false,
++		"lineups":              true,
++		"historical_lineups":   false,
++		"injuries":             true,
++		"historical_injuries":  false,
++		"news":                 true,
+ 	}
+ 	for class, expected := range cases {
+ 		if got := c.Supports(class); got != expected {
+@@ -39,9 +51,14 @@ func TestProviderCapabilitySupportsReturnsField(t *testing.T) {
+ 
+ func TestProviderCapabilityUnknownClassReturnsFalse(t *testing.T) {
+ 	c := source.ProviderCapability{
+-		SupportsFixtures: true, SupportsResults: true,
+-		SupportsStandings: true, SupportsOdds: true,
+-		SupportsLineups: true, SupportsNews: true,
++		SupportsFixtures: true, SupportsHistoricalFixtures: true,
++		SupportsResults: true, SupportsHistoricalResults: true,
++		SupportsStandings: true, SupportsHistoricalStandings: true,
++		SupportsOdds: true, SupportsHistoricalOdds: true,
++		SupportsPlayers: true, SupportsHistoricalPlayers: true,
++		SupportsLineups: true, SupportsHistoricalLineups: true,
++		SupportsInjuries: true, SupportsHistoricalInjuries: true,
++		SupportsNews: true,
+ 	}
+ 	if c.Supports("commentary") {
+ 		t.Error("unknown class must return false even when every known class is enabled")
+@@ -51,7 +68,14 @@ func TestProviderCapabilityUnknownClassReturnsFalse(t *testing.T) {
+ func TestProviderCapabilityZeroValueSupportsNothing(t *testing.T) {
+ 	var c source.ProviderCapability
+ 	for _, class := range []string{
+-		"fixtures", "results", "standings", "odds", "lineups", "news",
++		"fixtures", "historical_fixtures",
++		"results", "historical_results",
++		"standings", "historical_standings",
++		"odds", "historical_odds",
++		"players", "historical_players",
++		"lineups", "historical_lineups",
++		"injuries", "historical_injuries",
++		"news",
+ 	} {
+ 		if c.Supports(class) {
+ 			t.Errorf("zero value must NOT support %q", class)

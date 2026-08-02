@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "social/v1/user.proto";
+
+message Reputation {
+  string user_id = 1;
+  int32 score = 2;       // 0..100
+  UserTier tier = 3;
+  double accuracy = 4;   // 0..1
+}
+
+message GetReputationRequest {
+  string user_id = 1;
+}
+
+message RecomputeReputationRequest {
+  string user_id = 1;
+}
+
+service ReputationService {
+  rpc Get(GetReputationRequest) returns (Reputation);
+  rpc Recompute(RecomputeReputationRequest) returns (Reputation);
+}

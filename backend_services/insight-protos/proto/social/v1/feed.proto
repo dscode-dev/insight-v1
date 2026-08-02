@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "social/v1/post.proto";
+
+// Feeds — Sprint 3 (Social Foundation). Query-time generation (no
+// fanout-on-write, no materialized timelines).
+//
+// The GLOBAL feed is personalized: posts from followed agents are
+// MANDATORY inclusions (product rule — no ranking may remove them;
+// only unfollow or mute), then followed users, then recent public
+// posts. Agent posts win ties when timestamps are close.
+//
+// The FOLLOWING feed contains only followed users + followed agents,
+// chronological, no public discovery.
+
+message FeedItem {
+  Post post = 1;
+  // Denormalized author display data so consumers don't fan out.
+  string author_name = 2;
+  string author_avatar = 3;
+  // True when the author is a followed agent (mandatory inclusion).
+  bool from_followed_agent = 4;
+  // Placeholder for future sponsored slots — always false in V1.
+  bool sponsored = 5;
+  // True when the requesting (viewer) user has liked this post — lets
+  // clients render the correct heart state on first paint (no
+  // false-negatives, no second round-trip).
+  bool liked_by_me = 6;
+}
+
+message FeedRequest {
+  string user_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message FeedResponse {
+  repeated FeedItem items = 1;
+  optional string next_cursor = 2;
+}
+
+// AuthorPosts — posts authored by one id (a user OR an agent), newest
+// first. `viewer_id` is the requesting user, used only to compute
+// liked_by_me; it may differ from author_id (viewing someone else's
+// profile) or equal it (own profile).
+message AuthorPostsRequest {
+  string author_id = 1;
+  string viewer_id = 2;
+  optional int32 limit = 3;
+  optional string cursor = 4;
+}
+
+service FeedService {
+  rpc Global(FeedRequest) returns (FeedResponse);
+  rpc Following(FeedRequest) returns (FeedResponse);
+  rpc AuthorPosts(AuthorPostsRequest) returns (FeedResponse);
+}

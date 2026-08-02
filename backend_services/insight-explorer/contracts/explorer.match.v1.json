@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.match.v1.json",
+  "title": "explorer.match.v1",
+  "description": "A finished/in-play match result snapshot. Maps to Sport Hub 'match.result' (finished) / 'match.started' (kickoff). entity_type='match'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "status", "home_team", "away_team", "competition_key", "season", "kickoff_at"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "kickoff_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["live", "halftime", "finished", "abandoned"] },
+    "minute": { "type": ["integer", "null"], "minimum": 0, "maximum": 200 },
+    "home_team": { "$ref": "explorer.fixture.v1.json#/$defs/team" },
+    "away_team": { "$ref": "explorer.fixture.v1.json#/$defs/team" },
+    "score": { "$ref": "explorer.fixture.v1.json#/$defs/score" },
+    "competition_key": { "type": "string", "minLength": 1 },
+    "season": { "type": "string", "minLength": 4, "maxLength": 16 },
+    "home_coach": { "type": ["string", "null"] },
+    "away_coach": { "type": ["string", "null"] }
+  }
+}

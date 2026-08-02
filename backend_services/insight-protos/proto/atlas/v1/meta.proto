@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package atlas.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/atlas/v1;atlasv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message FeatureMeta {
+  string name = 1;
+  string source = 2;     // "redis_hot" | "clickhouse" | "derived"
+  int32 window_seconds = 3;
+  double low = 4;
+  double high = 5;
+  double default = 6;
+  string description = 7;
+}
+
+message FeatureList {
+  int32 feature_schema_version = 1;
+  repeated FeatureMeta features = 2;
+}
+
+enum ModelStage {
+  MODEL_STAGE_UNSPECIFIED = 0;
+  MODEL_STAGE_CANARY = 1;
+  MODEL_STAGE_ACTIVE = 2;
+  MODEL_STAGE_ARCHIVED = 3;
+}
+
+message Model {
+  string family = 1;        // "anomaly" | "cluster" | "density" | "classifier"
+  string version_id = 2;
+  string semver = 3;
+  ModelStage stage = 4;
+  int32 feature_schema_version = 5;
+  double train_metric = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ModelList {
+  repeated Model active = 1;
+}
+
+service MetaService {
+  rpc ListFeatures(google.protobuf.Empty) returns (FeatureList);
+  rpc ListModels(google.protobuf.Empty) returns (ModelList);
+}

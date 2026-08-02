@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package admin.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/admin/v1;adminv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum ReportReason {
+  REPORT_REASON_UNSPECIFIED = 0;
+  REPORT_REASON_SPAM = 1;
+  REPORT_REASON_HARASSMENT = 2;
+  REPORT_REASON_MISLEADING = 3;
+  REPORT_REASON_OFF_TOPIC = 4;
+  REPORT_REASON_OTHER = 5;
+}
+
+enum ReportStatus {
+  REPORT_STATUS_UNSPECIFIED = 0;
+  REPORT_STATUS_PENDING = 1;
+  REPORT_STATUS_APPROVED = 2;
+  REPORT_STATUS_REJECTED = 3;
+}
+
+message Report {
+  string id = 1;
+  string reporter_user_id = 2;
+  string target_kind = 3;   // "post" | "discussion" | "user" | "community"
+  string target_id = 4;
+  ReportReason reason = 5;
+  string note = 6;          // optional user explanation
+  ReportStatus status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  optional google.protobuf.Timestamp resolved_at = 9;
+  optional string resolved_by = 10;
+}
+
+message CreateReportRequest {
+  string reporter_user_id = 1;
+  string target_kind = 2;
+  string target_id = 3;
+  ReportReason reason = 4;
+  optional string note = 5;
+}
+
+message ListReportsRequest {
+  optional ReportStatus status = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListReportsResponse {
+  repeated Report reports = 1;
+  optional string next_cursor = 2;
+}
+
+message ResolveReportRequest {
+  string id = 1;
+  ReportStatus resolution = 2;  // APPROVED or REJECTED
+  string resolved_by = 3;
+  optional string note = 4;
+}
+
+service ModerationService {
+  rpc Create(CreateReportRequest) returns (Report);
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
+  rpc Resolve(ResolveReportRequest) returns (Report);
+}

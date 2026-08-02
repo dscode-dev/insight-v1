@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Tier is the coarse projection of reputation surfaced in the UI.
+// The numeric reputation score is the source of truth; tier is derived
+// server-side via reputation.tier_for_score.
+enum UserTier {
+  USER_TIER_UNSPECIFIED = 0;
+  USER_TIER_ROOKIE = 1;   // 0..40
+  USER_TIER_SCOUT = 2;    // 40..60
+  USER_TIER_ANALYST = 3;  // 60..85
+  USER_TIER_ORACLE = 4;   // 85..100
+}
+
+message User {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  string initials = 4;
+  string accent_color = 5;
+  int32 reputation = 6;
+  UserTier tier = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // Sprint C — full URL of the uploaded avatar. Empty/absent means
+  // the client should fall back to the initials+accent rendering.
+  string avatar_url = 9;
+}
+
+message UserStats {
+  string user_id = 1;
+  int64 signals_sent = 2;
+  int64 signals_validated = 3;
+  int64 signals_flagged = 4;
+  int64 matches_followed = 5;
+  int64 communities_joined = 6;
+  double accuracy = 7;  // 0..1
+}
+
+// ---- requests ----
+
+message CreateUserRequest {
+  string username = 1;
+  string display_name = 2;
+  optional string accent_color = 3;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetByUsernameRequest {
+  string username = 1;
+}
+
+message UpdateAccentRequest {
+  string id = 1;
+  string accent_color = 2;
+}
+
+// Sprint C — set the persisted avatar URL. The gateway uploads the
+// actual image bytes to object storage; this RPC only persists the
+// resulting URL pointer.
+message UpdateAvatarRequest {
+  string id = 1;
+  // Empty string clears the avatar (server stores NULL).
+  string avatar_url = 2;
+}
+
+// Sprint D — user preferences. Lazy-created at first read: a user
+// never explicitly opts into having preferences, the row is upserted
+// with defaults on demand.
+message UserPreferences {
+  string user_id = 1;
+  // IETF BCP 47 tag — "pt-BR", "en-US", "es", etc.
+  string locale = 2;
+  bool push_enabled = 3;
+  bool email_enabled = 4;
+  // One of "daily" | "weekly" | "never". The schema CHECK
+  // constraint backstops the validator at the application layer.
+  string digest_frequency = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message GetPreferencesRequest {
+  string user_id = 1;
+}
+
+// Optional fields only: caller updates the subset of fields it cares
+// about; unset fields are left as-is on the persisted row.
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  optional string locale = 2;
+  optional bool push_enabled = 3;
+  optional bool email_enabled = 4;
+  optional string digest_frequency = 5;
+}
+
+message ListUsersRequest {
+  repeated string ids = 1;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message GetUserStatsRequest {
+  string user_id = 1;
+}
+
+service UserService {
+  rpc Create(CreateUserRequest) returns (User);
+  rpc Get(GetUserRequest) returns (User);
+  rpc GetByUsername(GetByUsernameRequest) returns (User);
+  rpc UpdateAccent(UpdateAccentRequest) returns (User);
+  rpc UpdateAvatar(UpdateAvatarRequest) returns (User);          // Sprint C
+  rpc List(ListUsersRequest) returns (ListUsersResponse);
+  rpc GetStats(GetUserStatsRequest) returns (UserStats);
+  rpc GetPreferences(GetPreferencesRequest) returns (UserPreferences);     // Sprint D
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UserPreferences); // Sprint D
+}

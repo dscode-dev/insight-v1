@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.envelope.v1.json",
+  "title": "explorer.envelope.v1",
+  "description": "Canonical wrapper every Explorer record is emitted in. The Explorer never speaks Sport Hub's RawSportsEvent shape directly; it emits this envelope, and the Explorer->SportHub adapter (Sprint ML-B) maps it to a RawSportsEvent. Strongly typed so Sport Hub/Atlas can consume without knowing a crawler produced it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "source", "provider", "source_type", "trust_level",
+    "confidence", "captured_at", "entity_type", "external_id",
+    "competition", "season", "payload", "provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": "explorer.envelope.v1" },
+    "source": {
+      "type": "string", "minLength": 1,
+      "description": "Logical source family, e.g. 'api-football', 'fbref', 'wikipedia', 'official-site'."
+    },
+    "provider": {
+      "type": "string", "minLength": 1,
+      "description": "Concrete provider/collector id within the source, e.g. 'fbref-match-scraper-v1'."
+    },
+    "source_type": { "enum": ["historical", "realtime"] },
+    "trust_level": {
+      "enum": ["low", "medium", "high"],
+      "description": "Curation trust of the source. Drives whether the record can enter production (high) or only training/low_trust_signal (low/medium). See ML_A_EXPLORER_TO_ATLAS_FLOW."
+    },
+    "confidence": {
+      "type": "number", "minimum": 0, "maximum": 1,
+      "description": "Per-record extraction confidence. Maps to RawSportsEvent.raw_confidence."
+    },
+    "captured_at": {
+      "type": "string", "format": "date-time",
+      "description": "RFC3339 UTC instant the Explorer captured the record (NOT the event time — that lives in the payload)."
+    },
+    "entity_type": {
+      "enum": ["fixture", "match", "event", "stats", "lineup", "injury", "odds_snapshot"],
+      "description": "Selects the payload schema (explorer.<entity_type>.v1)."
+    },
+    "external_id": {
+      "type": "string", "minLength": 1, "maxLength": 128,
+      "description": "Source-scoped id of the entity (fixture id, etc.). Maps to RawSportsEvent.external_match_id for match-scoped entities."
+    },
+    "canonical_match_id": {
+      "type": ["string", "null"],
+      "description": "Insight canonical match UUID when already resolved; null when only Sport Hub can resolve it via the identity service. Explorer SHOULD leave null unless it received it from Insight."
+    },
+    "competition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["competition_key"],
+      "properties": {
+        "competition_key": {
+          "type": "string", "minLength": 1,
+          "description": "Stable Insight competition slug, e.g. 'brasileirao_serie_a', 'premier_league' (matches the dataset scope keys)."
+        },
+        "competition_id": { "type": ["string", "null"], "description": "Insight competition UUID when known." },
+        "external_id": { "type": ["string", "null"], "description": "Source competition id." },
+        "name": { "type": ["string", "null"] }
+      }
+    },
+    "season": {
+      "type": "string", "minLength": 4, "maxLength": 16,
+      "description": "Season label, e.g. '2022', '2022-2023'. Bounded by Sport Hub's 16-char season limit."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Entity body — validated against explorer.<entity_type>.v1.",
+      "minProperties": 1
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "retrieved_at", "method"],
+      "properties": {
+        "url": { "type": "string", "description": "Origin URL or API path the record came from." },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "method": { "enum": ["api", "scrape", "file", "manual"] },
+        "parser": { "type": ["string", "null"], "description": "Parser/collector version that produced the payload." },
+        "checksum": { "type": ["string", "null"], "description": "Content hash of the raw source artifact (dedup + replay)." },
+        "license_note": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "entity_type": { "enum": ["match", "event", "stats", "lineup", "injury", "odds_snapshot"] } } },
+      "then": { "description": "Match-scoped entities require external_id to be the source's match/fixture id." }
+    }
+  ]
+}

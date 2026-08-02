@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.fixture.v1.json",
+  "title": "explorer.fixture.v1",
+  "description": "A scheduled/known fixture. Maps to Sport Hub event_type 'match.fixture' (or 'match.result' once finished). Payload of an envelope with entity_type='fixture'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "scheduled_at", "status", "home_team", "away_team", "competition_key", "season"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "scheduled_at": { "type": "string", "format": "date-time", "description": "Kickoff (RFC3339 UTC)." },
+    "status": {
+      "enum": ["scheduled", "live", "halftime", "finished", "abandoned", "postponed", "unknown"],
+      "description": "Normalized status. Maps to sports.v1.MatchState; Sport Hub decides match.fixture vs match.result."
+    },
+    "status_detail": { "type": ["string", "null"], "description": "Raw provider status (e.g. 'FT','AET')." },
+    "minute": { "type": ["integer", "null"], "minimum": 0, "maximum": 200 },
+    "venue": { "type": ["string", "null"] },
+    "home_team": { "$ref": "#/$defs/team" },
+    "away_team": { "$ref": "#/$defs/team" },
+    "competition_key": { "type": "string", "minLength": 1 },
+    "season": { "type": "string", "minLength": 4, "maxLength": 16 },
+    "score": { "$ref": "#/$defs/score" }
+  },
+  "$defs": {
+    "team": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "external_id": { "type": ["string", "null"] },
+        "club_id": { "type": ["string", "null"], "description": "Insight Club Registry club_id when resolvable (see club_registry)." },
+        "short_name": { "type": ["string", "null"] }
+      }
+    },
+    "score": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "properties": {
+        "home": { "type": "integer", "minimum": 0 },
+        "away": { "type": "integer", "minimum": 0 },
+        "halftime_home": { "type": ["integer", "null"], "minimum": 0 },
+        "halftime_away": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    }
+  }
+}

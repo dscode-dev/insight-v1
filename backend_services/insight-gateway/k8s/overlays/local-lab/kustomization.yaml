@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Lab overlay tuned for kind + a single-node Postgres / Redis in
+# `insight` namespace. Auto-applies goose migrations on boot, uses
+# the local-lab ClusterSecretStore (k8s backend, not Vault), and runs
+# 2 replicas with reduced CPU requests.
+
+namespace: insight
+
+resources:
+  - ../../base
+
+patches:
+  # Single replica in lab — saves CPU on the laptop kind cluster.
+  - target:
+      kind: Deployment
+      name: insight-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Auto-apply migrations on lab boot — convenient for dev iteration.
+  - target:
+      kind: ConfigMap
+      name: insight-gateway-config
+    patch: |-
+      - op: replace
+        path: /data/AUTO_APPLY_MIGRATIONS
+        value: "true"
+      - op: replace
+        path: /data/LOG_PRETTY
+        value: "true"
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: "DEBUG"
+
+  # Lab uses the k8s-backed SecretStore so engineers can edit values
+  # in the `insight-lab-secrets` namespace without a Vault round-trip.
+  - target:
+      kind: ExternalSecret
+      name: insight-gateway-secrets
+    patch: |-
+      - op: replace
+        path: /spec/secretStoreRef/name
+        value: insight-local-lab

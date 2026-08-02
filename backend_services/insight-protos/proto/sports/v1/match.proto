@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package sports.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/sports/v1;sportsv1";
+
+import "google/protobuf/timestamp.proto";
+import "sports/v1/team.proto";
+
+enum MatchState {
+  MATCH_STATE_UNSPECIFIED = 0;
+  MATCH_STATE_SCHEDULED = 1;
+  MATCH_STATE_LIVE = 2;
+  MATCH_STATE_HALFTIME = 3;
+  MATCH_STATE_FINISHED = 4;
+  MATCH_STATE_ABANDONED = 5;
+}
+
+message MatchScore {
+  int32 home = 1;
+  int32 away = 2;
+}
+
+message MatchStatus {
+  MatchState state = 1;
+  google.protobuf.Timestamp kickoff = 2;
+  optional int32 minute = 3;
+  optional string period = 4;
+  optional MatchScore score = 5;
+}
+
+message Match {
+  string id = 1;
+  string competition_id = 2;
+  Team home = 3;
+  Team away = 4;
+  MatchStatus status = 5;
+  // Catalog confidence — 0..1. Below 0.5 means a single low-trust
+  // source emitted this fixture; downstream services should treat it
+  // as tentative.
+  double confidence = 6;
+}
+
+message GetMatchRequest {
+  string id = 1;
+}
+
+message ListMatchesRequest {
+  optional string competition_id = 1;
+  optional MatchState state = 2;
+  optional google.protobuf.Timestamp kickoff_from = 3;
+  optional google.protobuf.Timestamp kickoff_to = 4;
+  optional int32 limit = 5;
+  optional string cursor = 6;
+}
+
+message ListMatchesResponse {
+  repeated Match matches = 1;
+  optional string next_cursor = 2;
+}
+
+message ListLiveRequest {
+  // Pass-through filter for the Flutter Live screen.
+  // "all" | "live" | "today" | "upcoming".
+  string filter = 1;
+}
+
+service MatchService {
+  rpc Get(GetMatchRequest) returns (Match);
+  rpc List(ListMatchesRequest) returns (ListMatchesResponse);
+  rpc ListLive(ListLiveRequest) returns (ListMatchesResponse);
+}

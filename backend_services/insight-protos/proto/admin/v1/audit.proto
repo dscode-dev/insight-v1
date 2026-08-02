@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package admin.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/admin/v1;adminv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Append-only entry. Every Go service calls AuditService.Append on
+// sensitive mutations (user_ban, post_remove, campaign_approve, etc.).
+// The Admin Platform is the sole owner of this log.
+message AuditEntry {
+  string id = 1;
+  google.protobuf.Timestamp ts = 2;
+  // The user or service principal that performed the action.
+  string actor_id = 3;
+  // Which Go service generated this entry. ("gateway", "social", ...)
+  string service = 4;
+  // Verb in snake_case ("user_ban", "campaign_approve", ...)
+  string action = 5;
+  string target_kind = 6;
+  string target_id = 7;
+  // Before/after diffs. Free-form JSON because schemas vary by action.
+  google.protobuf.Struct before = 8;
+  google.protobuf.Struct after = 9;
+  // Request correlation id for tracing.
+  optional string request_id = 10;
+}
+
+message AppendRequest {
+  // ID is generated server-side; clients fill the rest.
+  string actor_id = 1;
+  string service = 2;
+  string action = 3;
+  string target_kind = 4;
+  string target_id = 5;
+  google.protobuf.Struct before = 6;
+  google.protobuf.Struct after = 7;
+  optional string request_id = 8;
+}
+
+message QueryRequest {
+  optional string actor_id = 1;
+  optional string service = 2;
+  optional string action = 3;
+  optional string target_kind = 4;
+  optional string target_id = 5;
+  optional google.protobuf.Timestamp from = 6;
+  optional google.protobuf.Timestamp to = 7;
+  optional int32 limit = 8;
+  optional string cursor = 9;
+}
+
+message QueryResponse {
+  repeated AuditEntry entries = 1;
+  optional string next_cursor = 2;
+}
+
+service AuditService {
+  rpc Append(AppendRequest) returns (google.protobuf.Empty);
+  rpc Query(QueryRequest) returns (QueryResponse);
+}

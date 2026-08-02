@@ -1,0 +1,25 @@
+{
+  "schema_version": "explorer.envelope.v1",
+  "source": "the-odds-api",
+  "provider": "oddsapi-realtime-v1",
+  "source_type": "realtime",
+  "trust_level": "high",
+  "confidence": 0.95,
+  "captured_at": "2026-06-13T18:30:00Z",
+  "entity_type": "odds_snapshot",
+  "external_id": "oddsapi-9931",
+  "competition": { "competition_key": "premier_league" },
+  "season": "2025-2026",
+  "payload": {
+    "external_fixture_id": "oddsapi-9931",
+    "bookmaker": "bet365",
+    "market": "1x2",
+    "captured_at": "2026-06-13T18:30:00Z",
+    "selections": [
+      { "name": "home", "price": 1.85 },
+      { "name": "draw", "price": 3.6 },
+      { "name": "away", "price": 4.2 }
+    ]
+  },
+  "provenance": { "url": "https://api.the-odds-api.com/...", "retrieved_at": "2026-06-13T18:30:00Z", "method": "api" }
+}

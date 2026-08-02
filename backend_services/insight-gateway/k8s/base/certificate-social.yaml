@@ -1,0 +1,49 @@
+# W2.2: dedicated mTLS client cert for the gateway's outbound gRPC to
+# insight-social.
+#
+# Why a separate Certificate (not reusing insight-gateway-tls):
+#   1. Independent rotation cadence — social's CA is in-cluster
+#      (insight-internal-ca) and may rotate on a faster schedule than
+#      the public-facing edge cert; coupling them couples blast radius.
+#   2. SPIFFE-style identity ergonomics — the SVID (URI SAN) here is
+#      `spiffe://insight/sa/insight-gateway/role/social-client`, which
+#      insight-social can authorize at the policy layer independently
+#      of the gateway's other identities.
+#   3. Smaller blast radius if the cert leaks — only social traffic is
+#      compromised, not the gateway's edge identity.
+#
+# Mount path on the Deployment: /var/run/secrets/social-tls/{tls.crt,tls.key,ca.crt}
+# (set via SOCIAL_TLS_* env in configmap.yaml).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: insight-gateway-social-tls
+  namespace: insight
+  labels:
+    app.kubernetes.io/name: insight-gateway
+    app.kubernetes.io/component: edge-gateway
+    app.kubernetes.io/part-of: insight
+spec:
+  secretName: insight-gateway-social-tls
+  duration: 720h     # 30d
+  renewBefore: 168h  # 7d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  subject:
+    organizations: ["konohalabs"]
+  commonName: insight-gateway.social-client
+  # No DNS SAN — this cert authenticates the CLIENT only. Server-side
+  # verification happens via the URI SAN below.
+  uris:
+    - spiffe://insight/sa/insight-gateway/role/social-client
+  usages:
+    - client auth
+  # MUST be the same ClusterIssuer that signed insight-social's server
+  # cert — that's how mutual trust is established with no extra bundle
+  # shuffling. CA bundle distributed via the same Secret (ca.crt key).
+  issuerRef:
+    name: insight-internal-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

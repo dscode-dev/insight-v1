@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+enum RelationshipKind {
+  RELATIONSHIP_KIND_UNSPECIFIED = 0;
+  RELATIONSHIP_KIND_FOLLOW = 1;
+  RELATIONSHIP_KIND_BLOCK = 2;
+}
+
+message Relationship {
+  string source_user_id = 1;
+  string target_user_id = 2;
+  RelationshipKind kind = 3;
+  google.protobuf.Timestamp created_at = 4;
+  // Mute (Sprint 3): muted accounts remain followed but their posts
+  // are excluded from feeds.
+  bool muted = 5;
+  google.protobuf.Timestamp muted_at = 6;
+}
+
+message FollowRequest {
+  string source_user_id = 1;
+  string target_user_id = 2;
+}
+
+message UnfollowRequest {
+  string source_user_id = 1;
+  string target_user_id = 2;
+}
+
+message BlockRequest {
+  string source_user_id = 1;
+  string target_user_id = 2;
+}
+
+message MuteRequest {
+  string source_user_id = 1;
+  string target_user_id = 2;
+}
+
+message UnmuteRequest {
+  string source_user_id = 1;
+  string target_user_id = 2;
+}
+
+message ListRelationshipsRequest {
+  string user_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListRelationshipsResponse {
+  repeated Relationship relationships = 1;
+  optional string next_cursor = 2;
+}
+
+service RelationshipService {
+  rpc Follow(FollowRequest) returns (Relationship);
+  rpc Unfollow(UnfollowRequest) returns (google.protobuf.Empty);
+  rpc Block(BlockRequest) returns (Relationship);
+  rpc Mute(MuteRequest) returns (Relationship);
+  rpc Unmute(UnmuteRequest) returns (Relationship);
+  rpc ListFollowers(ListRelationshipsRequest) returns (ListRelationshipsResponse);
+  rpc ListFollowing(ListRelationshipsRequest) returns (ListRelationshipsResponse);
+}

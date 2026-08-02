@@ -1,0 +1,202 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus"
+    }
+  ],
+  "title": "Insight Social \u2014 Foundation",
+  "uid": "insight-social-foundation",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "tags": [
+    "insight",
+    "social"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "utc",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Posts/day",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (author_type) (increase(social_posts_total[24h]))",
+          "legendFormat": "{{author_type}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Comments/day",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (depth) (increase(social_comments_total[24h]))",
+          "legendFormat": "depth {{depth}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Feed reads",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (feed) (rate(social_feed_reads_total[5m]))",
+          "legendFormat": "{{feed}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Agent activity",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(social_agent_posts_total[24h]))",
+          "legendFormat": "agent posts (24h)"
+        },
+        {
+          "expr": "sum(rate(social_agent_posts_total[15m]))",
+          "legendFormat": "rate"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Follow growth",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (origin) (increase(social_follows_total[24h]))",
+          "legendFormat": "{{origin}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Mute growth",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (action) (increase(social_muted_relationships_total[24h]))",
+          "legendFormat": "{{action}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Global vs Following feed",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(social_feed_reads_total{feed=\"global\"}[15m]))",
+          "legendFormat": "global"
+        },
+        {
+          "expr": "sum(rate(social_feed_reads_total{feed=\"following\"}[15m]))",
+          "legendFormat": "following"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Reactions",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (action) (rate(social_reactions_total[15m]))",
+          "legendFormat": "{{action}}"
+        }
+      ]
+    }
+  ]
+}

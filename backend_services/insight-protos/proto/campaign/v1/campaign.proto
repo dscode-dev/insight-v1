@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package campaign.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/campaign/v1;campaignv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum CampaignState {
+  CAMPAIGN_STATE_UNSPECIFIED = 0;
+  CAMPAIGN_STATE_DRAFT = 1;
+  CAMPAIGN_STATE_ACTIVE = 2;
+  CAMPAIGN_STATE_PAUSED = 3;
+  CAMPAIGN_STATE_ENDED = 4;
+}
+
+// Targeting facets — kept declarative so we can iterate without
+// re-shaping the table. Empty lists = no filter on that facet.
+message Targeting {
+  repeated string competition_ids = 1;
+  repeated string community_ids = 2;
+  repeated string country_codes = 3;
+  // Minimum user tier required to be eligible. Empty = all tiers.
+  optional string min_tier = 4;
+}
+
+message Creative {
+  string id = 1;
+  string body = 2;
+  optional string accent_color = 3;
+  // Optional click-through. The renderer treats it opaque.
+  optional string href = 4;
+}
+
+message Campaign {
+  string id = 1;
+  string advertiser_id = 2;
+  string name = 3;
+  Creative creative = 4;
+  Targeting targeting = 5;
+  CampaignState state = 6;
+  // Budget in cents to avoid float precision issues.
+  int64 budget_cents = 7;
+  int64 spent_cents = 8;
+  google.protobuf.Timestamp starts_at = 9;
+  google.protobuf.Timestamp ends_at = 10;
+}
+
+message CreateCampaignRequest {
+  string advertiser_id = 1;
+  string name = 2;
+  Creative creative = 3;
+  Targeting targeting = 4;
+  int64 budget_cents = 5;
+  google.protobuf.Timestamp starts_at = 6;
+  google.protobuf.Timestamp ends_at = 7;
+}
+
+message GetCampaignRequest {
+  string id = 1;
+}
+
+message ListCampaignsRequest {
+  optional string advertiser_id = 1;
+  optional CampaignState state = 2;
+}
+
+message ListCampaignsResponse {
+  repeated Campaign campaigns = 1;
+}
+
+message PauseRequest {
+  string id = 1;
+}
+
+message ResumeRequest {
+  string id = 1;
+}
+
+service CampaignService {
+  rpc Create(CreateCampaignRequest) returns (Campaign);
+  rpc Get(GetCampaignRequest) returns (Campaign);
+  rpc List(ListCampaignsRequest) returns (ListCampaignsResponse);
+  rpc Pause(PauseRequest) returns (Campaign);
+  rpc Resume(ResumeRequest) returns (Campaign);
+}

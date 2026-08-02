@@ -1,0 +1,40 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Forbid `print` in app code — use logger.
+    avoid_print: error
+    # Riverpod misuses become errors.
+    unused_result: error
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    # Build artifacts (e.g. flutterfire SwiftPM checkouts after a pod install)
+    # are not our source — never analyze them.
+    - "build/**"
+
+linter:
+  rules:
+    # Stage 8 product rules — enforced by lint where possible.
+    always_declare_return_types: true
+    avoid_dynamic_calls: true
+    avoid_relative_lib_imports: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_locals: true
+    prefer_single_quotes: true
+    # require_trailing_commas — disabled. `dart format` is the source of
+    # truth for layout; this rule duplicates the formatter's job and
+    # produces churn whenever the formatter chooses single-line layout.
+    require_trailing_commas: false
+    sized_box_for_whitespace: true
+    sort_constructors_first: true
+    sort_pub_dependencies: false
+    unawaited_futures: true
+    use_build_context_synchronously: true
+    use_super_parameters: true

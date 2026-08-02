@@ -1,0 +1,24 @@
+.git
+**/.git
+**/.github
+**/.DS_Store
+**/.env
+**/.env.*
+**/node_modules
+**/.next
+**/.dart_tool
+**/build
+**/bin
+**/*.test
+**/*.out
+**/cover.out
+**/cover.html
+
+# Keep mobile/unrelated modules out while preserving service modules that build
+# from the workspace root because they package shared runtime/proto artifacts.
+insight-azteca-flutter
+insight-anvil
+insight-social
+docs
+scripts
+*.md

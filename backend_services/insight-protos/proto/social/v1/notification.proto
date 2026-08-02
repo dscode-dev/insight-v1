@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+// FEATURE-NOTIFICATIONS-V1 — a Notification is an IMMUTABLE historical record
+// of a message delivered to ONE user. After creation, type/priority/title/body/
+// target/payload never change; the only mutable state is read_at (archived_at/
+// deleted_at are future, not V1). Notifications DERIVE from domain events; they
+// are not owned by Communities/Posts/Discussions.
+
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_COMMUNITY_JOIN = 1;    // someone joined a community you own/admin
+  NOTIFICATION_TYPE_DISCUSSION_REPLY = 2;  // a reply on your discussion
+  NOTIFICATION_TYPE_MENTION = 3;           // you were mentioned
+  NOTIFICATION_TYPE_REACTION = 4;          // a reaction on your content
+  NOTIFICATION_TYPE_SYSTEM = 5;            // platform/system message
+  // Invitation / community-accepted are BLOCKED_BY_DOMAIN in V1 (no invitation
+  // or approval domain exists) — intentionally absent, never fabricated.
+}
+
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1;
+  NOTIFICATION_PRIORITY_NORMAL = 2;
+  NOTIFICATION_PRIORITY_HIGH = 3;
+}
+
+// Status is DERIVED from read_at (single source of truth) — never a second
+// stored column that could drift from read_at.
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  NOTIFICATION_STATUS_UNREAD = 1;
+  NOTIFICATION_STATUS_READ = 2;
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2;                       // recipient
+  NotificationType type = 3;
+  NotificationPriority priority = 4;
+  NotificationStatus status = 5;            // derived from read_at
+  string title = 6;
+  string body = 7;
+  string target_type = 8;                   // community|discussion|post|user|"" (system)
+  optional string target_id = 9;
+  string deeplink = 10;                     // persisted at creation; Gateway validates
+  string payload_json = 11;                 // opaque JSON (flexible; no per-type columns)
+  google.protobuf.Timestamp created_at = 12;
+  optional google.protobuf.Timestamp read_at = 13;
+}
+
+// ---- requests / responses ----
+
+message ListNotificationsRequest {
+  string user_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;         // keyset (created_at, id) DESC
+  optional bool unread_only = 4;      // optional filter
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  optional string next_cursor = 2;
+}
+
+message UnreadCountRequest {
+  string user_id = 1;
+}
+
+message UnreadCountResponse {
+  int64 unread_count = 1;
+}
+
+message MarkReadRequest {
+  string user_id = 1;   // recipient (authorization scope — only your own)
+  string id = 2;
+}
+
+message MarkReadResponse {
+  bool changed = 1;         // false if already read / not found for this user
+  int64 unread_count = 2;   // refreshed count (contador nunca inconsistente)
+}
+
+message MarkAllReadRequest {
+  string user_id = 1;
+}
+
+message MarkAllReadResponse {
+  int64 marked = 1;         // rows changed (observability)
+  int64 unread_count = 2;   // 0 after a full mark-all (refreshed)
+}
+
+service NotificationService {
+  rpc List(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc UnreadCount(UnreadCountRequest) returns (UnreadCountResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse);
+}

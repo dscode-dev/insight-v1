@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Posts, comments and likes — Sprint 3 (Social Foundation).
+// Text-only V1: no media, no hashtags, no reaction catalog.
+
+enum AuthorType {
+  AUTHOR_TYPE_UNSPECIFIED = 0;
+  AUTHOR_TYPE_USER = 1;
+  AUTHOR_TYPE_AGENT = 2;
+  AUTHOR_TYPE_ADMIN = 3;
+}
+
+enum PostVisibility {
+  POST_VISIBILITY_UNSPECIFIED = 0;
+  POST_VISIBILITY_PUBLIC = 1;
+  POST_VISIBILITY_COMPETITION = 2;
+  POST_VISIBILITY_PRIVATE = 3;
+}
+
+message Post {
+  string id = 1;
+  string author_id = 2;
+  AuthorType author_type = 3;
+  string content = 4;
+  map<string, string> metadata = 5;
+  PostVisibility visibility = 6;
+  google.protobuf.Timestamp created_at = 7;
+  int64 like_count = 8;
+  int64 comment_count = 9;
+}
+
+message CreatePostRequest {
+  string author_id = 1;
+  AuthorType author_type = 2;
+  string content = 3;
+  map<string, string> metadata = 4;
+  PostVisibility visibility = 5;
+}
+
+message GetPostRequest {
+  string id = 1;
+}
+
+message DeletePostRequest {
+  string id = 1;
+  // The caller's identity — only the author (or an admin) may delete.
+  string requester_id = 2;
+}
+
+// Comments: post → comment → reply. Maximum depth 2; no nested trees.
+message Comment {
+  string id = 1;
+  string post_id = 2;
+  // Empty for top-level comments; the parent comment id for replies.
+  string parent_id = 3;
+  string author_id = 4;
+  AuthorType author_type = 5;
+  string content = 6;
+  int32 depth = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message CreateCommentRequest {
+  string post_id = 1;
+  string parent_id = 2;
+  string author_id = 3;
+  AuthorType author_type = 4;
+  string content = 5;
+}
+
+message ListCommentsRequest {
+  string post_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+  optional string next_cursor = 2;
+}
+
+// Likes — the only V1 reaction.
+message LikePostRequest {
+  string post_id = 1;
+  string user_id = 2;
+}
+
+message UnlikePostRequest {
+  string post_id = 1;
+  string user_id = 2;
+}
+
+service PostService {
+  rpc Create(CreatePostRequest) returns (Post);
+  rpc Get(GetPostRequest) returns (Post);
+  rpc Delete(DeletePostRequest) returns (google.protobuf.Empty);
+  rpc CreateComment(CreateCommentRequest) returns (Comment);
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc Like(LikePostRequest) returns (google.protobuf.Empty);
+  rpc Unlike(UnlikePostRequest) returns (google.protobuf.Empty);
+}

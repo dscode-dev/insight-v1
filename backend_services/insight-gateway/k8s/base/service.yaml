@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: insight-gateway
+  namespace: insight
+  labels:
+    app.kubernetes.io/name: insight-gateway
+    app.kubernetes.io/component: edge-gateway
+    app.kubernetes.io/part-of: insight
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: insight-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: insight-gateway
+  namespace: insight

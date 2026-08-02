@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "insight-explorer"
+version = "0.1.0"
+description = "Insight Explorer — historical football data collection + AI-orchestrated data quality."
+authors = ["Konoha Labs <ops@konohalabs.com.br>"]
+readme = "docs/ML_B_SCOPE_PATCH.md"
+packages = [{ include = "explorer" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<=3.13"
+# Deterministic core (always installed).
+requests = "^2.31"
+jsonschema = "^4.17"
+prometheus-client = "^0.20"
+pydantic = "^2.6"
+grpcio = "^1.64"
+protobuf = "^5.27"
+
+# AI stack — MANDATORY on the GPU host (Robozão). Kept in an optional
+# group so the deterministic pipeline + tests install + run fast on a
+# machine without a local LLM. Install on Robozão with:
+#   poetry install --with ai
+[tool.poetry.group.ai]
+optional = true
+
+[tool.poetry.group.ai.dependencies]
+langgraph = "^0.2"
+crewai = "^0.51"
+ollama = "^0.3"
+
+# Console-facing read API — optional group (the Console consumes it).
+[tool.poetry.group.api]
+optional = true
+
+[tool.poetry.group.api.dependencies]
+fastapi = "^0.110"
+uvicorn = "^0.29"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.6"
+
+[tool.poetry.scripts]
+explorer = "explorer.cli:main"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B"]
+ignore = ["B008"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

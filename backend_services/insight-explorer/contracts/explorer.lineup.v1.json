@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.lineup.v1.json",
+  "title": "explorer.lineup.v1",
+  "description": "Starting XI + bench + coach for one fixture. entity_type='lineup'. Maps to Sport Hub 'match.lineup_published'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "home", "away"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "home": { "$ref": "#/$defs/sideLineup" },
+    "away": { "$ref": "#/$defs/sideLineup" }
+  },
+  "$defs": {
+    "player": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "external_id": { "type": ["string", "null"] },
+        "number": { "type": ["integer", "null"], "minimum": 0, "maximum": 99 },
+        "position": { "type": ["string", "null"], "description": "GK/DF/MF/FW or grid position." }
+      }
+    },
+    "sideLineup": {
+      "type": "object", "additionalProperties": false,
+      "required": ["starters"],
+      "properties": {
+        "formation": { "type": ["string", "null"], "description": "e.g. '4-3-3'." },
+        "coach": { "type": ["string", "null"] },
+        "starters": { "type": "array", "minItems": 1, "maxItems": 11, "items": { "$ref": "#/$defs/player" } },
+        "bench": { "type": "array", "items": { "$ref": "#/$defs/player" } }
+      }
+    }
+  }
+}

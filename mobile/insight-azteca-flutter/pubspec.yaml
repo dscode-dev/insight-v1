@@ -1,0 +1,164 @@
+name: azteca
+description: Insight — social intelligence platform. Native Flutter client.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management — Riverpod. No BLoC, no GetX, no MobX.
+  # We use Riverpod *without* the generator: provider types stay explicit,
+  # the analyzer_plugin transitive dep stays out of the build graph, and
+  # ergonomics are still excellent.
+  flutter_riverpod: ^2.5.1
+  hooks_riverpod: ^2.5.1
+  flutter_hooks: ^0.20.5
+
+  # Routing
+  go_router: ^14.4.1
+
+  # Networking — Dio with interceptors for auth + refresh.
+  dio: ^5.7.0
+
+  # Models — Freezed + json_serializable.
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Secure token storage (replaces localStorage).
+  flutter_secure_storage: ^9.2.2
+
+  # Responsive layouts.
+  responsive_framework: ^1.5.1
+
+  # Typography (Inter variable font via Google Fonts).
+  google_fonts: ^6.2.1
+
+  # Formatting (pt-BR dates, percentages, etc.).
+  intl: ^0.20.2
+
+  # Loading shimmer for skeletons.
+  shimmer: ^3.0.0
+
+  # UUID for client-side optimistic IDs.
+  uuid: ^4.5.1
+
+  # Sprint C — profile photo upload.
+  # image_picker: native gallery + camera; runs as a platform plugin
+  # so the host capabilities (permissions, file URIs) are handled
+  # outside Flutter. We deliberately DON'T add image_cropper here —
+  # in-app cropping is a UX layer we keep server-side for V1 (the
+  # backend can re-render thumbnails); first cut just uploads the
+  # picked image as-is.
+  image_picker: ^1.1.2
+
+  # http_parser for multipart Content-Type construction in Dio.
+  http_parser: ^4.0.2
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Code generation toolchain.
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  # riverpod_generator / custom_lint / riverpod_lint disabled — they
+  # transitively pin analyzer_plugin 0.12.0, which is incompatible with
+  # Dart 3.11's analyzer 7.x. Re-enable when they catch up. Providers in
+  # this project are written by hand; ergonomics remain good.
+
+  # Native asset generators. Run on demand:
+  #   dart run flutter_launcher_icons
+  #   dart run flutter_native_splash:create
+  flutter_launcher_icons: ^0.14.2
+  flutter_native_splash: ^2.4.4
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/icons/
+    - assets/image/
+    - assets/clubs/
+
+  # Inter is pulled via google_fonts so no asset entry needed here. If a
+  # design lead later wants to ship Inter as a baked-in font (for offline
+  # determinism), drop the .ttf into assets/fonts/ and uncomment below.
+  # fonts:
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter-Variable.ttf
+
+# ─── Launcher icons (flutter_launcher_icons) ────────────────────────────────
+# Source: assets/image/insight-logo.png (1254x1254 RGB).
+#
+# How to regenerate after changing the source:
+#   flutter pub get
+#   dart run flutter_launcher_icons
+#
+# Trade-off note for Android adaptive icons:
+#   The source PNG has the dark navy rounded-square background BAKED IN
+#   (no alpha). The recommended adaptive-icon layout is a transparent
+#   foreground with just the bulb logo + a flat background colour, so
+#   the system mask (circle/squircle/round/teardrop per launcher) crops
+#   cleanly without visible seam. Re-using the full source as
+#   adaptive_icon_foreground means the source's own rounded corners
+#   sit just outside the safe zone — most launchers' masks clip a
+#   tighter shape than the source's rounded square, hiding the seam.
+#   On the rare launcher that uses a wider mask the inner box edge
+#   may be faintly visible. Refinement: export a logo-only PNG (no
+#   background, ~66% safe zone) and set it as adaptive_icon_foreground,
+#   keeping adaptive_icon_background as a flat colour.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  macos:
+    generate: true
+    image_path: "assets/image/insight-logo.png"
+  # iOS App Store rejects alpha channels on the 1024×1024 icon — keep
+  # the strip even though our source is already opaque RGB. Harmless
+  # for RGB sources, mandatory for RGBA ones.
+  remove_alpha_ios: true
+  image_path: "assets/image/insight-logo.png"
+  # Background colour pulled from the deepest tone of the source's
+  # navy gradient — keeps the launcher mask edge tonally invisible
+  # against the foreground PNG.
+  adaptive_icon_background: "#0A0E1A"
+  adaptive_icon_foreground: "assets/image/insight-logo.png"
+  min_sdk_android: 21
+
+# ─── Native splash (flutter_native_splash) ──────────────────────────────────
+# Native splash CANNOT animate — it's the OS-drawn frame before Flutter boots.
+# So we keep it minimal: a calm, correctly-sized mark on the brand background,
+# tonally identical to the animated Flutter SplashScreen so the hand-off is
+# seamless (no size jump, no flash).
+#
+# IMPORTANT: use the 512px `insight-splash.png`, NOT the 1024px logo. The
+# package treats the source as @4x, so 1024 produced a 256dp mark (~65% of
+# the screen — the "distorted/oversized" look). 512 → ~128dp, matching the
+# Flutter splash logo. Regenerate after any change:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#0A0E1A"
+  color_dark: "#0A0E1A"
+  image: "assets/image/insight-splash.png"
+  image_dark: "assets/image/insight-splash.png"
+  android_12:
+    color: "#0A0E1A"
+    color_dark: "#0A0E1A"
+    image: "assets/image/insight-splash.png"
+    image_dark: "assets/image/insight-splash.png"
+  android: true
+  ios: true
+  fullscreen: false

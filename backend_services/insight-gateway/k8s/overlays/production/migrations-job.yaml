@@ -1,0 +1,55 @@
+# Production migrations Job — runs goose against `insight_auth`
+# BEFORE the new Deployment image rolls out. The Deployment's image
+# tag and this Job's image tag must match (same SHA).
+#
+# Use the bundled tools/seed_goose_marker.sh once during the very
+# first rollout (when transitioning ownership from the legacy BFF's
+# alembic). After that, only `goose up` runs.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: insight-gateway-migrate
+  namespace: insight
+  labels:
+    app.kubernetes.io/name: insight-gateway
+    app.kubernetes.io/component: migration
+    app.kubernetes.io/part-of: insight
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: insight-gateway
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      serviceAccountName: insight-gateway
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: migrate
+          image: konohalabs/insight-gateway:dev
+          # Image bundles `/opt/insight/migrations` + goose binary
+          # is not in the distroless image — for migrations we shell
+          # out to a small alpine helper. Switch to a dedicated
+          # `migrate` image in W1.0 follow-up if the bundled approach
+          # proves brittle.
+          # NOTE: keep this image identical to the Deployment's image
+          # tag to guarantee schema/code parity per release.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Distroless doesn't have a shell. For W1.0 we recommend
+              # using a separate ghcr.io/pressly/goose image in real CD:
+              #   image: ghcr.io/pressly/goose:latest
+              # mounting the migrations dir from a ConfigMap or from
+              # the gateway image via initContainer copy.
+              echo "see comments — switch image to ghcr.io/pressly/goose"
+              exit 1
+          envFrom:
+            - secretRef:
+                name: insight-gateway-secrets

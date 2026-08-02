@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package sports.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/sports/v1;sportsv1";
+
+message Competition {
+  string id = 1;
+  string name = 2;
+  string short_name = 3;
+  string country_code = 4;
+  string accent_color = 5;
+  // Season identifier ("2026", "2026-27"). Free-form because providers
+  // differ on naming; the catalog stores whatever the canonical adapter
+  // returns.
+  string season = 6;
+}
+
+message ListCompetitionsRequest {
+  optional string country_code = 1;
+}
+
+message ListCompetitionsResponse {
+  repeated Competition competitions = 1;
+}
+
+message GetCompetitionRequest {
+  string id = 1;
+}
+
+service CompetitionService {
+  rpc List(ListCompetitionsRequest) returns (ListCompetitionsResponse);
+  rpc Get(GetCompetitionRequest) returns (Competition);
+}

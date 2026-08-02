@@ -1,0 +1,18 @@
+{
+  "schema_version": "insight.platform.action-catalog/1",
+  "actions": [
+    {"id":"explorer.pipeline.pause","target_service":"explorer","risk":"medium","approval_required":false,"idempotent":true,"executor":"explorer_http_v1"},
+    {"id":"explorer.pipeline.resume","target_service":"explorer","risk":"medium","approval_required":false,"idempotent":true,"executor":"explorer_http_v1"},
+    {"id":"explorer.job.retry","target_service":"explorer","risk":"medium","approval_required":false,"idempotent":true,"executor":"explorer_http_v1"},
+    {"id":"platform.dlq.replay","target_service":"gateway","risk":"high","approval_required":true,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"identity.session.revoke","target_service":"gateway","risk":"high","approval_required":true,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"social.agent.deactivate","target_service":"social","risk":"high","approval_required":true,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"social.agent.reactivate","target_service":"social","risk":"high","approval_required":true,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"social.content.hide","target_service":"social","risk":"high","approval_required":false,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"social.content.restore","target_service":"social","risk":"high","approval_required":false,"idempotent":true,"executor":"gateway_http_v1"},
+    {"id":"operations.incident.create","target_service":"robozao-gateway","risk":"low","approval_required":false,"idempotent":false,"executor":"robozao-gateway"},
+    {"id":"operations.incident.acknowledge","target_service":"robozao-gateway","risk":"low","approval_required":false,"idempotent":true,"executor":"robozao-gateway"},
+    {"id":"operations.incident.assign","target_service":"robozao-gateway","risk":"low","approval_required":false,"idempotent":true,"executor":"robozao-gateway"},
+    {"id":"operations.incident.resolve","target_service":"robozao-gateway","risk":"medium","approval_required":false,"idempotent":true,"executor":"robozao-gateway"}
+  ]
+}

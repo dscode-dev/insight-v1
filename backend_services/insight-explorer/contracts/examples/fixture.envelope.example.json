@@ -1,0 +1,27 @@
+{
+  "schema_version": "explorer.envelope.v1",
+  "source": "fbref",
+  "provider": "fbref-fixture-scraper-v1",
+  "source_type": "historical",
+  "trust_level": "medium",
+  "confidence": 0.82,
+  "captured_at": "2026-06-13T12:00:00Z",
+  "entity_type": "fixture",
+  "external_id": "fbref-2022-fla-pal-0420",
+  "canonical_match_id": null,
+  "competition": { "competition_key": "brasileirao_serie_a", "competition_id": null, "external_id": "24", "name": "Campeonato Brasileiro Série A" },
+  "season": "2022",
+  "payload": {
+    "external_fixture_id": "fbref-2022-fla-pal-0420",
+    "scheduled_at": "2022-04-20T23:00:00Z",
+    "status": "finished",
+    "status_detail": "FT",
+    "venue": "Maracanã",
+    "home_team": { "name": "Flamengo", "external_id": "fla", "club_id": "flamengo", "short_name": "FLA" },
+    "away_team": { "name": "Palmeiras", "external_id": "pal", "club_id": "palmeiras", "short_name": "PAL" },
+    "competition_key": "brasileirao_serie_a",
+    "season": "2022",
+    "score": { "home": 1, "away": 1, "halftime_home": 0, "halftime_away": 1 }
+  },
+  "provenance": { "url": "https://fbref.com/...", "retrieved_at": "2026-06-13T12:00:00Z", "method": "scrape", "parser": "fbref-fixture-scraper-v1", "checksum": "sha256:abc", "license_note": "fbref ToS" }
+}

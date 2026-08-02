@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package campaign.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/campaign/v1;campaignv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Daily rollup row. Authoritative for billing — never recomputed from
+// raw events older than the closing window (default 24h).
+message CampaignDailyAggregate {
+  string campaign_id = 1;
+  // Day in UTC (YYYY-MM-DD).
+  string day = 2;
+  int64 impressions = 3;
+  int64 clicks = 4;
+  // Spent cents are derived from CPM/CPC at billing time; persisted
+  // here at the daily close.
+  int64 spent_cents = 5;
+}
+
+message AggregateRequest {
+  optional string campaign_id = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+}
+
+message AggregateResponse {
+  repeated CampaignDailyAggregate days = 1;
+}
+
+service AnalyticsService {
+  rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+}

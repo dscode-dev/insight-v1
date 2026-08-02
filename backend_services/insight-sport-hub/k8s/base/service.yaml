@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: insight-sports-hub
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: insight-sports-hub
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

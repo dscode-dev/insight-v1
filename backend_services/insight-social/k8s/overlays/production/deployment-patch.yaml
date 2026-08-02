@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insight-social
+spec:
+  replicas: 3
+  template:
+    spec:
+      # Topology spread so a single AZ outage doesn't take down all
+      # 3 replicas. Soft constraint — scheduler honours when possible
+      # but won't block a deploy if AZ capacity is tight.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: insight-social
+      containers:
+        - name: insight-social
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "2000m"
+              memory: "1Gi"

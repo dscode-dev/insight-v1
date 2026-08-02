@@ -1,0 +1,206 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+enum CommunityKind {
+  COMMUNITY_KIND_UNSPECIFIED = 0;
+  COMMUNITY_KIND_COMPETITION = 1;  // auto-created per competition
+  COMMUNITY_KIND_TOPIC = 2;        // user/curated topical groups
+}
+
+// CommunityRole is the canonical authorization + presentation role of a
+// membership. `community_members.role` is the SOURCE OF TRUTH; the legacy
+// `is_moderator` bool is kept only for wire compatibility during
+// FEATURE-COMMUNITIES-V1 and is derived from role (true for MODERATOR and
+// above). Ordering of the numbers is deliberate: higher = more privileged.
+enum CommunityRole {
+  COMMUNITY_ROLE_UNSPECIFIED = 0;
+  COMMUNITY_ROLE_MEMBER = 1;
+  COMMUNITY_ROLE_MODERATOR = 2;
+  COMMUNITY_ROLE_ADMIN = 3;
+  COMMUNITY_ROLE_OWNER = 4;
+}
+
+// CommunityListSort selects the ordering of List results.
+//
+// UNSPECIFIED resolves to NEWEST server-side so clients sending the old
+// (W2.0/W2.1) request still get the same behaviour after the field is
+// added — no breaking change.
+//
+// Pagination note: cursor pagination is only supported for NEWEST in
+// W2.2.1. HOT and POPULAR return a single page (NextCursor unset)
+// regardless of how many results match — see the social repo comments
+// for the rationale.
+enum CommunityListSort {
+  COMMUNITY_LIST_SORT_UNSPECIFIED = 0;
+  COMMUNITY_LIST_SORT_NEWEST = 1;   // ORDER BY created_at DESC, id DESC
+  COMMUNITY_LIST_SORT_HOT = 2;      // ORDER BY active_now DESC, member_count DESC, id DESC
+  COMMUNITY_LIST_SORT_POPULAR = 3;  // ORDER BY member_count DESC, id DESC
+}
+
+message Community {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  string topic = 4;
+  CommunityKind kind = 5;
+  optional string competition_id = 6;
+  string accent_color = 7;
+  int64 member_count = 8;
+  int64 active_now = 9;       // last 15min window
+  google.protobuf.Timestamp created_at = 10;
+  // Owner of the community, synced to exactly one CommunityMember with
+  // role OWNER. Absent => OWNER_UNASSIGNED: a legacy community created
+  // before ownership existed, or a competition community with no user
+  // owner. New topic communities are always created with an owner.
+  optional string owner_user_id = 11;
+}
+
+message CommunityMember {
+  string user_id = 1;
+  string community_id = 2;
+  google.protobuf.Timestamp joined_at = 3;
+  // DEPRECATED: kept for wire compatibility. Derived from `role`
+  // (true for MODERATOR and above). Use `role` for authorization.
+  bool is_moderator = 4;
+  CommunityRole role = 5;
+}
+
+// CommunityMemberProfile is the enriched member row returned by
+// ListMembers — a single JOIN with users (no N+1). Only PUBLIC profile
+// fields are exposed; no private data crosses this boundary.
+message CommunityMemberProfile {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  string initials = 4;
+  string accent_color = 5;
+  string avatar_url = 6;      // empty when no avatar uploaded
+  int32 reputation = 7;
+  CommunityRole role = 8;
+  google.protobuf.Timestamp joined_at = 9;
+}
+
+// ---- requests ----
+
+message ListCommunitiesRequest {
+  optional CommunityKind kind = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+  // Added in W2.2.1. Defaults to NEWEST when UNSPECIFIED (preserves
+  // pre-W2.2.1 behaviour for existing callers).
+  CommunityListSort sort = 4;
+}
+
+message ListCommunitiesResponse {
+  repeated Community communities = 1;
+  optional string next_cursor = 2;
+}
+
+message GetCommunityRequest {
+  string id = 1;
+}
+
+message CreateTopicCommunityRequest {
+  string slug = 1;
+  string name = 2;
+  string topic = 3;
+  optional string accent_color = 4;
+  // Required going forward: the creating user, who becomes the OWNER in
+  // the same transaction. The gateway derives this from the trusted
+  // session (X-User-Id), never from client-supplied data.
+  string owner_user_id = 5;
+}
+
+message JoinCommunityRequest {
+  string community_id = 1;
+  string user_id = 2;
+}
+
+message LeaveCommunityRequest {
+  string community_id = 1;
+  string user_id = 2;
+}
+
+// W2.2.1 — added so the Hub "mine" segment in the gateway BFF can
+// resolve to the user's joined communities. Order is recency-of-join
+// DESC (newest membership first).
+message ListCommunitiesForUserRequest {
+  string user_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListCommunitiesForUserResponse {
+  repeated Community communities = 1;
+  optional string next_cursor = 2;
+}
+
+// GetCommunityMembership resolves ONE user's membership in a community —
+// backs the Gateway aggregate's viewer_role / membership_status. NotFound
+// when the user is not a member.
+message GetCommunityMembershipRequest {
+  string community_id = 1;
+  string user_id = 2;
+}
+
+// RoleCounts is the distribution of members by role (for the aggregate's
+// role_counts — never a members array in the detail).
+message RoleCounts {
+  int64 owner = 1;
+  int64 admin = 2;
+  int64 moderator = 3;
+  int64 member = 4;
+}
+
+// CommunityStats is the user-independent numeric projection of a community.
+// Cacheable per community (no per-user data). discussion_count reflects the
+// OFFICIAL community content domain (Discussions) — never Posts.
+message CommunityStats {
+  string community_id = 1;
+  int64 member_count = 2;
+  int64 active_now = 3;
+  int64 discussion_count = 4;
+  RoleCounts role_counts = 5;
+}
+
+message GetCommunityStatsRequest {
+  string community_id = 1;
+}
+
+// ListCommunityMembers — keyset-paginated members of a community, ordered
+// by role priority (OWNER→ADMIN→MODERATOR→MEMBER), then joined_at ASC,
+// then user_id (stable total order). The optional role filter projects a
+// single tier (e.g. only admins/mods) from the SAME query — there are no
+// separate owner/admin/moderator list RPCs.
+message ListCommunityMembersRequest {
+  string community_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+  optional CommunityRole role = 4;  // optional single-role projection
+}
+
+message ListCommunityMembersResponse {
+  repeated CommunityMemberProfile members = 1;
+  optional string next_cursor = 2;
+}
+
+service CommunityService {
+  rpc List(ListCommunitiesRequest) returns (ListCommunitiesResponse);
+  rpc ListForUser(ListCommunitiesForUserRequest) returns (ListCommunitiesForUserResponse);
+  rpc Get(GetCommunityRequest) returns (Community);
+  rpc CreateTopic(CreateTopicCommunityRequest) returns (Community);
+  rpc Join(JoinCommunityRequest) returns (CommunityMember);
+  rpc Leave(LeaveCommunityRequest) returns (google.protobuf.Empty);
+  // FEATURE-COMMUNITIES-V1 — enriched, keyset-paginated members list.
+  rpc ListMembers(ListCommunityMembersRequest) returns (ListCommunityMembersResponse);
+  // Viewer's membership (role + presence), for the Gateway detail aggregate.
+  rpc GetMembership(GetCommunityMembershipRequest) returns (CommunityMember);
+  // User-independent numeric projection (counters + role distribution).
+  rpc GetStats(GetCommunityStatsRequest) returns (CommunityStats);
+}

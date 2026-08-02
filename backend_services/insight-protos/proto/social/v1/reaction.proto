@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Sprint B — Reactions on Discussions.
+//
+// Why Discussion-only in V1: the Flutter heart button currently only
+// renders on Discussion-kind feed cards. Polymorphic targets (signal,
+// message, anything-else) would force a generic `target_id` column
+// at storage, which we'd rather not commit to until a second target
+// kind actually needs reactions.
+
+enum ReactionKind {
+  REACTION_KIND_UNSPECIFIED = 0;
+  REACTION_KIND_LIKE = 1;  // heart / love — the only kind today
+}
+
+message Reaction {
+  string user_id = 1;
+  string discussion_id = 2;
+  ReactionKind kind = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// ---- requests ----
+
+message ReactRequest {
+  string user_id = 1;
+  string discussion_id = 2;
+  ReactionKind kind = 3;  // defaults to LIKE server-side when UNSPECIFIED
+}
+
+message UnreactRequest {
+  string user_id = 1;
+  string discussion_id = 2;
+  ReactionKind kind = 3;
+}
+
+// State for a (discussion, viewer) pair — what the BFF needs to render
+// the heart button. `liked_by_user` is unset (false) when no user_id
+// was supplied in the request.
+message DiscussionReactionState {
+  string discussion_id = 1;
+  int64 like_count = 2;
+  bool liked_by_user = 3;
+}
+
+message GetDiscussionReactionStateRequest {
+  string discussion_id = 1;
+  // Optional — when set, the response reports liked_by_user. When
+  // unset, only like_count is populated.
+  optional string user_id = 2;
+}
+
+// Bulk variant for feed rendering: avoid N+1 by fetching reaction
+// state for many discussions in one round-trip.
+message BatchGetDiscussionReactionStateRequest {
+  repeated string discussion_ids = 1;
+  optional string user_id = 2;
+}
+
+message BatchGetDiscussionReactionStateResponse {
+  repeated DiscussionReactionState states = 1;
+}
+
+service ReactionService {
+  rpc React(ReactRequest) returns (Reaction);
+  rpc Unreact(UnreactRequest) returns (google.protobuf.Empty);
+  rpc StateForDiscussion(GetDiscussionReactionStateRequest) returns (DiscussionReactionState);
+  rpc BatchStateForDiscussions(BatchGetDiscussionReactionStateRequest) returns (BatchGetDiscussionReactionStateResponse);
+}

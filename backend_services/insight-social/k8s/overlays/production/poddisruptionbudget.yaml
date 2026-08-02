@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: insight-social
+spec:
+  # 3 replicas, allow at most one voluntarily disrupted at a time
+  # (node drain, cluster upgrade). Matches the rollingUpdate
+  # maxUnavailable: 0 / maxSurge: 1 contract.
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: insight-social

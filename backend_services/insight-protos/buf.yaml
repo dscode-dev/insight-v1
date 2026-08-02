@@ -1,0 +1,35 @@
+# Buf config for the Insight platform proto repo.
+#
+# Single source of truth for every gRPC contract across the Go services
+# and the Python ML services. Generated stubs published per-language
+# from CI (gen/go is a Go module; gen/py is a wheel).
+#
+# Versioning rule:
+#   * Anything inside `<service>/v1/` is locked at v1.
+#   * Breaking changes require `<service>/v2/` alongside.
+#   * `buf breaking` runs in CI against the previous tag.
+
+version: v2
+
+modules:
+  - path: proto
+
+lint:
+  use:
+    - STANDARD
+  except:
+    # We use snake_case in package names (e.g., `social.v1`). Buf's default
+    # PACKAGE_NO_IMPORT_CYCLE plus DIRECTORY_SAME_PACKAGE keep our layout
+    # tidy; this exception covers an idiom where a directory matches a
+    # versioned package exactly without redundant nesting.
+    - PACKAGE_VERSION_SUFFIX
+
+breaking:
+  use:
+    - FILE
+  except:
+    # Field-number reservations are an explicit decision; we never
+    # remove a field without bumping the version dir.
+    - FIELD_NO_DELETE
+
+deps: []

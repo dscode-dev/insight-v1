@@ -1,0 +1,25 @@
+{
+  "schema_version": "insight.v1.competitions/1",
+  "competitions": [
+    {
+      "key": "brasileirao_serie_a",
+      "name": "Campeonato Brasileiro Série A"
+    },
+    {
+      "key": "premier_league",
+      "name": "Premier League"
+    },
+    {
+      "key": "la_liga",
+      "name": "La Liga"
+    },
+    {
+      "key": "champions_league",
+      "name": "UEFA Champions League"
+    },
+    {
+      "key": "libertadores",
+      "name": "CONMEBOL Libertadores"
+    }
+  ]
+}

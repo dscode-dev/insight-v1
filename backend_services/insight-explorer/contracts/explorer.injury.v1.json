@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.injury.v1.json",
+  "title": "explorer.injury.v1",
+  "description": "An injury / suspension / unavailability for a player relative to a fixture. entity_type='injury'. Maps to Sport Hub 'match.team_changes' (best_effort).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["external_fixture_id", "team_side", "player", "reason"],
+  "properties": {
+    "external_fixture_id": { "type": "string", "minLength": 1 },
+    "team_side": { "enum": ["home", "away"] },
+    "team": { "$ref": "explorer.fixture.v1.json#/$defs/team" },
+    "player": { "type": "string", "minLength": 1 },
+    "player_external_id": { "type": ["string", "null"] },
+    "reason": { "enum": ["injury", "suspension", "doubtful", "national_duty", "personal", "unknown"] },
+    "status": { "enum": ["out", "doubtful", "available"], "default": "out" },
+    "detail": { "type": ["string", "null"] }
+  }
+}

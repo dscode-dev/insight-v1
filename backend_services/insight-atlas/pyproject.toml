@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "insight-atlas"
+version = "0.1.0"
+description = "Atlas (Insight Layer M) — ML context layer for contextual intelligence, pattern discovery, anomaly detection. NOT a betting predictor."
+authors = ["KonohaLabs <dev@konohalabs.com>"]
+packages = [{ include = "atlas" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.15"
+
+# HTTP / API
+fastapi = "^0.115"
+uvicorn = { version = "^0.32", extras = ["standard"] }
+httpx = "^0.27"
+
+# Domain
+pydantic = "^2.7.4"
+pydantic-settings = "^2.4.0"
+orjson = "^3.10.7"
+pyarrow = "^18.0"
+
+# Persistence
+redis = "^5.0.7"
+sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
+asyncpg = "^0.29"
+alembic = "^1.13"
+
+# ML — pinned conservative versions. Tree models + clustering only.
+# No LLMs, no torch, no transformers.
+numpy = "^1.26"
+scikit-learn = "^1.5"
+xgboost = "^2.1"
+lightgbm = "^4.5"
+hdbscan = "^0.8.38"
+joblib = "^1.4"
+
+# Observability
+prometheus_client = "^0.20"
+grpcio = "^1.64"
+protobuf = "^5.27"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.3"
+pytest = "^8.0"
+pytest-asyncio = "^0.24"
+fakeredis = "^2.23"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package atlas.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/atlas/v1;atlasv1";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Atlas guarantees the response is descriptive context only — no
+// betting predictions, no win probabilities. Each subblock has a
+// schema documented in Atlas's `inference/output.py`, surfaced here
+// as opaque Struct so we can iterate without breaking the wire.
+
+message MatchContextResponse {
+  string match_id = 1;
+  int32 feature_schema_version = 2;
+  google.protobuf.Timestamp computed_at = 3;
+  google.protobuf.Struct anomaly = 4;
+  google.protobuf.Struct cluster = 5;
+  google.protobuf.Struct density = 6;
+  google.protobuf.Struct classifier = 7;
+}
+
+message FeatureSnapshot {
+  string match_id = 1;
+  int32 feature_schema_version = 2;
+  google.protobuf.Timestamp as_of = 3;
+  google.protobuf.Struct features = 4;
+}
+
+message GetMatchContextRequest {
+  string match_id = 1;
+}
+
+message RebuildSnapshotRequest {
+  string match_id = 1;
+}
+
+service ContextService {
+  rpc GetMatchContext(GetMatchContextRequest) returns (MatchContextResponse);
+  rpc RebuildSnapshot(RebuildSnapshotRequest) returns (FeatureSnapshot);
+}

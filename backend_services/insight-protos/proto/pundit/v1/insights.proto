@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package pundit.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/pundit/v1;punditv1";
+
+import "google/protobuf/timestamp.proto";
+
+enum AgentId {
+  AGENT_ID_UNSPECIFIED = 0;
+  AGENT_ID_SCOUT = 1;
+  AGENT_ID_PULSE = 2;
+  AGENT_ID_MOMENTUM = 3;
+  AGENT_ID_STATS = 4;
+  AGENT_ID_HISTORY = 5;
+}
+
+enum InsightKind {
+  INSIGHT_KIND_UNSPECIFIED = 0;
+  INSIGHT_KIND_OBSERVATION = 1;
+  INSIGHT_KIND_TACTICAL = 2;
+  INSIGHT_KIND_HISTORICAL = 3;
+}
+
+message AgentInsight {
+  string id = 1;
+  string match_id = 2;
+  AgentId agent = 3;
+  InsightKind kind = 4;
+  string label = 5;
+  string body = 6;
+  double confidence = 7;   // 0..1
+  optional int32 minute = 8;
+  google.protobuf.Timestamp ts = 9;
+}
+
+message ListForMatchRequest {
+  string match_id = 1;
+  optional int32 limit = 2;
+  optional AgentId agent = 3;
+}
+
+message ListForMatchResponse {
+  repeated AgentInsight insights = 1;
+}
+
+message RecentRequest {
+  optional int32 limit = 1;
+  optional AgentId agent = 2;
+}
+
+message RecentResponse {
+  repeated AgentInsight insights = 1;
+}
+
+service InsightsService {
+  rpc ListForMatch(ListForMatchRequest) returns (ListForMatchResponse);
+  rpc Recent(RecentRequest) returns (RecentResponse);
+}

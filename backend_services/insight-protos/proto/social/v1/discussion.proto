@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package social.v1;
+
+option go_package = "github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1";
+
+import "google/protobuf/timestamp.proto";
+
+message Discussion {
+  string id = 1;
+  string community_id = 2;
+  string author_id = 3;
+  string title = 4;
+  string body = 5;
+  optional string match_id = 6;
+  int64 reply_count = 7;
+  int64 reaction_count = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp last_activity_ts = 10;
+}
+
+message DiscussionMessage {
+  string id = 1;
+  string discussion_id = 2;
+  string author_id = 3;
+  string body = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// ---- requests ----
+
+message ListDiscussionsRequest {
+  string community_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListDiscussionsResponse {
+  repeated Discussion discussions = 1;
+  optional string next_cursor = 2;
+}
+
+message GetDiscussionRequest {
+  string id = 1;
+}
+
+message StartDiscussionRequest {
+  string community_id = 1;
+  string author_id = 2;
+  string title = 3;
+  string body = 4;
+  optional string match_id = 5;
+}
+
+message PostMessageRequest {
+  string discussion_id = 1;
+  string author_id = 2;
+  string body = 3;
+}
+
+message ListMessagesRequest {
+  string discussion_id = 1;
+  optional int32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListMessagesResponse {
+  repeated DiscussionMessage messages = 1;
+  optional string next_cursor = 2;
+}
+
+service DiscussionService {
+  rpc ListForCommunity(ListDiscussionsRequest) returns (ListDiscussionsResponse);
+  // Added for the gateway DiscussionThread BFF — fetches the header
+  // (title, body, counts) for an existing discussion by id.
+  rpc Get(GetDiscussionRequest) returns (Discussion);
+  rpc Start(StartDiscussionRequest) returns (Discussion);
+  rpc PostMessage(PostMessageRequest) returns (DiscussionMessage);
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+}

@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base manifests for insight-social. Overlays patch image tag, replica
+# count, environment-specific config, and add the migrations Job
+# (production only — local-lab uses AUTO_APPLY_MIGRATIONS=true).
+namespace: insight
+
+commonLabels:
+  app.kubernetes.io/name: insight-social
+  app.kubernetes.io/part-of: insight
+  app.kubernetes.io/component: backend-grpc
+
+resources:
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - external-secret.yaml

@@ -1,0 +1,709 @@
+[
+  {
+    "club_id": "ac_milan",
+    "name": "AC Milan",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/ac_milan.png"
+  },
+  {
+    "club_id": "amazonas",
+    "name": "Amazonas",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/amazonas.png"
+  },
+  {
+    "club_id": "america_mineiro",
+    "name": "América Mineiro",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/america_mineiro.png"
+  },
+  {
+    "club_id": "argentina",
+    "name": "Argentina",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/argentina.png"
+  },
+  {
+    "club_id": "arsenal",
+    "name": "Arsenal",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/arsenal.png"
+  },
+  {
+    "club_id": "as_monaco",
+    "name": "AS Monaco",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/as_monaco.png"
+  },
+  {
+    "club_id": "as_roma",
+    "name": "AS Roma",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/as_roma.png"
+  },
+  {
+    "club_id": "aston_villa",
+    "name": "Aston Villa",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/aston_villa.png"
+  },
+  {
+    "club_id": "atalanta",
+    "name": "Atalanta",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/atalanta.png"
+  },
+  {
+    "club_id": "athletic_bilbao",
+    "name": "Athletic Bilbao",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/athletic_bilbao.png"
+  },
+  {
+    "club_id": "athletico_paranaense",
+    "name": "Athletico Paranaense",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/athletico_paranaense.png"
+  },
+  {
+    "club_id": "atletico_madrid",
+    "name": "Atlético Madrid",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/atletico_madrid.png"
+  },
+  {
+    "club_id": "atletico_mineiro",
+    "name": "Atlético Mineiro",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/atletico_mineiro.png"
+  },
+  {
+    "club_id": "avai",
+    "name": "Avaí",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/avai.png"
+  },
+  {
+    "club_id": "bahia",
+    "name": "Bahia",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/bahia.png"
+  },
+  {
+    "club_id": "barcelona",
+    "name": "Barcelona",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/barcelona.png"
+  },
+  {
+    "club_id": "bayer_leverkusen",
+    "name": "Bayer Leverkusen",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/bayer_leverkusen.png"
+  },
+  {
+    "club_id": "bayern_munich",
+    "name": "Bayern Munich",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/bayern_munich.png"
+  },
+  {
+    "club_id": "belgium",
+    "name": "Belgium",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/belgium.png"
+  },
+  {
+    "club_id": "bologna",
+    "name": "Bologna",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/bologna.png"
+  },
+  {
+    "club_id": "borussia_dortmund",
+    "name": "Borussia Dortmund",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/borussia_dortmund.png"
+  },
+  {
+    "club_id": "borussia_monchengladbach",
+    "name": "Borussia Mönchengladbach",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/borussia_monchengladbach.png"
+  },
+  {
+    "club_id": "botafogo",
+    "name": "Botafogo",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/botafogo.png"
+  },
+  {
+    "club_id": "bragantino",
+    "name": "Bragantino",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/bragantino.png"
+  },
+  {
+    "club_id": "brazil",
+    "name": "Brazil",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/brazil.png"
+  },
+  {
+    "club_id": "brentford",
+    "name": "Brentford",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/brentford.png"
+  },
+  {
+    "club_id": "brighton_hove_albion",
+    "name": "Brighton & Hove Albion",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/brighton_hove_albion.png"
+  },
+  {
+    "club_id": "ceara",
+    "name": "Ceará",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/ceara.png"
+  },
+  {
+    "club_id": "chapecoense",
+    "name": "Chapecoense",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/chapecoense.png"
+  },
+  {
+    "club_id": "chelsea",
+    "name": "Chelsea",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/chelsea.png"
+  },
+  {
+    "club_id": "corinthians",
+    "name": "Corinthians",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/corinthians.png"
+  },
+  {
+    "club_id": "coritiba",
+    "name": "Coritiba",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/coritiba.png"
+  },
+  {
+    "club_id": "criciuma",
+    "name": "Criciúma",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/criciuma.png"
+  },
+  {
+    "club_id": "croatia",
+    "name": "Croatia",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/croatia.png"
+  },
+  {
+    "club_id": "cruzeiro",
+    "name": "Cruzeiro",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/cruzeiro.png"
+  },
+  {
+    "club_id": "crystal_palace",
+    "name": "Crystal Palace",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/crystal_palace.png"
+  },
+  {
+    "club_id": "cuiaba",
+    "name": "Cuiabá",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/cuiaba.png"
+  },
+  {
+    "club_id": "eintracht_frankfurt",
+    "name": "Eintracht Frankfurt",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/eintracht_frankfurt.png"
+  },
+  {
+    "club_id": "england",
+    "name": "England",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/england.png"
+  },
+  {
+    "club_id": "everton",
+    "name": "Everton",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/everton.png"
+  },
+  {
+    "club_id": "fiorentina",
+    "name": "Fiorentina",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/fiorentina.png"
+  },
+  {
+    "club_id": "flamengo",
+    "name": "Flamengo",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/flamengo.png"
+  },
+  {
+    "club_id": "fluminense",
+    "name": "Fluminense",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/fluminense.png"
+  },
+  {
+    "club_id": "fortaleza",
+    "name": "Fortaleza",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/fortaleza.png"
+  },
+  {
+    "club_id": "france",
+    "name": "France",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/france.png"
+  },
+  {
+    "club_id": "fulham",
+    "name": "Fulham",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/fulham.png"
+  },
+  {
+    "club_id": "germany",
+    "name": "Germany",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/germany.png"
+  },
+  {
+    "club_id": "girona",
+    "name": "Girona",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/girona.png"
+  },
+  {
+    "club_id": "goias",
+    "name": "Goiás",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/goias.png"
+  },
+  {
+    "club_id": "gremio",
+    "name": "Grêmio",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/gremio.png"
+  },
+  {
+    "club_id": "inter_milan",
+    "name": "Inter Milan",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/inter_milan.png"
+  },
+  {
+    "club_id": "internacional",
+    "name": "Internacional",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/internacional.png"
+  },
+  {
+    "club_id": "italy",
+    "name": "Italy",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/italy.png"
+  },
+  {
+    "club_id": "japan",
+    "name": "Japan",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/japan.png"
+  },
+  {
+    "club_id": "juventude",
+    "name": "Juventude",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/juventude.png"
+  },
+  {
+    "club_id": "juventus",
+    "name": "Juventus",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/juventus.png"
+  },
+  {
+    "club_id": "lazio",
+    "name": "Lazio",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/lazio.png"
+  },
+  {
+    "club_id": "lens",
+    "name": "Lens",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/lens.png"
+  },
+  {
+    "club_id": "lille",
+    "name": "Lille",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/lille.png"
+  },
+  {
+    "club_id": "liverpool",
+    "name": "Liverpool",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/liverpool.png"
+  },
+  {
+    "club_id": "manchester_city",
+    "name": "Manchester City",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/manchester_city.png"
+  },
+  {
+    "club_id": "manchester_united",
+    "name": "Manchester United",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/manchester_united.png"
+  },
+  {
+    "club_id": "mexico",
+    "name": "Mexico",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/mexico.png"
+  },
+  {
+    "club_id": "mirassol",
+    "name": "Mirassol",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/mirassol.png"
+  },
+  {
+    "club_id": "morocco",
+    "name": "Morocco",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/morocco.png"
+  },
+  {
+    "club_id": "napoli",
+    "name": "Napoli",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/napoli.png"
+  },
+  {
+    "club_id": "netherlands",
+    "name": "Netherlands",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/netherlands.png"
+  },
+  {
+    "club_id": "newcastle_united",
+    "name": "Newcastle United",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/newcastle_united.png"
+  },
+  {
+    "club_id": "nice",
+    "name": "Nice",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/nice.png"
+  },
+  {
+    "club_id": "nottingham_forest",
+    "name": "Nottingham Forest",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/nottingham_forest.png"
+  },
+  {
+    "club_id": "novorizontino",
+    "name": "Novorizontino",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/novorizontino.png"
+  },
+  {
+    "club_id": "olympique_de_marseille",
+    "name": "Olympique de Marseille",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/olympique_de_marseille.png"
+  },
+  {
+    "club_id": "olympique_lyonnais",
+    "name": "Olympique Lyonnais",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/olympique_lyonnais.png"
+  },
+  {
+    "club_id": "operario",
+    "name": "Operário",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/operario.png"
+  },
+  {
+    "club_id": "palmeiras",
+    "name": "Palmeiras",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/palmeiras.png"
+  },
+  {
+    "club_id": "paris_saint_germain",
+    "name": "Paris Saint-Germain",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/paris_saint_germain.png"
+  },
+  {
+    "club_id": "paysandu",
+    "name": "Paysandu",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/paysandu.png"
+  },
+  {
+    "club_id": "portugal",
+    "name": "Portugal",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/portugal.png"
+  },
+  {
+    "club_id": "rb_leipzig",
+    "name": "RB Leipzig",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/rb_leipzig.png"
+  },
+  {
+    "club_id": "real_betis",
+    "name": "Real Betis",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/real_betis.png"
+  },
+  {
+    "club_id": "real_madrid",
+    "name": "Real Madrid",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/real_madrid.png"
+  },
+  {
+    "club_id": "real_sociedad",
+    "name": "Real Sociedad",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/real_sociedad.png"
+  },
+  {
+    "club_id": "rennes",
+    "name": "Rennes",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/rennes.png"
+  },
+  {
+    "club_id": "santos",
+    "name": "Santos",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/santos.png"
+  },
+  {
+    "club_id": "sao_paulo",
+    "name": "São Paulo",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/sao_paulo.png"
+  },
+  {
+    "club_id": "sevilla",
+    "name": "Sevilla",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/sevilla.png"
+  },
+  {
+    "club_id": "spain",
+    "name": "Spain",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/spain.png"
+  },
+  {
+    "club_id": "sport_recife",
+    "name": "Sport Recife",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/sport_recife.png"
+  },
+  {
+    "club_id": "torino",
+    "name": "Torino",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/torino.png"
+  },
+  {
+    "club_id": "tottenham_hotspur",
+    "name": "Tottenham Hotspur",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/tottenham_hotspur.png"
+  },
+  {
+    "club_id": "united_states",
+    "name": "United States",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/united_states.png"
+  },
+  {
+    "club_id": "uruguay",
+    "name": "Uruguay",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/uruguay.png"
+  },
+  {
+    "club_id": "valencia",
+    "name": "Valencia",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/valencia.png"
+  },
+  {
+    "club_id": "vasco_da_gama",
+    "name": "Vasco da Gama",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/vasco_da_gama.png"
+  },
+  {
+    "club_id": "vfb_stuttgart",
+    "name": "VfB Stuttgart",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/vfb_stuttgart.png"
+  },
+  {
+    "club_id": "vfl_wolfsburg",
+    "name": "VfL Wolfsburg",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/vfl_wolfsburg.png"
+  },
+  {
+    "club_id": "vila_nova",
+    "name": "Vila Nova",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/vila_nova.png"
+  },
+  {
+    "club_id": "villarreal",
+    "name": "Villarreal",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/villarreal.png"
+  },
+  {
+    "club_id": "vitoria",
+    "name": "Vitória",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/vitoria.png"
+  },
+  {
+    "club_id": "west_ham_united",
+    "name": "West Ham United",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/west_ham_united.png"
+  },
+  {
+    "club_id": "wolverhampton_wanderers",
+    "name": "Wolverhampton Wanderers",
+    "status": "real",
+    "source": "wikipedia-infobox",
+    "file": "assets/clubs/real/wolverhampton_wanderers.png"
+  }
+]

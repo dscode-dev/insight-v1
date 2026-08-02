@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: insight
+
+resources:
+  - service.yaml
+  - certificate.yaml
+  - certificate-social.yaml   # W2.2 — mTLS client cert for insight-social
+  - external-secret.yaml
+  - configmap.yaml
+  - deployment.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: insight
+      insight.konohalabs.io/migrated: "true"  # marker — managed by Go runtime

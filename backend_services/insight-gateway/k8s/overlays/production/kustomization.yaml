@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay:
+#   * 2-replica baseline + HPA up to 6
+#   * HSTS enabled (TLS terminated at Ingress; reverse-proxy on insight-gateway)
+#   * Production CSP — only same-origin + the media CDN domain.
+#   * Migrations run as a Job, NOT inline. The gateway Deployment
+#     boots with AUTO_APPLY_MIGRATIONS=false.
+
+namespace: insight
+
+resources:
+  - ../../base
+  - migrations-job.yaml
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: insight-gateway-config
+    patch: |-
+      - op: replace
+        path: /data/ENABLE_HSTS
+        value: "true"
+      - op: replace
+        path: /data/CSP_OVERRIDE
+        value: "default-src 'self'; img-src 'self' data: https://images.konohalabs.com; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"
+      - op: replace
+        path: /data/AUTO_APPLY_MIGRATIONS
+        value: "false"
+      - op: replace
+        path: /data/INSIGHT_OTLP_SAMPLE_RATIO
+        value: "1.0"

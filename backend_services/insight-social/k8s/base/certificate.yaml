@@ -1,0 +1,31 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: insight-social-tls
+spec:
+  secretName: insight-social-tls
+  # Cluster-internal mTLS — issued by the in-cluster ClusterIssuer
+  # `insight-internal-ca`, NOT the public ACME issuer used for the
+  # gateway's TLS termination at the ingress.
+  issuerRef:
+    name: insight-internal-ca
+    kind: ClusterIssuer
+  commonName: insight-social.insight.svc.cluster.local
+  dnsNames:
+    - insight-social
+    - insight-social.insight
+    - insight-social.insight.svc
+    - insight-social.insight.svc.cluster.local
+    - insight-social-headless
+    - insight-social-headless.insight
+    - insight-social-headless.insight.svc
+    - insight-social-headless.insight.svc.cluster.local
+  duration: 2160h     # 90d
+  renewBefore: 360h   # 15d before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - server auth
+    - client auth   # service also acts as client (intra-platform gRPC)
