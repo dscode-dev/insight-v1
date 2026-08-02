@@ -45,7 +45,7 @@ services:
       - robozao-ops
 
   insight-console:
-    image: konohalabs/insight-console:0.2.3@sha256:d70003de1d42fb5f5c6ac5bfac8c1f0b60b95c7a3c4f600c7327e1e285ad1882
+    image: konohalabs/insight-console:1.0.0
     container_name: insight-console
     restart: unless-stopped
     environment:
@@ -120,7 +120,7 @@ services:
       - robozao-ops
 
   atlas-migrate:
-    image: konohalabs/insight-atlas:0.0.6@sha256:8420574b685b798a601af974d1515b923d3138bf59f2fece5ee95cd7d92fb47f
+    image: konohalabs/insight-atlas:1.0.1
     restart: "no"
     user: "999:987"
     environment:
@@ -133,7 +133,7 @@ services:
       - robozao-ops
 
   atlas:
-    image: konohalabs/insight-atlas:0.0.6@sha256:8420574b685b798a601af974d1515b923d3138bf59f2fece5ee95cd7d92fb47f
+    image: konohalabs/insight-atlas:1.0.1
     container_name: insight-atlas
     restart: unless-stopped
     user: "999:987"
@@ -168,7 +168,7 @@ services:
       - robozao-ops
 
   insight-explorer:
-    image: konohalabs/insight-explorer:0.0.6@sha256:e33379f9d7a8f6ff6bd9d68cafc33695fbd4a656fbd8c4ed4f5ba02936aebe45
+    image: konohalabs/insight-explorer:1.0.0
     container_name: insight-explorer
     restart: unless-stopped
     environment:
