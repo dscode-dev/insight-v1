@@ -22,7 +22,7 @@ pyarrow = "^18.0"
 # Persistence
 redis = "^5.0.7"
 sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
-asyncpg = "^0.29"
+asyncpg = "^0.31.0"
 alembic = "^1.13"
 
 # ML — pinned conservative versions. Tree models + clustering only.
