@@ -27,7 +27,7 @@ alembic = "^1.13"
 
 # ML — pinned conservative versions. Tree models + clustering only.
 # No LLMs, no torch, no transformers.
-numpy = "^1.26"
+numpy = "^2.3.4"
 scikit-learn = "^1.5"
 xgboost = "^2.1"
 lightgbm = "^4.5"
