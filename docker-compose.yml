@@ -76,7 +76,7 @@ services:
       - robozao-ops
 
   robozao-gateway:
-    image: konohalabs/insight-robozao-gateway:0.0.1@sha256:36a7848a7be6d928ae5a0cf19b85cf22258a6726e5d5bc787d7d64b33d79a5ed
+    image: konohalabs/insight-robozao-gateway:0.0.1
     container_name: insight-robozao-gateway
     restart: unless-stopped
     environment:
@@ -189,7 +189,7 @@ services:
       - robozao-ops
 
   sport-hub:
-    image: konohalabs/insight-sport-hub:0.0.3@sha256:92f70db948c763930876a46d034563caceb7eda893a4b31781f8a49c2d2e4b06
+    image: konohalabs/insight-sport-hub:0.0.3
     container_name: insight-sport-hub
     restart: unless-stopped
     environment:
@@ -219,7 +219,7 @@ services:
       - robozao-ops
 
   nexus-migrate:
-    image: konohalabs/insight-nexus:0.0.1@sha256:def4963551ff6a04cee501e475b8522632b5588c9dd4301298a0abc788631f7f
+    image: konohalabs/insight-nexus:0.0.2
     restart: "no"
     environment:
       DATABASE_URL: ${NEXUS_DATABASE_URL:?NEXUS_DATABASE_URL is required}
@@ -231,7 +231,7 @@ services:
       - robozao-ops
 
   insight-nexus:
-    image: konohalabs/insight-nexus:0.0.1@sha256:def4963551ff6a04cee501e475b8522632b5588c9dd4301298a0abc788631f7f
+    image: konohalabs/insight-nexus:0.0.2
     container_name: insight-nexus
     restart: unless-stopped
     environment:
