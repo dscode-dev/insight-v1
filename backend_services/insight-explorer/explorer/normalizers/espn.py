@@ -13,7 +13,7 @@ from typing import Any
 from explorer.adapters.base import RawArtifact
 from explorer.clubs import resolve_club
 from explorer.config import COMPETITIONS
-from explorer.datalake.lake import checksum
+from explorer.normalizers._envelope import build_envelope
 
 # ESPN status type name → normalized envelope status.
 _STATUS_MAP = {
@@ -102,32 +102,7 @@ def normalize(artifact: RawArtifact) -> dict[str, Any]:
     comp_def = COMPETITIONS.get(artifact.competition_key)
     confidence = 0.9 if status == "finished" else 0.75
 
-    envelope = {
-        "schema_version": "explorer.envelope.v1",
-        "source": artifact.source,
-        "provider": artifact.provider,
-        "source_type": artifact.source_type,
-        "trust_level": artifact.trust_level,
-        "confidence": confidence,
-        "captured_at": artifact.retrieved_at,
-        "entity_type": "fixture",
-        "external_id": artifact.external_id,
-        "canonical_match_id": None,
-        "competition": {
-            "competition_key": artifact.competition_key,
-            "competition_id": None,
-            "external_id": comp_def.espn_league if comp_def else None,
-            "name": comp_def.name if comp_def else None,
-        },
-        "season": artifact.season,
-        "payload": payload,
-        "provenance": {
-            "url": artifact.url,
-            "retrieved_at": artifact.retrieved_at,
-            "method": artifact.method,
-            "parser": artifact.provider,
-            "checksum": checksum(artifact.raw),
-            "license_note": artifact.license_note,
-        },
-    }
-    return envelope
+    return build_envelope(
+        artifact, confidence=confidence, payload=payload,
+        competition_external_id=comp_def.espn_league if comp_def else None,
+    )

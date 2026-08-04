@@ -5,7 +5,7 @@
 import {
   Activity, AlertOctagon, ServerCog,
   Newspaper, BarChart3,
-  Brain, BookOpen, Database, GitBranch, Server, Ticket,
+  Brain, BookOpen, Database, GitBranch, Radio, Server, Ticket,
   ScrollText, ShieldCheck, ShieldAlert,
   Users, UserCog, KeyRound,
   Gauge, Bot, FileText,
@@ -50,6 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/data-intelligence/pipelines", key: "mission-center", label: "Mission Center", icon: GitBranch, permission: "console.access" },
       { href: "/data-intelligence/datasets", key: "dataset-center", label: "Dataset Center", icon: Database, permission: "console.access" },
       { href: "/data-intelligence/sources", key: "sources", label: "Sources", icon: Server, permission: "console.access" },
+      { href: "/data-intelligence/signal-sources", key: "signal-sources", label: "Signal Sources", icon: Radio, permission: "console.access" },
       { href: "/data-intelligence/tickets", key: "tickets", label: "Tickets", icon: Ticket, permission: "console.access" },
     ],
   },

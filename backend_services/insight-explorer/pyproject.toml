@@ -15,6 +15,10 @@ prometheus-client = "^0.20"
 pydantic = "^2.6"
 grpcio = "^1.64"
 protobuf = "^5.27"
+# Real-time signal publishing (ML-D Phase B) — sync client, matching the
+# service's threading (not asyncio) style. Lightweight, no GPU/heavy deps,
+# so it stays in the always-installed core rather than an optional group.
+redis = "^5.0"
 
 # AI stack — MANDATORY on the GPU host (Robozão). Kept in an optional
 # group so the deterministic pipeline + tests install + run fast on a
@@ -39,6 +43,7 @@ uvicorn = "^0.29"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
 ruff = "^0.6"
+fakeredis = "^2.23"
 
 [tool.poetry.scripts]
 explorer = "explorer.cli:main"

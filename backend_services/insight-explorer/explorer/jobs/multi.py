@@ -21,7 +21,13 @@ _log = get_logger("explorer.multi")
 
 
 def run_multi_source(competition: str, season: str, runner: JobRunner | None = None,
-                     registry: list[Any] | None = None) -> dict[str, Any]:
+                     registry: list[Any] | None = None,
+                     allowed_sources: set[str] | None = None,
+                     execution_id: str = "") -> dict[str, Any]:
+    """`allowed_sources`, when given, further restricts collection to that
+    set of adapter names on top of the usual coverage/enabled filtering — the
+    Mission Center's per-pipeline source scope (a pipeline may deliberately
+    use fewer sources than are globally enabled)."""
     from explorer.ops import runtime_config
 
     runner = runner or JobRunner()
@@ -29,11 +35,13 @@ def run_multi_source(competition: str, season: str, runner: JobRunner | None = N
     lake: DataLake = runner.lake
     cfg = runtime_config.load(lake.root)
     adapters = [a for a in adapters_for(competition, registry) if cfg.source_enabled(a.name)]
+    if allowed_sources is not None:
+        adapters = [a for a in adapters if a.name in allowed_sources]
 
     per_source = []
     contributing = []
     for adapter in adapters:
-        rec = runner.run(adapter, competition, season)
+        rec = runner.run(adapter, competition, season, execution_id=execution_id)
         per_source.append({
             "source": adapter.name, "status": rec.status,
             "collected": rec.records_collected, "validated": rec.records_validated,

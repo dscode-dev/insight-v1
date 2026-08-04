@@ -16,13 +16,14 @@ from functools import lru_cache
 from pathlib import Path
 
 # Resolution order: explicit env override → vendored copy bundled in the image
-# → dev-tree locations. The vendored copy makes the container self-contained.
+# → dev-tree location (sibling insight-protos checkout). The vendored copy
+# makes the container self-contained; a dev checkout without EXPLORER_CLUB_REGISTRY
+# set falls back to the sibling repo layout.
 _REGISTRY_CANDIDATES = tuple(
     Path(p) for p in (
         os.environ.get("EXPLORER_CLUB_REGISTRY"),
         Path(__file__).resolve().parents[1] / "vendor" / "club_registry.json",
         Path(__file__).resolve().parents[1].parent / "insight-protos/contracts/clubs/club_registry.json",
-        "/Users/ds_/Documents/Devs/KonohaLabs/Applications/Insight/modules_v1/insight-protos/contracts/clubs/club_registry.json",
     ) if p
 )
 

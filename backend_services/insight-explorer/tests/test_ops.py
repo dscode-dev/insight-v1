@@ -95,6 +95,20 @@ def test_scheduler_pause_resume_via_config(tmp_path):
     assert runtime_config.load(tmp_path).scheduler_paused is False
 
 
+def test_runtime_config_survives_unknown_field(tmp_path):
+    """A schema change (field added/removed) must not silently reset
+    operator settings (e.g. re-enable a disabled source) on next load."""
+    import json
+
+    runtime_config.save(runtime_config.RuntimeConfig(disabled_sources=["fbref"]), tmp_path)
+    path = tmp_path / "reports" / "runtime_config.json"
+    data = json.loads(path.read_text("utf-8"))
+    data["some_future_field"] = "unknown-to-this-version"
+    path.write_text(json.dumps(data), "utf-8")
+    cfg = runtime_config.load(tmp_path)
+    assert cfg.disabled_sources == ["fbref"]
+
+
 def test_scheduler_enqueue_priority(tmp_path):
     from explorer.scheduler import Scheduler
 

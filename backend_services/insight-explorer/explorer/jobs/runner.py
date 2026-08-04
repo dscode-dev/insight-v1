@@ -51,6 +51,7 @@ class JobRecord:
     ai_backend: str = ""
     ai_used: bool = False
     graph_engine: str = ""
+    execution_id: str = ""  # set when run as part of a Mission Center pipeline execution
 
 
 class JobRunner:
@@ -62,9 +63,10 @@ class JobRunner:
         self.crew = crew or Crew()
         self.log = get_logger("explorer.job")
 
-    def run(self, adapter: SourceAdapter, competition: str, season: str) -> JobRecord:
+    def run(self, adapter: SourceAdapter, competition: str, season: str,
+            execution_id: str = "") -> JobRecord:
         rec = JobRecord(source=adapter.name, competition=competition, season=season,
-                        status="running", started_at=_now())
+                        status="running", started_at=_now(), execution_id=execution_id)
         log = self.log.bind(job_id=rec.job_id, source=rec.source,
                             competition=competition, season=season)
         log.info("job_started")

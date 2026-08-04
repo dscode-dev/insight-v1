@@ -1,5 +1,6 @@
 const EXPLORER_API_BASE_URL =
-  process.env.EXPLORER_API_BASE_URL ?? "http://explorer:8090";
+  process.env.EXPLORER_API_BASE_URL ?? "http://insight-explorer:8090";
+const EXPLORER_OPS_TOKEN = process.env.EXPLORER_OPS_TOKEN ?? "";
 const ATLAS_API_BASE_URL =
   process.env.ATLAS_API_BASE_URL ?? "http://atlas:8085";
 const ATLAS_INTERNAL_TOKEN = process.env.ATLAS_INTERNAL_TOKEN ?? "";
@@ -11,8 +12,12 @@ export async function explorerCall(
   actor: string,
   correlationId?: string,
 ): Promise<Response> {
+  if (!EXPLORER_OPS_TOKEN) {
+    return Response.json({ detail: "explorer_ops_token_missing" }, { status: 503 });
+  }
   return serviceCall(EXPLORER_API_BASE_URL, `/explorer/${path}`, method, body, {
     "X-Operator": actor,
+    "X-Ops-Token": EXPLORER_OPS_TOKEN,
     ...(correlationId ? { "X-Request-Id": correlationId } : {}),
   });
 }

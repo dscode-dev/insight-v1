@@ -27,6 +27,9 @@ ERROR_TYPES = {
     "job_repeated_failure",
     "ai_runtime_unavailable",  # Step 8 — local Qwen unreachable
     "entity_unresolved",       # Step 7 — team not in Club Registry
+    "signal_source_poll_failed",     # ML-D Phase B — a SignalSource's poll() raised
+    "signal_source_unconfigured",    # ML-D Phase B — SignalSource.kind has no registered handler
+    "signal_publish_failed",         # ML-D Phase B — captured but Redis publish failed
 }
 
 SUGGESTED_ACTION = {
@@ -39,6 +42,9 @@ SUGGESTED_ACTION = {
     "job_repeated_failure": "inspect consecutive failures for this key; check source + parser",
     "ai_runtime_unavailable": "start Ollama + pull the Qwen model on the GPU host; rerun job",
     "entity_unresolved": "add the club/alias to the Club Registry; rerun entity resolution",
+    "signal_source_poll_failed": "check the source's endpoint/credentials; verify poll_interval_s is reasonable",
+    "signal_source_unconfigured": "register a SignalKindHandler for this `kind` in explorer/realtime/kinds/",
+    "signal_publish_failed": "check EXPLORER_REDIS_URL connectivity; the signal is safe in the signals/ lake layer",
 }
 
 

@@ -485,3 +485,89 @@ class ExplorerReadService:
 
     def metrics_text(self) -> bytes:
         return metrics.render()
+
+    # --- ML-D: Mission Center (pipelines / executions) -------------------
+
+    def pipelines(self) -> list[dict[str, Any]]:
+        from explorer.pipelines.store import PipelineStore
+
+        return [p.to_dict() for p in PipelineStore(self.root).list()]
+
+    def pipeline(self, pipeline_id: str) -> dict[str, Any] | None:
+        from explorer.pipelines.store import PipelineNotFound, PipelineStore
+
+        try:
+            return PipelineStore(self.root).get(pipeline_id).to_dict()
+        except PipelineNotFound:
+            return None
+
+    def pipelines_catalog(self) -> dict[str, Any]:
+        from explorer.pipelines.catalog import build_catalog
+
+        return build_catalog()
+
+    def pipelines_estimate(self, draft: dict[str, Any]) -> dict[str, Any]:
+        from explorer.pipelines.estimate import estimate
+
+        return estimate(draft)
+
+    def executions(self, pipeline_id: str | None = None, state: str | None = None) -> list[dict[str, Any]]:
+        from explorer.pipelines.executions.store import ExecutionStore
+
+        return [e.to_dict() for e in ExecutionStore(self.root).list(pipeline_id=pipeline_id, state=state)]
+
+    def execution(self, execution_id: str) -> dict[str, Any] | None:
+        from explorer.pipelines.executions.store import ExecutionNotFound, ExecutionStore
+
+        try:
+            return ExecutionStore(self.root).get(execution_id).to_dict()
+        except ExecutionNotFound:
+            return None
+
+    def execution_jobs(self, execution_id: str) -> list[dict[str, Any]]:
+        jobs = [j for j in self.jobs() if j.get("execution_id") == execution_id]
+        recon = {(r.get("competition"), r.get("season")): r for r in self._reconciliation_summaries()}
+        out = []
+        for j in jobs:
+            r = recon.get((j.get("competition"), j.get("season")), {})
+            out.append({
+                "job_id": j.get("job_id"), "source": j.get("source"),
+                "competition": j.get("competition"), "season": j.get("season"),
+                "status": j.get("status"), "duration_ms": j.get("duration_ms", 0),
+                "records_validated": j.get("records_validated", 0),
+                # Honest zeros: no adapter collects odds/statistics yet.
+                "odds": 0, "statistics": 0,
+                "confidence": r.get("mean_confidence"), "disagreement": r.get("disagreements", 0),
+            })
+        return out
+
+    # --- ML-D Phase B: realtime signal sources ----------------------------
+
+    def signal_sources(self) -> list[dict[str, Any]]:
+        from explorer.realtime.store import SignalSourceStore
+
+        return [s.to_public_dict() for s in SignalSourceStore(self.root).list()]
+
+    def signal_source(self, source_id: str) -> dict[str, Any] | None:
+        from explorer.realtime.store import SignalSourceNotFound, SignalSourceStore
+
+        try:
+            return SignalSourceStore(self.root).get(source_id).to_public_dict()
+        except SignalSourceNotFound:
+            return None
+
+    def execution_dataset(self, execution_id: str) -> dict[str, Any] | None:
+        from explorer.datalake.lake import DataLake
+        from explorer.pipelines.executions.store import ExecutionNotFound, ExecutionStore
+        from explorer.pipelines.manifest import build_dataset_view
+        from explorer.pipelines.store import PipelineNotFound, PipelineStore
+
+        try:
+            execution = ExecutionStore(self.root).get(execution_id)
+        except ExecutionNotFound:
+            return None
+        try:
+            pipeline = PipelineStore(self.root).get(execution.pipeline_id)
+        except PipelineNotFound:
+            return None
+        return build_dataset_view(execution, pipeline, DataLake(self.root))

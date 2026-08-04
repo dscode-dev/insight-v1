@@ -15,7 +15,7 @@ from pathlib import Path
 
 DATA_LAKE_ROOT = Path(os.environ.get("EXPLORER_DATA_LAKE", "/home/insight/data/explorer"))
 
-LAKE_LAYERS = ("raw", "normalized", "validated", "training", "exports", "reports")
+LAKE_LAYERS = ("raw", "normalized", "validated", "training", "exports", "reports", "signals")
 
 
 # --- AI runtime (Ollama + local Qwen) ------------------------------------
@@ -84,3 +84,14 @@ REJECT_RATE_TICKET_THRESHOLD = 0.20
 DUPLICATION_RATIO_TICKET_THRESHOLD = 0.50
 QUALITY_APPROVE_THRESHOLD = 0.70
 CONSECUTIVE_JOB_FAILURE_TICKET = 3
+
+
+# --- Real-time signals (ML-D Phase B) -------------------------------------
+# The lake write (signals/ layer) is always authoritative; Redis publish is
+# best-effort on top of it — see explorer/realtime/publisher.py.
+
+EXPLORER_REDIS_URL = os.environ.get("EXPLORER_REDIS_URL", "")
+EXPLORER_SIGNAL_STREAM_KEY = os.environ.get("EXPLORER_SIGNAL_STREAM_KEY", "insight:stream:events:signals")
+EXPLORER_MAX_CONCURRENT_REALTIME_PIPELINES = int(
+    os.environ.get("EXPLORER_MAX_CONCURRENT_REALTIME_PIPELINES", "5")
+)

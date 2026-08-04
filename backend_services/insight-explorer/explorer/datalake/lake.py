@@ -32,6 +32,10 @@ def checksum(obj: Any) -> str:
 class DataLake:
     def __init__(self, root: Path | str = DATA_LAKE_ROOT) -> None:
         self.root = Path(root)
+        # In-process cache of each partition file's checksum index, so a
+        # long-lived scheduler doesn't re-read an ever-growing file on every
+        # single append() call. Populated lazily on first touch per path.
+        self._checksum_cache: dict[Path, set[str]] = {}
 
     # --- pathing ---------------------------------------------------------
 
@@ -83,7 +87,10 @@ class DataLake:
         is wrapped with its `_checksum`; lines whose checksum already exists
         in the target file are skipped (replay-safe)."""
         path = self._file(layer, competition, season, source, entity_type)
-        seen = self._existing_checksums(path)
+        seen = self._checksum_cache.get(path)
+        if seen is None:
+            seen = self._existing_checksums(path)
+            self._checksum_cache[path] = seen
         written = skipped = 0
         with path.open("a", encoding="utf-8") as fh:
             for rec in records:
@@ -133,6 +140,27 @@ class DataLake:
             for rec in records:
                 fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
         return path
+
+    # --- signals (ML-D Phase B) -------------------------------------------
+
+    def append_signal(self, source_id: str, records: Iterable[dict[str, Any]]) -> dict[str, int]:
+        """Signals have no natural competition/season scope like fixtures —
+        partitioned by source + UTC capture date instead:
+        signals/{source_id}/{YYYY-MM-DD}.jsonl. No replay-safety/checksum
+        index (unlike `append()`): each capture is inherently unique (fresh
+        signal_id), there is no "re-run the same job" case to dedupe."""
+        import datetime as _dt
+
+        day = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+        d = self.root / "signals" / source_id
+        d.mkdir(parents=True, exist_ok=True)
+        path = d / f"{day}.jsonl"
+        written = 0
+        with path.open("a", encoding="utf-8") as fh:
+            for rec in records:
+                fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
+                written += 1
+        return {"written": written}
 
     # --- sizing (metrics) ------------------------------------------------
 

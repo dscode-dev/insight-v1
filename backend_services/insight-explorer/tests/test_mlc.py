@@ -67,6 +67,24 @@ def test_review_queue_and_promote(tmp_path):
     assert any(e.get("external_id") == ext for e in promoted)
 
 
+def test_review_promote_preserves_other_pending_entries(tmp_path):
+    """The queue.jsonl rewrite on promote/reject must not drop or corrupt
+    sibling records in the same file (regression: previous implementation
+    wrote non-atomically and without a lock)."""
+    root = _seed(tmp_path)
+    rev = ReviewStore(root)
+    before = rev.queue(status="pending")
+    assert len(before) >= 1
+    ext = before[0]["external_id"]
+    rev.promote(ext)
+    after_pending = rev.queue(status="pending")
+    after_promoted = rev.queue(status="promoted")
+    assert all(r["external_id"] != ext for r in after_pending)
+    assert any(r["external_id"] == ext for r in after_promoted)
+    # total record count is conserved across the rewrite
+    assert len(after_pending) + len(after_promoted) == len(before)
+
+
 def test_duplicates_and_analytics(tmp_path):
     svc = ExplorerReadService(_seed(tmp_path))
     dup = svc.duplicates()

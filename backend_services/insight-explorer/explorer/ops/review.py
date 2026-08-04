@@ -13,11 +13,16 @@ All mutations are audited by the caller (controls).
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
 from explorer.config import DATA_LAKE_ROOT
 from explorer.datalake.lake import DataLake
+
+# Guards read-modify-write of queue.jsonl files against the pipeline
+# concurrently appending new review records (single-container, multi-thread).
+_LOCK = threading.Lock()
 
 
 class ReviewStore:
@@ -64,20 +69,23 @@ class ReviewStore:
         return counts
 
     def _rewrite(self, f: Path, external_id: str, new_status: str) -> dict[str, Any] | None:
-        lines = f.read_text("utf-8").splitlines()
-        changed = None
-        out = []
-        for line in lines:
-            if not line.strip():
-                continue
-            rec = json.loads(line)
-            if rec.get("external_id") == external_id and rec.get("status", "pending") == "pending":
-                rec["status"] = new_status
-                changed = rec
-            out.append(json.dumps(rec, ensure_ascii=False, default=str))
-        if changed:
-            f.write_text("\n".join(out) + "\n", "utf-8")
-        return changed
+        with _LOCK:
+            lines = f.read_text("utf-8").splitlines()
+            changed = None
+            out = []
+            for line in lines:
+                if not line.strip():
+                    continue
+                rec = json.loads(line)
+                if rec.get("external_id") == external_id and rec.get("status", "pending") == "pending":
+                    rec["status"] = new_status
+                    changed = rec
+                out.append(json.dumps(rec, ensure_ascii=False, default=str))
+            if changed:
+                tmp = f.with_suffix(".jsonl.tmp")
+                tmp.write_text("\n".join(out) + "\n", "utf-8")
+                tmp.replace(f)  # atomic
+            return changed
 
     def promote(self, external_id: str) -> dict[str, Any]:
         for f in self._queue_files():

@@ -65,6 +65,12 @@ class Scheduler:
         self.plan = plan
         self.repeat = repeat
         self.log = get_logger("explorer.scheduler")
+        # Built once and reused across every task for the scheduler's whole
+        # lifetime: each adapter owns a PoliteFetcher/requests.Session, and
+        # rebuilding the registry per task would tear down + recreate every
+        # source's connection pool on each of the (potentially thousands of)
+        # tasks a long-running scheduler executes.
+        self.registry = build_default_registry()
         self._state_path = Path(self.lake.root) / "reports" / "scheduler_state.json"
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -184,14 +190,13 @@ class Scheduler:
             return True
         competition, season = task
         runner = JobRunner(lake=self.lake, use_ai=self.use_ai)
-        registry = build_default_registry()
         self.state.current = list(task)
         self.state.status = "running"
         self._cancel_requested = False
         self._persist()
         self.log.info("task_start", competition=competition, season=season)
         try:
-            result = run_multi_source(competition, season, runner=runner, registry=registry)
+            result = run_multi_source(competition, season, runner=runner, registry=self.registry)
             self.state.last_result = result
         except Exception as exc:  # noqa: BLE001 - never let one task kill the loop
             self.log.error("task_error", competition=competition, season=season, error=str(exc))

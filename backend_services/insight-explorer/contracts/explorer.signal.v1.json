@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.insight.konohalabs.com.br/explorer/explorer.signal.v1.json",
+  "title": "explorer.signal.v1",
+  "description": "A real-time news/signal record (injury, transfer, sentiment, market-moving headline) captured by a Mission Center realtime pipeline — NOT match/odds/context data (that is Sport Hub's canonical stream). Persisted to the signals/ lake layer and, best-effort, published to Atlas via a Redis stream (see explorer/realtime/publisher.py).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "signal_id", "signal_type", "source_id",
+    "text", "confidence", "published_at", "captured_at", "provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": "explorer.signal.v1" },
+    "signal_id": { "type": "string", "minLength": 1, "description": "UUID assigned at capture time." },
+    "signal_type": {
+      "enum": ["injury", "transfer", "news", "sentiment", "other"],
+      "description": "What kind of signal this is. Additive-only."
+    },
+    "source_id": {
+      "type": "string", "minLength": 1,
+      "description": "The explorer.realtime.signal_source.v1 record (SignalSource) that captured this."
+    },
+    "entity_refs": {
+      "type": "array",
+      "description": "Entities this signal concerns — club/player/competition — best-effort resolved, never fabricated.",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "enum": ["club", "player", "competition"] },
+          "external_id": { "type": ["string", "null"] },
+          "club_id": { "type": ["string", "null"], "description": "Resolved via the Club Registry when possible." },
+          "name": { "type": ["string", "null"] }
+        }
+      },
+      "default": []
+    },
+    "text": { "type": "string", "minLength": 1, "description": "Raw captured text/headline." },
+    "summary": { "type": ["string", "null"] },
+    "confidence": {
+      "type": "number", "minimum": 0, "maximum": 1,
+      "description": "Extraction/source confidence — never fabricated certainty."
+    },
+    "published_at": {
+      "type": "string", "format": "date-time",
+      "description": "When the source published this (RFC3339 UTC)."
+    },
+    "captured_at": {
+      "type": "string", "format": "date-time",
+      "description": "When Explorer's collector captured it (RFC3339 UTC)."
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "method"],
+      "properties": {
+        "url": { "type": ["string", "null"] },
+        "method": { "enum": ["api", "rss", "crawler", "webhook"] },
+        "checksum": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

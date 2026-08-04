@@ -186,8 +186,40 @@ def _memory_mb() -> float:
     return float(usage) / 1024
 
 
-def _cpu_percent() -> float:
+_last_cpu_sample: tuple[float, float] | None = None  # (idle, total) jiffies at previous call
+
+
+def _read_proc_stat() -> tuple[float, float] | None:
     try:
-        return round(os.getloadavg()[0] / max(1, os.cpu_count() or 1) * 100, 2)
+        with open("/proc/stat") as fh:
+            parts = fh.readline().split()
     except OSError:
-        return 0.0
+        return None
+    if len(parts) < 5 or parts[0] != "cpu":
+        return None
+    values = [float(v) for v in parts[1:]]
+    idle = values[3] + (values[4] if len(values) > 4 else 0.0)  # idle + iowait
+    return idle, sum(values)
+
+
+def _cpu_percent() -> float:
+    """System-wide CPU utilization since the previous call, from /proc/stat
+    deltas (accurate, container-local). Falls back to a 1-minute-load-average
+    approximation where /proc isn't available (e.g. local dev off Linux) —
+    that fallback is coarser and can read >100% or lag short spikes, which is
+    why it is only the fallback, not the primary measurement."""
+    global _last_cpu_sample
+    sample = _read_proc_stat()
+    if sample is None:
+        try:
+            return round(os.getloadavg()[0] / max(1, os.cpu_count() or 1) * 100, 2)
+        except OSError:
+            return 0.0
+    idle, total = sample
+    prev = _last_cpu_sample
+    _last_cpu_sample = sample
+    if prev is None:
+        return 0.0  # first sample after process start: no delta to compute yet
+    d_idle = idle - prev[0]
+    d_total = total - prev[1]
+    return round((1.0 - d_idle / d_total) * 100, 2) if d_total > 0 else 0.0

@@ -12,7 +12,8 @@ async function proxy(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const marker = "/data-intelligence/";
   const path = decodeURIComponent(url.pathname.split(marker)[1] ?? "");
-  const body = req.method === "GET" ? undefined : await req.json();
+  const hasBody = req.method !== "GET" && req.method !== "DELETE";
+  const body = hasBody ? await req.json() : undefined;
   if (req.method !== "GET") {
     const permissions = new Set(operator.permissions);
     const allowed =
@@ -33,3 +34,4 @@ async function proxy(req: Request): Promise<Response> {
 export const GET = withApiHandler(proxy);
 export const POST = withApiHandler(proxy);
 export const PUT = withApiHandler(proxy);
+export const DELETE = withApiHandler(proxy);

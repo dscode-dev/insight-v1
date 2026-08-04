@@ -7,8 +7,7 @@ from typing import Any
 from explorer.adapters.base import RawArtifact
 from explorer.adapters.football_data import parse_fd_date
 from explorer.clubs import resolve_club
-from explorer.config import COMPETITIONS
-from explorer.datalake.lake import checksum
+from explorer.normalizers._envelope import build_envelope
 from explorer.normalizers.espn import NormalizationError
 
 
@@ -53,23 +52,6 @@ def normalize(artifact: RawArtifact) -> dict[str, Any]:
     if score is not None:
         payload["score"] = score
 
-    comp_def = COMPETITIONS.get(artifact.competition_key)
-    return {
-        "schema_version": "explorer.envelope.v1",
-        "source": artifact.source,
-        "provider": artifact.provider,
-        "source_type": artifact.source_type,
-        "trust_level": artifact.trust_level,
-        "confidence": 0.92 if status == "finished" else 0.7,
-        "captured_at": artifact.retrieved_at,
-        "entity_type": "fixture",
-        "external_id": artifact.external_id,
-        "canonical_match_id": None,
-        "competition": {"competition_key": artifact.competition_key, "competition_id": None,
-                        "external_id": None, "name": comp_def.name if comp_def else None},
-        "season": artifact.season,
-        "payload": payload,
-        "provenance": {"url": artifact.url, "retrieved_at": artifact.retrieved_at,
-                       "method": artifact.method, "parser": artifact.provider,
-                       "checksum": checksum(artifact.raw), "license_note": artifact.license_note},
-    }
+    return build_envelope(
+        artifact, confidence=0.92 if status == "finished" else 0.7, payload=payload,
+    )

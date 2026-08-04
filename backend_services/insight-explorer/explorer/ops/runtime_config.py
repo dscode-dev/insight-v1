@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import threading
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from explorer.config import DATA_LAKE_ROOT
@@ -35,9 +35,14 @@ def load(root: Path | str = DATA_LAKE_ROOT) -> RuntimeConfig:
     p = _path(root)
     if p.exists():
         try:
-            return RuntimeConfig(**json.loads(p.read_text("utf-8")))
-        except (json.JSONDecodeError, TypeError):
-            pass
+            raw = json.loads(p.read_text("utf-8"))
+        except json.JSONDecodeError:
+            return RuntimeConfig()
+        # Drop unknown keys instead of failing closed-to-defaults: a schema
+        # change (new field) must not silently re-enable previously
+        # operator-disabled sources or un-pause the scheduler on next deploy.
+        known = {f.name for f in fields(RuntimeConfig)}
+        return RuntimeConfig(**{k: v for k, v in raw.items() if k in known})
     return RuntimeConfig()
 
 
