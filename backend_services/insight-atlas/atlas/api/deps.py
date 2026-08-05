@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -35,7 +36,6 @@ class AppContainer:
     ingestion: Any
     datasets: Any
     strength: Any
-    odds: Any
 
 
 def get_container(request: Request) -> AppContainer:
@@ -49,7 +49,9 @@ def require_internal_token(
     container: AppContainer = Depends(get_container),
     x_internal_token: str | None = Header(default=None),
 ) -> None:
-    if not x_internal_token or x_internal_token != container.settings.internal_token:
+    if not x_internal_token or not secrets.compare_digest(
+        x_internal_token, container.settings.internal_token
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="internal_token_required"
         )

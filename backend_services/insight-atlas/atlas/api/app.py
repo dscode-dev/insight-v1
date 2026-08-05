@@ -425,7 +425,6 @@ def build_app() -> FastAPI:
             session_factory, Path(settings.intelligence_dataset_path).parent
         ),
         strength=strength_repository,
-        odds=odds_repository,
     )
 
     # Sprint 5.1 — canonical-event consumer. Reads Hub-published
@@ -677,11 +676,41 @@ def build_app() -> FastAPI:
         )
         await emitter.emit(context)
 
+    async def _run_consumer_supervised() -> None:
+        """Restarts `canonical_consumer.run()` with backoff if it ever
+        exits unexpectedly, instead of silently taking down ingestion
+        for the process lifetime with no recovery (ATLAS review Round
+        3, finding #1 — `_dispatch`'s own safety net makes this rare
+        now, but a supervisor is cheap insurance against a future bug
+        slipping past it). `app.state.consumer_alive` feeds `/ready` so
+        a crashed-and-not-yet-recovered consumer is actually visible to
+        health checks, not masked by the one-shot `operations_ready`
+        flag."""
+        backoff_seconds = 1.0
+        while True:
+            app.state.consumer_alive = True
+            try:
+                await canonical_consumer.run(handle_envelope)
+                return  # run() only returns normally once _stop is set (real shutdown)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                app.state.consumer_alive = False
+                logger.exception("atlas_consumer_crashed")
+                await asyncio.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2, 60.0)
+                try:
+                    await canonical_consumer.reconnect()
+                except Exception:
+                    logger.exception("atlas_consumer_reconnect_failed")
+                    continue
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.container = container
         app.state.canonical_consumer = canonical_consumer
         app.state.operations_ready = False
+        app.state.consumer_alive = not settings.canonical_consumer_enabled
 
         if settings.auto_apply_migrations and settings.database_url.startswith("sqlite"):
             async with db_engine.begin() as conn:
@@ -690,12 +719,13 @@ def build_app() -> FastAPI:
         # Start the canonical consumer in the background. The task
         # is supervised by the lifespan — cancelled at shutdown so
         # in-flight handler invocations finish + the redis client
-        # closes cleanly.
+        # closes cleanly. _run_consumer_supervised restarts run()
+        # itself if it ever exits unexpectedly (see its docstring).
         consumer_task: asyncio.Task[None] | None = None
         if settings.canonical_consumer_enabled:
             await canonical_consumer.connect()
             consumer_task = asyncio.create_task(
-                canonical_consumer.run(handle_envelope),
+                _run_consumer_supervised(),
                 name="atlas-canonical-consumer",
             )
 
@@ -764,10 +794,17 @@ def build_app() -> FastAPI:
     @app.get("/ready", tags=["meta"])
     async def ready() -> dict[str, str]:
         try:
-            async with db_engine.connect() as conn:
-                await conn.exec_driver_sql("SELECT 1")
+            # A hung/unreachable Postgres must fail this probe FAST, not
+            # hang past the caller's own probe timeout (which delays
+            # failure detection instead of surfacing it) — build_engine
+            # sets no connect/command timeout, so bound it here.
+            async with asyncio.timeout(2.0):
+                async with db_engine.connect() as conn:
+                    await conn.exec_driver_sql("SELECT 1")
         except Exception as exc:
             return {"status": "not_ready", "error": str(exc)[:200]}
+        if not getattr(app.state, "consumer_alive", True):
+            return {"status": "not_ready", "error": "canonical_consumer_crashed"}
         return {"status": "ready"}
 
     @app.get("/metrics", tags=["meta"], include_in_schema=False)
@@ -780,7 +817,10 @@ def build_app() -> FastAPI:
         return Response(content=body, media_type=content_type)
 
     app.state.operations_service = atlas_operations(
-        ready=lambda: bool(getattr(app.state, "operations_ready", False)),
+        ready=lambda: (
+            bool(getattr(app.state, "operations_ready", False))
+            and bool(getattr(app.state, "consumer_alive", True))
+        ),
         active_jobs=lambda: 1 if settings.canonical_consumer_enabled else 0,
     )
 
@@ -810,6 +850,15 @@ def build_app() -> FastAPI:
     app.include_router(intelligence_workspace_routes.atlas_router)
     app.include_router(meta_routes.router)
     app.include_router(backtest_routes.router)
+    # /backtests is the only require_internal_token-protected router that
+    # doesn't live under /v1/internal or /atlas — harmless today (the
+    # token check is the real gate, not the prefix), but if an edge
+    # layer ever allow-lists internal traffic by those two prefixes,
+    # this would silently fall outside it. Kept as an additive alias —
+    # the original /backtests/* path is untouched for existing callers.
+    app.include_router(
+        backtest_routes.router, prefix="/v1/internal", include_in_schema=False,
+    )
     return app
 
 

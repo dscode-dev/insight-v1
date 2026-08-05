@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Literal
@@ -22,6 +23,8 @@ from atlas.operational_events import event_bus
 from atlas.similarity import SimilarityFilters, SimilaritySearchRequest
 from atlas.similarity.contracts import TimeWindow
 from atlas.vector_memory import DeterministicEmbeddingEncoder
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/v1/internal/intelligence",
@@ -332,6 +335,26 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
             else status.HTTP_422_UNPROCESSABLE_ENTITY
         )
         raise HTTPException(status_code=status_code, detail=detail) from exc
+    except Exception as exc:
+        # Any OTHER failure (e.g. Postgres/Redis instability inside
+        # container.similarity/container.ingestion) previously propagated
+        # with no terminal event at all — the correlation_id's last
+        # visible stage stayed whatever was emitted before the crash,
+        # forever, since nothing ever marked it "failed". Re-raised
+        # unchanged (still a 500) — this only adds the missing signal.
+        event_bus.emit(
+            "reasoning_failed",
+            severity="ERROR",
+            current_state="failed",
+            correlation_id=correlation_id,
+            metadata={
+                "competition": context.competition,
+                "home_team": context.home_team,
+                "away_team": context.away_team,
+                "error": str(exc),
+            },
+        )
+        raise
 
 
 @atlas_router.post("/intelligence")
@@ -371,14 +394,28 @@ async def validate_dataset(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _resolve_operator(x_operator: str | None, *, route: str) -> str:
+    """Falls back to a generic operator identity when X-Operator isn't
+    sent — kept (not made mandatory, which would break any existing
+    caller that omits it) but logged, so a mutation attributed to
+    "console-superadmin" is at least traceable to a specific call
+    instead of silently blending into every other unattributed request.
+    """
+    if x_operator:
+        return x_operator
+    logger.warning("dataset_register_missing_operator_header", extra={"route": route})
+    return "console-superadmin"
+
+
 @atlas_router.post("/datasets/register")
 async def register_dataset(
     body: dict = Body(...),
     x_operator: str | None = Header(default=None),
     container: AppContainer = Depends(get_container),
 ) -> dict:
+    operator = _resolve_operator(x_operator, route="register")
     try:
-        return await container.datasets.register(body, x_operator or "console-superadmin")
+        return await container.datasets.register(body, operator)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -389,10 +426,9 @@ async def register_explorer_dataset(
     x_operator: str | None = Header(default=None),
     container: AppContainer = Depends(get_container),
 ) -> dict:
+    operator = _resolve_operator(x_operator, route="register-explorer")
     try:
-        return await container.datasets.register_explorer(
-            body, x_operator or "console-superadmin"
-        )
+        return await container.datasets.register_explorer(body, operator)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
