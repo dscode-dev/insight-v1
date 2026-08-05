@@ -18,7 +18,19 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -531,3 +543,60 @@ class CompetitionRegimeRow(Base):
     # The CompetitionProfile snapshot that produced this classification.
     profile: Mapped[dict] = mapped_column(JSON, default=dict)
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class PromotionDecisionRow(Base):
+    """A human's recorded approve/reject on a Quality Gate replay.
+
+    ATLAS_V1_FROZEN.md mandates that every new detector/heuristic pass
+    the Quality Gate against the frozen baseline "before promotion" and
+    that "Human approval remains mandatory". Until this table existed
+    there was NOWHERE to record that a human had approved anything —
+    the gate produced recommendations (`PromotionReport.verdict`) that
+    nothing consumed and nobody signed off on. A promotion mandate with
+    no durable record of the decision is not a mandate.
+
+    Keyed on `replay_hash`, NOT `execution_id`. `ReplayService` keeps
+    executions in plain in-process dicts, so an execution id stops
+    resolving the moment Atlas restarts, while the deterministic hash
+    identifies the exact evaluated behaviour forever. A row therefore
+    embeds everything needed to read the decision back on its own:
+    the recommendation snapshot, the regression flags, and the reason.
+    """
+
+    __tablename__ = "promotion_decisions"
+    __table_args__ = (
+        # One standing decision per evaluated behaviour. The same code
+        # replayed over the same data yields the same hash, so a second
+        # decision on it is either a duplicate submit or a
+        # contradiction — both are worth surfacing, not silently
+        # storing twice.
+        UniqueConstraint("replay_hash", name="ux_promotion_decisions_replay_hash"),
+        Index("ix_promotion_decisions_decided_at", "decided_at"),
+        {"schema": "atlas"},
+    )
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    replay_hash: Mapped[str] = mapped_column(String(128))
+    # Kept for traceability while the execution is still resident; it is
+    # deliberately NOT the identity, and may point at nothing after a
+    # restart.
+    execution_id: Mapped[str] = mapped_column(String(64), default="")
+    baseline_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    verdict: Mapped[str] = mapped_column(String(16))  # approved | rejected
+    decided_by: Mapped[str] = mapped_column(String(128))
+    reason: Mapped[str] = mapped_column(Text)
+    # True when the operator approved despite the gate recommending
+    # otherwise, or with no baseline to diff against. These are the two
+    # cases an auditor most needs to find, so they are columns rather
+    # than buried in the JSON snapshot.
+    overrode_recommendation: Mapped[bool] = mapped_column(Boolean, default=False)
+    without_baseline: Mapped[bool] = mapped_column(Boolean, default=False)
+    quality_regression: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Frozen copy of what the gate actually recommended at decision
+    # time, so the record still makes sense after the in-memory
+    # evaluation is gone.
+    recommendation: Mapped[dict] = mapped_column(_JSONB_ON_POSTGRES, default=dict)
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )

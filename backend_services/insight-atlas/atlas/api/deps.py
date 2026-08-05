@@ -36,6 +36,7 @@ class AppContainer:
     ingestion: Any
     datasets: Any
     strength: Any
+    approvals: Any
 
 
 def get_container(request: Request) -> AppContainer:

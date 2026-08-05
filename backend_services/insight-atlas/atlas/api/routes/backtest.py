@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from atlas.api.deps import AppContainer, get_container, require_internal_token
@@ -21,6 +21,7 @@ from atlas.backtest import (
     scenario_from_scope,
     scenario_from_season,
 )
+from atlas.backtest.approval import ApprovalError, DecisionRequest
 from atlas.intelligence.historical import HistoricalScope, load_dataset
 
 router = APIRouter(
@@ -89,6 +90,22 @@ async def list_backtests(
     return {"executions": [e.model_dump(mode="json") for e in container.replay.history(limit=limit)]}
 
 
+@router.get("/decisions")
+async def list_decisions(
+    limit: int = Query(50, ge=1, le=500),
+    container: AppContainer = Depends(get_container),
+) -> dict:
+    """Audit trail of recorded approve/reject decisions.
+
+    Declared BEFORE `/{execution_id}` on purpose — FastAPI matches in
+    declaration order, so the parameterised route would otherwise
+    swallow the literal path and try to look up an execution called
+    "decisions".
+    """
+    decisions = await container.approvals.history(limit=limit)
+    return {"decisions": [d.to_dict() for d in decisions]}
+
+
 @router.get("/{execution_id}")
 async def get_backtest(
     execution_id: str, container: AppContainer = Depends(get_container)
@@ -137,6 +154,82 @@ async def get_backtest_manifest(
     if manifest is None:
         raise HTTPException(404, "manifest not available")
     return manifest.model_dump(mode="json")
+
+
+# -- human approval (ATLAS_V1_FROZEN.md: "Human approval remains mandatory") -- #
+
+
+class DecisionBody(BaseModel):
+    verdict: str = Field(pattern="^(approved|rejected)$")
+    reason: str = Field(min_length=1, max_length=4000)
+    # Both default to False so the caller must opt IN to bypassing a
+    # gate rule. Defaulting either to True would make the gate advisory.
+    override_recommendation: bool = False
+    acknowledge_no_baseline: bool = False
+
+
+_APPROVAL_STATUS = {
+    "decision_exists": status.HTTP_409_CONFLICT,
+    "override_required": status.HTTP_409_CONFLICT,
+    "baseline_required": status.HTTP_409_CONFLICT,
+}
+
+
+@router.post("/{execution_id}/decision", status_code=status.HTTP_201_CREATED)
+async def record_decision(
+    execution_id: str,
+    body: DecisionBody = Body(...),
+    x_operator: str | None = Header(default=None),
+    container: AppContainer = Depends(get_container),
+) -> dict:
+    """Record a human's approve/reject on this replay.
+
+    The deciding operator comes from the trusted `X-Operator` header the
+    console's server-side layer sets — never from the request body, so a
+    caller cannot attribute a decision to someone else.
+    """
+    if not x_operator or not x_operator.strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="operator_header_required"
+        )
+    quality = container.replay.quality(execution_id)
+    if quality is None:
+        # No evaluation means nothing was reviewed. Approving here would
+        # produce a signed-off record with no evidence behind it.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="quality_evaluation_not_available"
+        )
+    try:
+        decision = await container.approvals.record(
+            request=DecisionRequest(
+                verdict=body.verdict,
+                reason=body.reason,
+                decided_by=x_operator.strip(),
+                override_recommendation=body.override_recommendation,
+                acknowledge_no_baseline=body.acknowledge_no_baseline,
+            ),
+            evaluation=quality,
+            execution_id=execution_id,
+        )
+    except ApprovalError as exc:
+        raise HTTPException(
+            _APPROVAL_STATUS.get(exc.code, status.HTTP_422_UNPROCESSABLE_ENTITY),
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+    return decision.to_dict()
+
+
+@router.get("/{execution_id}/decision")
+async def get_decision(
+    execution_id: str, container: AppContainer = Depends(get_container)
+) -> dict:
+    quality = container.replay.quality(execution_id)
+    if quality is None:
+        raise HTTPException(404, "quality evaluation not available")
+    decision = await container.approvals.get_by_hash(quality.replay_hash)
+    if decision is None:
+        raise HTTPException(404, "no decision recorded for this replay")
+    return decision.to_dict()
 
 
 @router.delete("/{execution_id}")

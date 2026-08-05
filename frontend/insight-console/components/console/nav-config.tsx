@@ -41,6 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/atlas/intelligence", key: "atlas-intelligence", label: "Atlas Intelligence", icon: Brain, permission: "console.access" },
       { href: "/atlas/knowledge", key: "atlas-knowledge", label: "Atlas Knowledge", icon: BookOpen, permission: "console.access" },
+      { href: "/atlas/quality-gate", key: "atlas-quality-gate", label: "Quality Gate", icon: ShieldCheck, permission: "config.read" },
     ],
   },
   {

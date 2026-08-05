@@ -32,6 +32,7 @@ from atlas.api.routes import intelligence_workspace as intelligence_workspace_ro
 from atlas.api.routes import internal as internal_routes
 from atlas.api.routes import meta as meta_routes
 from atlas.backtest import ReplayService
+from atlas.backtest.approval import PromotionDecisionRepository
 from atlas.clients import AnvilGatewayReader, NullSentimentReader
 from atlas.coherence import StoryCoherenceEngine
 from atlas.config import get_settings
@@ -461,6 +462,7 @@ def build_app() -> FastAPI:
             session_factory, Path(settings.intelligence_dataset_path).parent
         ),
         strength=strength_repository,
+        approvals=PromotionDecisionRepository(session_factory),
     )
 
     # Sprint 5.1 — canonical-event consumer. Reads Hub-published

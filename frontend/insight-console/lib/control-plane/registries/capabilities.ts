@@ -42,6 +42,16 @@ const META: Record<string, CapMeta> = {
   "atlas.health.read": { evidence: "GET /health (atlas 1.0.0)" },
   "atlas.intelligence.read": { evidence: "GET /v1/internal/intelligence/* (atlas 1.0.0)" },
   "atlas.replay.read": { evidence: "GET /backtests (atlas 1.0.0)" },
+  // The human approval ATLAS_V1_FROZEN.md declares mandatory before any
+  // detector/heuristic change is promoted against the frozen baseline.
+  // High risk and approval-required for the same reason moderation is:
+  // it is an irreversible governance act, and the record of who made it
+  // is the only evidence the freeze was respected.
+  "atlas.replay.promote": {
+    evidence: "POST /backtests/{id}/decision (atlas 1.0.0)",
+    risk: "high",
+    approvalRequired: true,
+  },
   "explorer.health.read": { evidence: "GET /health (explorer)" },
   "explorer.missions.read": { evidence: "GET /explorer/missions (explorer)" },
   "explorer.datasets.read": { evidence: "GET /explorer/datasets (explorer)" },

@@ -59,6 +59,11 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:?COOKIE_SECURE is required}
       EXPLORER_API_BASE_URL: ${EXPLORER_API_BASE_URL:-http://insight-explorer:8090}
       EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      # Console backend (strangler seam). The BFF signs the operator
+      # identity envelope with this secret; insight-console-api verifies
+      # it. Both sides MUST hold the same value.
+      CONSOLE_API_BASE_URL: ${CONSOLE_API_BASE_URL:-http://insight-console-api:3002}
+      CONSOLE_API_SIGNING_SECRET: ${CONSOLE_API_SIGNING_SECRET:?CONSOLE_API_SIGNING_SECRET is required}
     expose:
       - "3001"
     ports:
@@ -68,6 +73,8 @@ services:
         condition: service_healthy
       insight-explorer:
         condition: service_started
+      insight-console-api:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL
@@ -76,6 +83,46 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - robozao-ops
+
+  # Console backend (NestJS). Strangler seam: owns session caching,
+  # realtime SSE fan-out, and the console domains being moved off the
+  # Next.js BFF. Never exposed to the browser directly — the Console
+  # proxies to it, so it stays on the internal network only.
+  insight-console-api:
+    build:
+      context: ./backend_services/insight-console-api
+    image: konohalabs/insight-console-api:0.1.0
+    container_name: insight-console-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOST: "0.0.0.0"
+      CONSOLE_API_SIGNING_SECRET: ${CONSOLE_API_SIGNING_SECRET:?CONSOLE_API_SIGNING_SECRET is required}
+      ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+      EXPLORER_API_BASE_URL: ${EXPLORER_API_BASE_URL:-http://insight-explorer:8090}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      ATLAS_API_BASE_URL: ${ATLAS_API_BASE_URL:-http://atlas:8085}
+      ATLAS_INTERNAL_TOKEN: ${ATLAS_INTERNAL_TOKEN:?ATLAS_INTERNAL_TOKEN is required}
+      SESSION_CACHE_TTL_SECONDS: ${CONSOLE_API_SESSION_TTL_SECONDS:-30}
+      REALTIME_POLL_INTERVAL_MS: ${CONSOLE_API_REALTIME_INTERVAL_MS:-5000}
+    expose:
+      - "3002"
+    depends_on:
+      robozao-gateway:
+        condition: service_healthy
+      insight-explorer:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - robozao-ops
 
