@@ -201,6 +201,28 @@ async def test_repository_preserves_full_history(odds_repo: OddsRepository) -> N
     assert [t.home for t in history] == prices
 
 
+async def test_repository_history_limit_keeps_most_recent_not_oldest(
+    odds_repo: OddsRepository,
+) -> None:
+    """Regression: history() must bound the OLD end of the timeline when
+    truncating, not the new end. A match with more than `limit` ticks
+    must keep seeing the latest snapshots, never freeze on the oldest."""
+    mid = uuid4()
+    for i in range(5):
+        assert await odds_repo.record(
+            _tick(
+                match_id=mid,
+                home=1.80 + i / 100,
+                captured_at=datetime(2026, 6, 1, 10, i, tzinfo=timezone.utc),
+            )
+        )
+
+    history = await odds_repo.history(mid, limit=3)
+    assert len(history) == 3
+    # The 3 MOST RECENT prices (indices 2,3,4), still oldest->newest.
+    assert [round(t.home, 2) for t in history] == [1.82, 1.83, 1.84]
+
+
 async def test_repository_idempotent_on_event_id(odds_repo: OddsRepository) -> None:
     mid = uuid4()
     eid = uuid4()

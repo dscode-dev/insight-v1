@@ -71,6 +71,32 @@ def aligned_books(match_id, *, home=2.0, minutes=0, books=("a", "b", "c")):
     return [tick(match_id, home=home, minutes=minutes, bookmaker=b) for b in books]
 
 
+# --- ATLAS-SIM-A follow-up: MarketStateEngine reuse-seam regression -----------
+
+
+def test_compute_matches_standalone_subengine_calls() -> None:
+    """MarketStateEngine.compute() now computes latest_fair_probs_by_book/
+    fair_prob_points ONCE and passes them into each subengine (they
+    previously recomputed the same O(n) scans up to 4x/2x per call).
+    This must be numerically identical to calling every subengine
+    standalone with no precomputed data."""
+    mid = uuid4()
+    history = [
+        *aligned_books(mid, home=2.00, minutes=0),
+        *aligned_books(mid, home=1.90, minutes=5),
+        *aligned_books(mid, home=1.70, minutes=10),
+        tick(mid, home=1.65, minutes=15, bookmaker="d"),  # a 4th, slightly outlier book
+    ]
+    state = MarketStateEngine(observe_metrics=False).compute(history)
+
+    assert state.fair == fair_probabilities(history)
+    assert state.consensus == consensus(history)
+    assert state.divergence == divergence(history)
+    assert state.confidence == market_confidence(history)
+    assert state.volatility == volatility(history)
+    assert state.sharp == sharp_movement(history)
+
+
 # --- Part 1: fair probability -------------------------------------------------
 
 

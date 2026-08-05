@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -65,22 +65,31 @@ class OddsRepository:
         market: str | None = None,
         limit: int = 500,
     ) -> list[OddsTick]:
-        """Return the ordered (oldest→newest) snapshot history for a
-        match, optionally filtered to one market.
+        """Return the MOST RECENT `limit` snapshots for a match, oldest
+        first, optionally filtered to one market.
+
+        Fetches DESC (newest first) so `limit` bounds the recent end of
+        the timeline, then reverses in Python to hand back the
+        documented oldest→newest order. The previous ASC+LIMIT query
+        bounded the OLD end instead: once a match passed `limit` ticks,
+        every caller (features, context, MarketStateEngine) would freeze
+        on the same oldest 500 snapshots forever, never seeing anything
+        newer — exactly backwards for a live-updating history.
         """
         async with self._sf() as session:
             stmt = select(OddsTickRow).where(OddsTickRow.match_id == match_id)
             if market is not None:
                 stmt = stmt.where(OddsTickRow.market == market)
-            stmt = stmt.order_by(OddsTickRow.captured_at.asc()).limit(limit)
+            stmt = stmt.order_by(OddsTickRow.captured_at.desc()).limit(limit)
             rows = (await session.execute(stmt)).scalars().all()
-            return [_to_tick(r) for r in rows]
+            return [_to_tick(r) for r in reversed(rows)]
 
     async def count_for_match(self, match_id: UUID) -> int:
         async with self._sf() as session:
-            stmt = select(OddsTickRow).where(OddsTickRow.match_id == match_id)
-            rows = (await session.execute(stmt)).scalars().all()
-            return len(rows)
+            stmt = select(func.count()).select_from(OddsTickRow).where(
+                OddsTickRow.match_id == match_id
+            )
+            return (await session.execute(stmt)).scalar_one()
 
 
 def _to_tick(row: OddsTickRow) -> OddsTick:

@@ -44,10 +44,15 @@ def _median(values: list[float]) -> float:
     return (ordered[n // 2 - 1] + ordered[n // 2]) / 2.0
 
 
-def divergence(history: list[OddsTick]) -> DivergenceResult | None:
+def divergence(
+    history: list[OddsTick], *, books: dict[str, dict[str, float]] | None = None,
+) -> DivergenceResult | None:
     """Cross-bookmaker disagreement at the latest snapshot. None when
-    fewer than two books carry usable prices."""
-    books = latest_fair_probs_by_book(history)
+    fewer than two books carry usable prices.
+
+    `books` — see `fair_probabilities`'s docstring; same reuse seam.
+    """
+    books = books if books is not None else latest_fair_probs_by_book(history)
     if len(books) < 2:
         return None
     spreads: list[float] = []

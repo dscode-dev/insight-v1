@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from atlas.intelligence.behavior_engine import BehavioralPatternEngine
 from atlas.intelligence.contracts import (
@@ -26,19 +27,30 @@ from atlas.intelligence.orchestrator.context import (
     AtlasRuntimeContext,
     RuntimeExecutionTrace,
 )
-from atlas.intelligence.regime_engine import HistoricalRegimeEngine
 from atlas.intelligence.reasoning_engine import DeterministicReasoningEngine
+from atlas.intelligence.regime_engine import HistoricalRegimeEngine
 from atlas.intelligence.signal_engine import HistoricalSignalEngine
 from atlas.intelligence.signal_state_engine import SignalStateEngine
 from atlas.intelligence.similarity_engine import HistoricalMemory, SimilarityEngine
 from atlas.intelligence.trend_engine import HistoricalTrendEngine
 from atlas.intelligence.uncertainty_engine import UncertaintyEngine
 from atlas.memory import HierarchicalMemoryRetrievalEngine
+
+# atlas.strength.formulas is a leaf module (no atlas.intelligence
+# dependency) — safe to import directly at module level. The package's
+# __init__ (atlas.strength) pulls in atlas.intelligence.historical via
+# lake.py, which would otherwise cycle back here; MarketFeatures/
+# TeamStrengthFeatures are therefore TYPE_CHECKING-only (they're already
+# used as forward-ref string annotations below, never at runtime).
+from atlas.strength.formulas import line_movement as _line_movement_delta
 from atlas.vector_memory import (
     DeterministicEmbeddingEncoder,
     DeterministicVectorIndex,
     VectorConfidence,
 )
+
+if TYPE_CHECKING:
+    from atlas.strength import MarketFeatures, TeamStrengthFeatures
 
 ENGINE_ORDER = [
     "evidence_engine",
@@ -81,7 +93,22 @@ class AtlasIntelligenceOrchestrator:
         self._vector_index = vector_index
         self._embedding = DeterministicEmbeddingEncoder()
 
-    def execute(self, context: AtlasRuntimeContext) -> AtlasIntelligenceReport:
+    def execute(
+        self,
+        context: AtlasRuntimeContext,
+        *,
+        strength_features: TeamStrengthFeatures | None = None,
+        market_features: MarketFeatures | None = None,
+    ) -> AtlasIntelligenceReport:
+        """`strength_features`/`market_features` are precomputed by the
+        caller (an async route handler — see
+        `intelligence_workspace.py::_runtime_report`) since they require
+        async DB reads (`atlas.strength.StrengthRepository`,
+        `atlas.strength.market_features_for_match`) this orchestrator
+        itself stays synchronous for. Both are optional: absent means
+        "no live state available yet" (cold start, DB not wired in a
+        given deployment), and `_runtime_query` degrades gracefully —
+        never fabricates a value."""
         competition = normalize_competition(context.competition)
         competition_rows = [
             row
@@ -96,7 +123,9 @@ class AtlasIntelligenceOrchestrator:
         rows = [row for row in competition_rows if row.kickoff_at < as_of]
         if not rows:
             raise ValueError("historical_scope_empty")
-        query = self._runtime_query(context, rows, as_of)
+        query = self._runtime_query(
+            context, rows, as_of, strength_features, market_features
+        )
         return self.execute_record(
             query,
             rows=rows,
@@ -333,6 +362,8 @@ class AtlasIntelligenceOrchestrator:
         context: AtlasRuntimeContext,
         rows: list[HistoricalRecord],
         as_of,
+        strength: TeamStrengthFeatures | None = None,
+        market: MarketFeatures | None = None,
     ) -> HistoricalRecord:
         home_key = normalize_key(context.home_team)
         away_key = normalize_key(context.away_team)
@@ -357,6 +388,8 @@ class AtlasIntelligenceOrchestrator:
             odds = context.odds
             current = [odds.current_home, odds.current_draw, odds.current_away]
             probabilities = _normalise([1.0 / value for value in current])
+            opening = [odds.opening_home, odds.opening_draw, odds.opening_away]
+            opening_probabilities = _normalise([1.0 / value for value in opening])
             features.update(
                 {
                     "odds_available": 1.0,
@@ -377,9 +410,45 @@ class AtlasIntelligenceOrchestrator:
                     ),
                 }
             )
+            movement = _line_movement_delta(opening_probabilities[0], probabilities[0])
+            if movement is not None:
+                features["line_movement"] = movement
             sources.add(context.odds.bookmaker or "runtime-odds")
+        elif market is not None and market.market_available:
+            # No odds supplied directly in the request — fall back to
+            # Atlas's own persisted odds-tick history (atlas.odds_ticks,
+            # populated live off the Hub's match.odds stream) rather
+            # than leaving the market dimension unavailable.
+            features["odds_available"] = 1.0
+            if market.market_pressure is not None:
+                features["favorite_strength"] = market.market_pressure
+            if market.market_entropy is not None:
+                features["market_entropy"] = market.market_entropy
+            if market.line_movement is not None:
+                features["line_movement"] = market.line_movement
+            sources.add("odds-ticks")
         else:
             features["odds_available"] = 0.0
+
+        if strength is not None:
+            # Live team-strength state (Elo/attack-defense/h2h/standings/
+            # rest) — overrides the thinner "most recent historical row"
+            # approximation above with Atlas's own incrementally-updated
+            # state (atlas/strength/). Optional sub-fields stay absent
+            # (never fabricated as 0.0) when there isn't enough history.
+            features["elo_difference"] = strength.elo_delta
+            features["home_attack_strength"] = strength.home_attack_strength
+            features["away_attack_strength"] = strength.away_attack_strength
+            features["home_defense_strength"] = strength.home_defense_strength
+            features["away_defense_strength"] = strength.away_defense_strength
+            if strength.h2h_advantage is not None:
+                features["h2h_advantage"] = strength.h2h_advantage
+            if strength.table_position_gap is not None:
+                features["table_position_gap"] = strength.table_position_gap
+            if strength.rest_advantage is not None:
+                features["rest_advantage"] = strength.rest_advantage
+            sources.add("team-strength-state")
+
         uid = str(
             stable_id(
                 "runtime-query",

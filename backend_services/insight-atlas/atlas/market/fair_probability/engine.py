@@ -81,10 +81,19 @@ def latest_fair_probs_by_book(
     return out
 
 
-def fair_probabilities(history: list[OddsTick]) -> FairProbabilities | None:
+def fair_probabilities(
+    history: list[OddsTick], *, books: dict[str, dict[str, float]] | None = None,
+) -> FairProbabilities | None:
     """Market consensus fair probabilities (median across books,
-    re-normalised). None when no bookmaker carries usable prices."""
-    books = latest_fair_probs_by_book(history)
+    re-normalised). None when no bookmaker carries usable prices.
+
+    `books` lets a caller that already computed
+    `latest_fair_probs_by_book(history)` (e.g. `MarketStateEngine`,
+    which otherwise recomputes this O(n) scan up to 4x per `compute()`
+    call) pass it straight through instead of redoing the work.
+    Standalone callers omit it and get the original behavior.
+    """
+    books = books if books is not None else latest_fair_probs_by_book(history)
     if not books:
         return None
     medians: dict[str, float] = {}

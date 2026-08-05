@@ -17,7 +17,7 @@ from uuid import UUID
 
 from atlas.odds.context import OddsContextStore, OddsFeatureStore, build_odds_context
 from atlas.odds.features import build_odds_features
-from atlas.odds.models import parse_odds_event
+from atlas.odds.models import OddsTick, parse_odds_event
 from atlas.odds.repository import OddsRepository
 from atlas.streaming.canonical_consumer import CanonicalEnvelope
 
@@ -38,7 +38,11 @@ class OddsHandler:
         self._context = context_store
         self._limit = history_limit
 
-    async def handle(self, envelope: CanonicalEnvelope) -> None:
+    async def handle(self, envelope: CanonicalEnvelope) -> list[OddsTick]:
+        """Returns the freshly-fetched history for `tick.match_id` — the
+        caller (`app.py::handle_envelope`) reuses it to feed
+        `MarketStateEngine.compute()` instead of re-querying the exact
+        same (match_id, limit) from Postgres a second time."""
         tick = parse_odds_event(envelope.event)
 
         is_new = await self._repo.record(tick)
@@ -63,6 +67,7 @@ class OddsHandler:
                 "idempotency_key": envelope.idempotency_key,
             },
         )
+        return history
 
     async def context_for(self, match_id: UUID) -> dict | None:
         return await self._context.get(match_id)

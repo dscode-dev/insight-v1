@@ -39,8 +39,18 @@ def compatibility_params(
     season: str | None = None,
     market_type: str | None = None,
     match_phase: str | None = None,
+    embedding_version: str = EMBEDDING_VERSION,
 ) -> dict[str, object]:
-    """Bind params for the migration-0016 compat columns, all canonical."""
+    """Bind params for the migration-0016 compat columns, all canonical.
+
+    `embedding_version` defaults to the frozen v1 constant (unchanged
+    behavior for every existing caller); v2 upserts pass
+    `EMBEDDING_VERSION_V2` explicitly. `feature_schema_version()`/
+    `SIGNAL_CATALOG_VERSION`/`BEHAVIOR_CATALOG_VERSION` intentionally do
+    NOT vary with it — those describe System A's ML feature schema and
+    the general Intelligence Report contract respectively, both frozen
+    for V1 and shared by subsystems this work doesn't touch.
+    """
     fsv = feature_schema_version()
     return {
         "feature_schema_version": fsv,
@@ -52,7 +62,7 @@ def compatibility_params(
         "similarity_metadata": json.dumps(
             {
                 "source": source,
-                "embedding_version": EMBEDDING_VERSION,
+                "embedding_version": embedding_version,
                 "feature_schema_version": fsv,
                 "signal_catalog_version": SIGNAL_CATALOG_VERSION,
                 "behavior_catalog_version": BEHAVIOR_CATALOG_VERSION,

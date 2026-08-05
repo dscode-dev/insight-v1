@@ -12,6 +12,7 @@ from atlas.inference import InferenceEngine
 from atlas.registry import ModelRegistry
 from atlas.store import FeatureStore, InferenceCache
 from atlas.training import TrainingPipeline
+
 if TYPE_CHECKING:
     from atlas.similarity import SimilarityService
     from atlas.vector_memory.repository import PgVectorMemoryRepository
@@ -28,11 +29,13 @@ class AppContainer:
     training: TrainingPipeline
     analytics: AnalyticsReader
     sentiment: SentimentReader
-    vector_memory: "PgVectorMemoryRepository | Any"
-    similarity: "SimilarityService | Any"
+    vector_memory: PgVectorMemoryRepository | Any
+    similarity: SimilarityService | Any
     replay: Any
     ingestion: Any
     datasets: Any
+    strength: Any
+    odds: Any
 
 
 def get_container(request: Request) -> AppContainer:

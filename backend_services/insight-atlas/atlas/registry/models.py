@@ -19,8 +19,17 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+# migrations/sql/0003_create_odds_ticks.sql declares `payload` as JSONB
+# (GIN-indexable, containment-queryable) — the plain generic JSON type
+# below would silently drift from that on a real Postgres deployment.
+# with_variant renders as JSONB on postgres, plain JSON on sqlite (JSONB
+# has no sqlite compiler support at all — Base.metadata.create_all
+# against the sqlite-backed test suite would hard-fail otherwise).
+_JSONB_ON_POSTGRES = JSON().with_variant(JSONB, "postgresql")
 
 from atlas.registry.base import Base
 
@@ -96,7 +105,7 @@ class ModelVersion(Base):
     dataset_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    runs: Mapped[list["TrainingRun"]] = relationship(
+    runs: Mapped[list[TrainingRun]] = relationship(
         "TrainingRun", back_populates="version", cascade="all,delete-orphan"
     )
 
@@ -120,7 +129,7 @@ class TrainingRun(Base):
     metrics: Mapped[dict] = mapped_column(JSON, default=dict)
     error: Mapped[str] = mapped_column(String(2048), default="")
 
-    version: Mapped["ModelVersion | None"] = relationship(
+    version: Mapped[ModelVersion | None] = relationship(
         "ModelVersion", back_populates="runs"
     )
 
@@ -140,7 +149,11 @@ class OddsTickRow(Base):
 
     __tablename__ = "odds_ticks"
     __table_args__ = (
-        Index("ix_odds_ticks_match_market", "match_id", "market", "captured_at"),
+        # Name matches migrations/sql/0003_create_odds_ticks.sql exactly
+        # — create_all() against an already-migrated Postgres (or a
+        # second create_all() call anywhere) must not create a
+        # redundant duplicate index under a different name.
+        Index("ix_odds_ticks_match_market_captured", "match_id", "market", "captured_at"),
         {"schema": "atlas"},
     )
 
@@ -164,8 +177,104 @@ class OddsTickRow(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     # Full normalized payload — preserves outcomes for non-h2h markets
     # + any provider fields beyond the foundational home/draw/away.
-    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    payload: Mapped[dict] = mapped_column(_JSONB_ON_POSTGRES, default=dict)
     ingested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class TeamStrengthStateRow(Base):
+    """Global per-team rating state (Sprint ATLAS-SIM-A). Elo is not
+    competition-scoped — a team carries one rating across competitions,
+    same convention `HistoricalProjectionV3`'s in-memory `_elo` dict uses.
+    """
+
+    __tablename__ = "team_strength_state"
+    __table_args__ = ({"schema": "atlas"},)
+
+    team: Mapped[str] = mapped_column(String(128), primary_key=True)
+    elo: Mapped[float] = mapped_column(Float, default=1500.0)
+    venue_elo_home: Mapped[float] = mapped_column(Float, default=1500.0)
+    venue_elo_away: Mapped[float] = mapped_column(Float, default=1500.0)
+    # Rolling last-10 {gf, ga} results, most recent last.
+    rolling_window: Mapped[list] = mapped_column(JSON, default=list)
+    last_match_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class TeamStandingsStateRow(Base):
+    """Per-(competition, season) standings — points/goal-difference are
+    only meaningful within one competition's table."""
+
+    __tablename__ = "team_standings_state"
+    __table_args__ = (
+        Index(
+            "ix_team_standings_state_table",
+            "competition", "season", "points", "goal_difference",
+        ),
+        {"schema": "atlas"},
+    )
+
+    competition: Mapped[str] = mapped_column(String(128), primary_key=True)
+    season: Mapped[str] = mapped_column(String(32), primary_key=True)
+    team: Mapped[str] = mapped_column(String(128), primary_key=True)
+    points: Mapped[int] = mapped_column(Integer, default=0)
+    goal_difference: Mapped[int] = mapped_column(Integer, default=0)
+    matches_played: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class CompetitionSeasonStateRow(Base):
+    """Per-(competition, season) league scoring rate — normalizes
+    attack/defense strength relative to the league's own average."""
+
+    __tablename__ = "competition_season_state"
+    __table_args__ = ({"schema": "atlas"},)
+
+    competition: Mapped[str] = mapped_column(String(128), primary_key=True)
+    season: Mapped[str] = mapped_column(String(32), primary_key=True)
+    goal_sum: Mapped[int] = mapped_column(Integer, default=0)
+    team_match_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class HeadToHeadStateRow(Base):
+    """Head-to-head counters, keyed by a CANONICALLY ORDERED team pair
+    (team_a < team_b lexicographically) so a lookup is direction-agnostic;
+    the caller maps team_a_wins/team_b_wins onto home/away at query time.
+    """
+
+    __tablename__ = "head_to_head_state"
+    __table_args__ = ({"schema": "atlas"},)
+
+    team_a: Mapped[str] = mapped_column(String(128), primary_key=True)
+    team_b: Mapped[str] = mapped_column(String(128), primary_key=True)
+    team_a_wins: Mapped[int] = mapped_column(Integer, default=0)
+    team_b_wins: Mapped[int] = mapped_column(Integer, default=0)
+    draws: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class StrengthProcessedMatchRow(Base):
+    """Idempotency ledger for the strength-sync watcher: one row per
+    Explorer match uid already folded into the state above. Same role
+    `OddsTickRow.canonical_event_id` plays for the odds pipeline."""
+
+    __tablename__ = "strength_processed_matches"
+    __table_args__ = ({"schema": "atlas"},)
+
+    match_uid: Mapped[str] = mapped_column(String(256), primary_key=True)
+    processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )
 

@@ -38,10 +38,15 @@ def _std(values: list[float]) -> float:
     return math.sqrt(sum((v - mean) ** 2 for v in values) / len(values))
 
 
-def consensus(history: list[OddsTick]) -> ConsensusResult | None:
+def consensus(
+    history: list[OddsTick], *, books: dict[str, dict[str, float]] | None = None,
+) -> ConsensusResult | None:
     """Cross-bookmaker agreement at the latest snapshot. None when
-    fewer than two books carry usable prices."""
-    books = latest_fair_probs_by_book(history)
+    fewer than two books carry usable prices.
+
+    `books` — see `fair_probabilities`'s docstring; same reuse seam.
+    """
+    books = books if books is not None else latest_fair_probs_by_book(history)
     if len(books) < 2:
         return None
     stds: list[float] = []

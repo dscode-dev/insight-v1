@@ -161,6 +161,13 @@ services:
       - /home/insight/data/atlas:/var/atlas
       - /home/insight/data/atlas/artifacts:/var/atlas/artifacts
       - /home/insight/data/atlas/datasets:/var/atlas/datasets
+      # ATLAS-SIM-A: settings.explorer_data_root (default /var/atlas/explorer)
+      # previously had no volume backing it — harmless while it only fed an
+      # informational dataset-generation listing, but StrengthSyncWatcher now
+      # depends on it for real (syncs match results from Explorer's validated
+      # lake — Atlas's live event stream never carries a result event). Same
+      # host path Explorer itself writes to, mounted read-only.
+      - /home/insight/data/explorer:/var/atlas/explorer:ro
     depends_on:
       atlas-migrate:
         condition: service_completed_successfully

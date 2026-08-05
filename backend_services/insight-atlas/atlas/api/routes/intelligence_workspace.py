@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -9,7 +10,6 @@ from pydantic import BaseModel, Field
 
 from atlas.api.deps import AppContainer, get_container, require_internal_token
 from atlas.ingestion import AtlasIngestionBatch
-from atlas.intelligence_workspace import analyze, compare_models, knowledge
 from atlas.intelligence.historical import HistoricalScope, load_dataset
 from atlas.intelligence.orchestrator import (
     AtlasIntelligenceOrchestrator,
@@ -17,6 +17,7 @@ from atlas.intelligence.orchestrator import (
 )
 from atlas.intelligence.report_builder import HistoricalIntelligenceReportBuilder
 from atlas.intelligence.signal_state_engine import SignalStateEngine
+from atlas.intelligence_workspace import analyze, compare_models, knowledge
 from atlas.operational_events import event_bus
 from atlas.similarity import SimilarityFilters, SimilaritySearchRequest
 from atlas.similarity.contracts import TimeWindow
@@ -45,6 +46,23 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
     correlation_id = (
         f"runtime:{context.competition}:{context.home_team}:{context.away_team}"
     )
+    # ATLAS-SIM-A: live team-strength state (Elo/attack-defense/h2h/
+    # standings/rest) only needs team names + competition, so it's
+    # always wireable here. Odds-tick-derived market features additionally
+    # need the odds pipeline's stable match_id (atlas.odds_ticks.match_id,
+    # payload-scoped — distinct from canonical_match_id) resolved from
+    # (competition, home, away, kickoff); that identity-resolution lookup
+    # is out of scope for this pass, so the market fallback stays unwired
+    # here — the existing caller-supplied `context.odds` path (now also
+    # producing line_movement) remains the live market-features source.
+    strength_features = None
+    if container.strength is not None:
+        strength_features = await container.strength.features_for_match(
+            competition=context.competition,
+            home=context.home_team,
+            away=context.away_team,
+            as_of=context.as_of or datetime.now(timezone.utc),
+        )
     try:
         event_bus.emit(
             "reasoning_started",
@@ -65,7 +83,9 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
             metadata={"historical_data": context.historical_data},
         )
         signal_loading_started = time.perf_counter()
-        report = AtlasIntelligenceOrchestrator(dataset).execute(context)
+        report = AtlasIntelligenceOrchestrator(dataset).execute(
+            context, strength_features=strength_features
+        )
         event_bus.emit(
             "signal_loading_finished",
             current_state="loaded",

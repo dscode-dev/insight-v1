@@ -24,6 +24,7 @@ from atlas.similarity.contracts import (
     SimilaritySearchResult,
 )
 from atlas.similarity.scoring import confidence_for_matches
+from atlas.vector_memory.contracts import EMBEDDING_VERSION_V2
 
 __all__ = ["SimilarityRepository", "confidence_for_matches"]
 
@@ -52,11 +53,10 @@ class SimilarityRepository:
                 "top_k": request.top_k,
             }
         )
-        statement = text(_search_sql(where_sql))
-        async with self._sf() as session:
-            async with session.begin():
-                await self._apply_ef_search(session)
-                rows = (await session.execute(statement, params)).mappings().all()
+        statement = text(_search_sql(where_sql, _embedding_column(request.filters.embedding_version)))
+        async with self._sf() as session, session.begin():
+            await self._apply_ef_search(session)
+            rows = (await session.execute(statement, params)).mappings().all()
         return [_row_to_match(row) for row in rows]
 
     async def batch_search_matches(
@@ -68,22 +68,22 @@ class SimilarityRepository:
         if not requests:
             return []
         results: list[list[SimilarityMatch]] = []
-        async with self._sf() as session:
-            async with session.begin():
-                await self._apply_ef_search(session)
-                for request in requests:
-                    where_sql, params = _where(request.filters)
-                    params.update(
-                        {
-                            "embedding": _vector(request.embedding),
-                            "minimum_similarity": request.minimum_similarity,
-                            "top_k": request.top_k,
-                        }
-                    )
-                    rows = (
-                        await session.execute(text(_search_sql(where_sql)), params)
-                    ).mappings().all()
-                    results.append([_row_to_match(row) for row in rows])
+        async with self._sf() as session, session.begin():
+            await self._apply_ef_search(session)
+            for request in requests:
+                where_sql, params = _where(request.filters)
+                params.update(
+                    {
+                        "embedding": _vector(request.embedding),
+                        "minimum_similarity": request.minimum_similarity,
+                        "top_k": request.top_k,
+                    }
+                )
+                column = _embedding_column(request.filters.embedding_version)
+                rows = (
+                    await session.execute(text(_search_sql(where_sql, column)), params)
+                ).mappings().all()
+                results.append([_row_to_match(row) for row in rows])
         return results
 
     async def _apply_ef_search(self, session: AsyncSession) -> None:
@@ -101,7 +101,8 @@ class SimilarityRepository:
                 "top_k": request.top_k,
             }
         )
-        statement = text("EXPLAIN (FORMAT TEXT) " + _search_sql(where_sql))
+        column = _embedding_column(request.filters.embedding_version)
+        statement = text("EXPLAIN (FORMAT TEXT) " + _search_sql(where_sql, column))
         async with self._sf() as session:
             rows = (await session.execute(statement, params)).all()
         return [str(row[0]) for row in rows]
@@ -159,7 +160,15 @@ class SimilarityRepository:
         ]
 
 
-def _search_sql(where_sql: str) -> str:
+def _embedding_column(embedding_version: str) -> str:
+    """Which physical vector column a search targets. v2 (37-dim)
+    vectors live in `embedding_v2` (migration 0018); everything else —
+    including the frozen v1 default — reads the original `embedding`
+    column, unchanged."""
+    return "embedding_v2" if embedding_version == EMBEDDING_VERSION_V2 else "embedding"
+
+
+def _search_sql(where_sql: str, embedding_column: str = "embedding") -> str:
     return f"""
         WITH candidates AS (
             SELECT
@@ -181,10 +190,10 @@ def _search_sql(where_sql: str) -> str:
                 lineage,
                 similarity_metadata,
                 created_at,
-                embedding <=> CAST(:embedding AS vector) AS distance
+                {embedding_column} <=> CAST(:embedding AS vector) AS distance
             FROM atlas.atlas_vector_memory
             WHERE {where_sql}
-            ORDER BY embedding <=> CAST(:embedding AS vector), created_at
+            ORDER BY {embedding_column} <=> CAST(:embedding AS vector), created_at
             LIMIT :top_k
         )
         SELECT

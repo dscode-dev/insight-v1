@@ -177,6 +177,18 @@ class Settings(BaseSettings):
     janitor_inactivity_seconds: int = Field(
         default=1800, alias="JANITOR_INACTIVITY_SECONDS"
     )
+    # --- ATLAS-SIM-A: live team-strength engine ---
+    # Explorer's validated lake is the source of truth for match RESULTS
+    # (there is no live "match finished N-M" canonical event — only
+    # in-play signals flow through the Hub stream). The strength-sync
+    # watcher self-throttles well above the shared 30s watcher interval
+    # since re-scanning the whole lake every tick would be wasteful.
+    strength_sync_enabled: bool = Field(
+        default=True, alias="ATLAS_STRENGTH_SYNC_ENABLED"
+    )
+    strength_sync_min_interval_seconds: float = Field(
+        default=1800.0, alias="ATLAS_STRENGTH_SYNC_MIN_INTERVAL_SECONDS", gt=0.0
+    )
     atlas_consumer_group: str = Field(
         default="insight-atlas", alias="ATLAS_CONSUMER_GROUP"
     )
@@ -191,6 +203,14 @@ class Settings(BaseSettings):
     )
     atlas_retry_key_prefix: str = Field(
         default="atlas:canonical_retry:", alias="ATLAS_RETRY_KEY_PREFIX"
+    )
+    # Idempotency-ledger + handler-retry-counter keys are per-event_id and
+    # otherwise live forever (every event Atlas has ever processed leaves a
+    # permanent Redis key). A production consumer never needs idempotency
+    # protection older than a plausible redelivery/outage window; 7 days is
+    # generous relative to XAUTOCLAIM's pending_reclaim_idle_ms (seconds).
+    atlas_processed_ttl_seconds: int = Field(
+        default=604_800, alias="ATLAS_PROCESSED_TTL_SECONDS"
     )
     atlas_pending_reclaim_idle_ms: int = Field(
         default=60_000, alias="ATLAS_PENDING_RECLAIM_IDLE_MS"
@@ -241,6 +261,7 @@ class Settings(BaseSettings):
         "historical_test_year",
         "atlas_pending_reclaim_idle_ms",
         "atlas_max_handler_attempts",
+        "atlas_processed_ttl_seconds",
         "odds_hot_ttl_seconds",
         "odds_history_limit",
         "identity_tolerance_seconds",
@@ -260,7 +281,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def _watcher_jitter_fits_interval(self) -> "Settings":
+    def _watcher_jitter_fits_interval(self) -> Settings:
         if self.watcher_jitter_seconds < 0:
             raise ValueError("ATLAS_WATCHER_JITTER_SECONDS must be >= 0")
         if self.watcher_jitter_seconds >= self.watcher_interval_seconds:
