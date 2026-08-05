@@ -60,6 +60,16 @@ export class RealtimeService implements OnModuleDestroy {
       }),
     });
 
+    // The curation queue grows from the collection pipeline, not from
+    // operator action, so a reviewer working the queue needs it to
+    // refill without reloading the page.
+    this.registry.register({
+      name: 'explorer.review',
+      poll: async () => ({
+        review: await this.upstream.explorer({ path: 'review?status=pending' }),
+      }),
+    });
+
     // A Quality Gate replay runs for minutes; the screen needs its
     // status without a per-execution poll. The LIST carries every
     // running execution's status, so one channel serves both the

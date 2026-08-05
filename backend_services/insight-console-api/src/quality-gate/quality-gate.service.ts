@@ -82,6 +82,30 @@ export class QualityGateService {
     };
   }
 
+  /**
+   * ATLAS-SIM-A engine state: live team strength and the v1/v2 memory
+   * embedding coexistence.
+   *
+   * Both shipped invisible to the operator. `elo_spread` near zero says
+   * the strength engine has not differentiated anybody yet, and skewed
+   * embedding coverage says a v2 search is running over a partly
+   * backfilled corpus — neither is inferable from a per-match lookup.
+   *
+   * Degrades per-surface: a missing one reports null rather than
+   * failing the whole panel, since these are diagnostics.
+   */
+  async atlasEngineState(): Promise<Record<string, unknown>> {
+    const [strength, embeddings] = await Promise.all([
+      this.upstream
+        .atlas({ path: 'v1/meta/strength' })
+        .catch(() => null),
+      this.upstream
+        .atlas({ path: 'v1/meta/embeddings' })
+        .catch(() => null),
+    ]);
+    return { strength, embeddings };
+  }
+
   async listDecisions(limit = 50): Promise<Record<string, unknown>> {
     return this.upstream.atlas({ path: `backtests/decisions?limit=${limit}` });
   }

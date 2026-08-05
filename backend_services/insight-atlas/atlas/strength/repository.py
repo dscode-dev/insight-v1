@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -244,6 +244,103 @@ class StrengthRepository:
                 rest_advantage=rest_adv,
             )
 
+    async def overview(self, top: int = 10) -> dict:
+        """Operational snapshot of the live strength engine.
+
+        ATLAS-SIM-A built four state tables and a sync watcher, and none
+        of it was observable: an operator had no way to answer "is this
+        populated at all, and how recently did it sync?" short of
+        querying Postgres by hand. A per-match feature lookup (via the
+        intelligence workspace) tells you nothing when the answer is
+        "every team is still on the 1500 seed" — a seeded team returns a
+        perfectly plausible rating.
+
+        `elo_spread` is what actually answers that. Counting teams whose
+        Elo still equals 1500.0 does not: every team in this table got
+        here through a result, and because `HOME_ADVANTAGE` makes even a
+        draw an under-performance for the home side, essentially every
+        recorded match moves both ratings. That count is a float
+        equality that is almost always zero, which would read as "fully
+        warmed up" for an engine holding one match. A spread near zero
+        means the engine has not differentiated anybody yet, whatever
+        the row count says.
+
+        Cheap by construction — aggregates and a small ordered slice, no
+        table scan of the rolling windows.
+        """
+        async with self._sf() as session:
+            teams = (
+                await session.execute(select(func.count()).select_from(TeamStrengthStateRow))
+            ).scalar_one()
+            processed = (
+                await session.execute(
+                    select(func.count()).select_from(StrengthProcessedMatchRow)
+                )
+            ).scalar_one()
+            standings = (
+                await session.execute(
+                    select(func.count()).select_from(TeamStandingsStateRow)
+                )
+            ).scalar_one()
+            head_to_head = (
+                await session.execute(select(func.count()).select_from(HeadToHeadStateRow))
+            ).scalar_one()
+            last_sync = (
+                await session.execute(select(func.max(StrengthProcessedMatchRow.processed_at)))
+            ).scalar_one_or_none()
+            last_match = (
+                await session.execute(select(func.max(TeamStrengthStateRow.last_match_at)))
+            ).scalar_one_or_none()
+            elo_bounds = (
+                await session.execute(
+                    select(
+                        func.min(TeamStrengthStateRow.elo),
+                        func.max(TeamStrengthStateRow.elo),
+                    )
+                )
+            ).one()
+            leaders = (
+                (
+                    await session.execute(
+                        select(
+                            TeamStrengthStateRow.team,
+                            TeamStrengthStateRow.elo,
+                            TeamStrengthStateRow.last_match_at,
+                        )
+                        .order_by(TeamStrengthStateRow.elo.desc())
+                        .limit(top)
+                    )
+                )
+                .all()
+            )
+
+        elo_min, elo_max = elo_bounds
+        return {
+            "teams_tracked": int(teams or 0),
+            "elo_min": round(float(elo_min), 2) if elo_min is not None else None,
+            "elo_max": round(float(elo_max), 2) if elo_max is not None else None,
+            # Near zero = the engine has not told anybody apart yet,
+            # however many rows it holds.
+            "elo_spread": (
+                round(float(elo_max) - float(elo_min), 2)
+                if elo_min is not None and elo_max is not None
+                else 0.0
+            ),
+            "matches_processed": int(processed or 0),
+            "standings_rows": int(standings or 0),
+            "head_to_head_pairs": int(head_to_head or 0),
+            "last_sync_at": _iso(last_sync),
+            "last_match_at": _iso(last_match),
+            "top_by_elo": [
+                {
+                    "team": row.team,
+                    "elo": round(float(row.elo), 2),
+                    "last_match_at": _iso(row.last_match_at),
+                }
+                for row in leaders
+            ],
+        }
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -261,3 +358,11 @@ def _new_team_strength_row(team: str) -> TeamStrengthStateRow:
         rolling_window=[],
         last_match_at=None,
     )
+
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    # SQLite hands back naive datetimes; Postgres does not.
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()

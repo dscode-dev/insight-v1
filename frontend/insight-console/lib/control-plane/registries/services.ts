@@ -37,14 +37,29 @@ const SEED: readonly Seed[] = [
     environmentId: "robozao", serviceType: "python/fastapi", ownership: "intelligence",
     protocol: "http", adapterKind: "atlas", observable: true, mutable: false,
     dependencies: ["postgres", "redis"], lifecycle: "frozen", endpointKey: "atlas",
-    capabilities: ["atlas.health.read", "atlas.intelligence.read", "atlas.replay.read"],
+    capabilities: [
+      "atlas.health.read",
+      "atlas.intelligence.read",
+      "atlas.replay.read",
+      // Registry presence is a PRECONDITION for authorize(): a
+      // capability listed only in capabilities.ts META is not built
+      // into a descriptor, so isValidId() is false and every decision
+      // on it returns denied_capability_unsupported.
+      "atlas.replay.promote",
+    ],
   },
   {
     id: "explorer", displayName: "Insight Explorer", domain: "data",
     environmentId: "robozao", serviceType: "python/fastapi", ownership: "data",
     protocol: "http", adapterKind: "explorer", observable: true, mutable: false,
     dependencies: ["postgres", "redis", "atlas"], lifecycle: "active", endpointKey: "explorer",
-    capabilities: ["explorer.health.read", "explorer.missions.read", "explorer.datasets.read"],
+    capabilities: [
+      "explorer.health.read",
+      "explorer.missions.read",
+      "explorer.datasets.read",
+      "explorer.curation.decide",
+      "explorer.scheduler.control",
+    ],
   },
   {
     id: "robozao-gateway", displayName: "Robozão Gateway", domain: "gateway",

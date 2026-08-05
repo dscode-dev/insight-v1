@@ -120,6 +120,8 @@ export function QualityGateCenter() {
 
       {error ? <ErrorBanner>{error}</ErrorBanner> : null}
 
+      <EngineState />
+
       <SubmitReplay onSubmitted={refresh} onError={setError} />
 
       <Card title="Replays">
@@ -177,6 +179,98 @@ export function QualityGateCenter() {
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * ATLAS-SIM-A engine state — live team strength and the v1/v2 memory
+ * embedding coexistence.
+ *
+ * Sits on this screen because it is the context a replay is read in: a
+ * regression diff means something different when the strength engine
+ * has barely warmed up, or when the v2 embedding corpus is only half
+ * backfilled and every similarity neighbour comes from a thin index.
+ * Neither was visible anywhere before.
+ */
+function EngineState() {
+  const [state, setState] = useState<Row | null>(null);
+
+  useEffect(() => {
+    void request("engine-state")
+      .then(setState)
+      // Diagnostics must never break the screen they annotate.
+      .catch(() => setState(null));
+  }, []);
+
+  const strength = (state?.strength as Row | null) ?? null;
+  const embeddings = (state?.embeddings as Row | null) ?? null;
+  if (!strength && !embeddings) {
+    return null;
+  }
+
+  const coverage = Array.isArray(embeddings?.coverage)
+    ? (embeddings.coverage as Row[])
+    : [];
+  const spread = Number(strength?.elo_spread ?? 0);
+
+  return (
+    <Card title="Atlas engine state">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Team strength
+          </p>
+          {strength?.available === false || !strength ? (
+            <Empty>Strength engine not reporting.</Empty>
+          ) : (
+            <>
+              <p className="mt-1 text-sm">
+                {Number(strength.teams_tracked ?? 0)} teams ·{" "}
+                {Number(strength.matches_processed ?? 0)} matches processed
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Elo spread {spread.toFixed(1)} · last sync {ts(strength.last_sync_at)}
+              </p>
+              {spread < 1 ? (
+                <p className="mt-1 text-xs text-amber-400">
+                  Near-zero spread — the engine has not differentiated any team
+                  yet, so strength-derived similarity signals are running on
+                  seeds.
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Memory embeddings
+          </p>
+          {coverage.length === 0 ? (
+            <Empty>No embedding coverage reported.</Empty>
+          ) : (
+            <div className="mt-1 space-y-0.5">
+              {coverage.map((row) => (
+                <p key={String(row.embedding_version)} className="text-xs">
+                  <span className="font-mono">{String(row.embedding_version)}</span>{" "}
+                  <span className="text-muted-foreground">
+                    ({String(row.dimensions ?? "?")}d, {String(row.status ?? "unknown")})
+                  </span>{" "}
+                  — {Number(row.matches ?? 0)} matches
+                </p>
+              ))}
+              {coverage.length > 1 ? (
+                <p className="pt-1 text-xs text-muted-foreground">
+                  v1 and v2 coexist by design (pgvector columns are
+                  fixed-dimension). Skewed coverage means a v2 search runs over a
+                  partly backfilled corpus.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

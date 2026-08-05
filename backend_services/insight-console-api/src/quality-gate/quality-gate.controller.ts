@@ -68,6 +68,11 @@ export class QualityGateController {
     return this.gate.cancelReplay(actorOf(request), id);
   }
 
+  @Get('engine-state')
+  engineState(): Promise<Record<string, unknown>> {
+    return this.gate.atlasEngineState();
+  }
+
   @Get('decisions')
   listDecisions(@Query('limit') limit?: string): Promise<Record<string, unknown>> {
     return this.gate.listDecisions(clampLimit(limit));
