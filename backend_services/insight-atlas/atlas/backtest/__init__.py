@@ -37,12 +37,19 @@ from atlas.backtest.contracts import (
     TrendEvaluation,
 )
 from atlas.backtest.engine import ReplayEngine
+from atlas.backtest.baseline import (
+    BaselineIncompatibleError,
+    assert_compatible,
+    load_baseline,
+    save_baseline,
+)
 from atlas.backtest.manifest import ReplayManifest, build_manifest, detector_versions
 from atlas.backtest.quality import evaluate
 from atlas.backtest.regression import diff_replays
 from atlas.backtest.service import ReplayService
 
 __all__ = [
+    "BaselineIncompatibleError",
     "BehaviorEvaluation",
     "DetectorEvaluation",
     "DetectorReport",
@@ -51,6 +58,9 @@ __all__ = [
     "PromotionReport",
     "QualityEvaluation",
     "QualityReport",
+    "assert_compatible",
+    "load_baseline",
+    "save_baseline",
     "RegressionDiff",
     "RegressionReport",
     "ReplayArtifacts",

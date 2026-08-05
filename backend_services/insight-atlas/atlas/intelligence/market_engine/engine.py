@@ -32,17 +32,30 @@ class MarketIntelligenceEngine:
         if not odds_rows:
             return None, []
 
-        shifts = [_favorite_shift(row) for row in odds_rows]
-        shifts = [shift for shift in shifts if shift is not None]
+        # ONE pass over the odds rows. `_favorite_shift` and
+        # `_movement_dispersion` each called `_implied_movements(row)`
+        # internally (6 float lookups + 2 normalisations per row), so
+        # the rows were fully re-derived twice per report.
+        shifts: list[float] = []
+        disagreement_values: list[float] = []
+        for row in odds_rows:
+            movements = _implied_movements(row)
+            if movements is None:
+                continue
+            open_prob, close_prob = movements
+            favorite = max(range(3), key=open_prob.__getitem__)
+            shifts.append(close_prob[favorite] - open_prob[favorite])
+            disagreement_values.append(
+                statistics.pstdev(
+                    [close_prob[index] - open_prob[index] for index in range(3)]
+                )
+            )
         implied_shift = sum(shifts) / len(shifts) if shifts else 0.0
         abs_shifts = [abs(value) for value in shifts]
         volatility = min(
             1.0,
             (statistics.pstdev(shifts) / 0.08 if len(shifts) > 1 else 0.0),
         )
-        disagreement_values = [
-            value for row in odds_rows if (value := _movement_dispersion(row)) is not None
-        ]
         disagreement = min(
             1.0,
             (

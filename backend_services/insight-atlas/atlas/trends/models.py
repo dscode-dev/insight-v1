@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from atlas.contracts.no_prediction import assert_no_prediction_phrases, scan_payload
 from atlas.odds.models import OddsTick
 from atlas.signal_engine import Signal
 
@@ -257,6 +258,16 @@ class Trend(BaseModel):
         # (frozen model: object.__setattr__ is the sanctioned escape.)
         if self.severity is None:
             object.__setattr__(self, "severity", severity_for(self.strength))
+        # Anti-prediction guard. `insight:stream:trends` — not
+        # ContextOutput — is Atlas's real public surface (Nexus →
+        # Atrium → Azteca), and `evidence` is a free-form dict any
+        # detector can write into. Nothing structurally stopped a
+        # future detector from putting `win_probability` in there.
+        # Enforced at construction so a violation fails loudly in the
+        # detector's own test run, not silently on the wire.
+        scan_payload(self.evidence, where="Trend.evidence")
+        assert_no_prediction_phrases(self.title, where="Trend.title")
+        assert_no_prediction_phrases(self.summary, where="Trend.summary")
 
     def to_wire(self) -> dict[str, Any]:
         """JSON-safe Trend Contract V1 wire form for the trend stream."""

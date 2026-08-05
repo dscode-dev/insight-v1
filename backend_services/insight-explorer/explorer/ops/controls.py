@@ -5,12 +5,15 @@ reports/telemetry/audit.jsonl. Controls act on the live in-process Scheduler
 
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any
 
 from explorer.config import DATA_LAKE_ROOT
 from explorer.observability.telemetry import Telemetry
 from explorer.ops import runtime_config
+from explorer.sources import build_default_registry
 
 
 class ControlError(RuntimeError):
@@ -83,6 +86,76 @@ class ExplorerControls:
             cfg.disabled_sources.append(name)
         runtime_config.save(cfg, self.root)
         return self._audit(actor, "sources.disable", {"source": name}, "disabled")
+
+    def set_source_priority(
+        self, name: str, priority: int, actor: str = ""
+    ) -> dict[str, Any]:
+        """Set an operator collection priority for one source.
+
+        The Console's Sources screen has been POSTing to
+        `/explorer/sources/priority` against an endpoint that never
+        existed. Lower number = higher priority.
+        """
+        try:
+            value = int(priority)
+        except (TypeError, ValueError):
+            raise ControlError(f"priority must be an integer, got {priority!r}") from None
+        if value < 0:
+            raise ControlError("priority must be >= 0")
+        known = {adapter.name for adapter in build_default_registry()}
+        if name not in known:
+            raise ControlError(f"unknown source: {name}")
+        cfg = runtime_config.load(self.root)
+        cfg.source_priority[name] = value
+        runtime_config.save(cfg, self.root)
+        return self._audit(
+            actor, "sources.priority", {"source": name, "priority": value}, "updated"
+        )
+
+    def annotate_ticket(
+        self,
+        ticket_id: str,
+        *,
+        assignment: str = "",
+        status: str = "",
+        comment: str = "",
+        execution_id: str = "",
+        pipeline_id: str = "",
+        actor: str = "",
+    ) -> dict[str, Any]:
+        """Attach operator triage metadata to a ticket.
+
+        Tickets are an append-only audit (see explorer/tickets/tickets.py),
+        so this appends a separate annotation record rather than mutating
+        the ticket. `ExplorerReadService.tickets()` merges the latest
+        annotation per ticket_id on read.
+        """
+        from explorer.api.service import ExplorerReadService
+
+        svc = ExplorerReadService(self.root)
+        if not any(t.get("ticket_id") == ticket_id for t in svc.tickets(status=None)):
+            raise ControlError(f"ticket {ticket_id} not found")
+        if status and status not in ("open", "acknowledged", "resolved", "dismissed"):
+            raise ControlError(f"invalid ticket status: {status!r}")
+
+        directory = self.root / "reports" / "tickets" / "annotations"
+        directory.mkdir(parents=True, exist_ok=True)
+        record = {
+            "ticket_id": ticket_id,
+            "assignment": assignment,
+            "status": status,
+            "comment": comment,
+            "execution_id": execution_id,
+            "pipeline_id": pipeline_id,
+            "actor": actor,
+            "annotated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        with (directory / "annotations.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+        return self._audit(
+            actor, "tickets.annotate", {"ticket_id": ticket_id, "status": status},
+            "annotated",
+        )
 
     # --- runtime + tickets ----------------------------------------------
 

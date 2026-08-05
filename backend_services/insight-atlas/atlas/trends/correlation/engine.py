@@ -101,7 +101,7 @@ class TrendCorrelationEngine:
             ):
                 continue
             if self._cooldown is not None:
-                key = f"corr:{match_id}:{rule.correlation_type.value}"
+                key = f"corr:{match_id}:{rule.rule_id}"
                 if not await self._cooldown.allow_fire(
                     key, epoch, rule.window_seconds
                 ):

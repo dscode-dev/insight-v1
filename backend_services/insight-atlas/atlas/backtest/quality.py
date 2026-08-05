@@ -156,7 +156,13 @@ def _regression_report(result: ReplayResult, baseline: ReplayResult) -> Regressi
     reasoning_reg = cand_q.reasoning_consistency < base_q.reasoning_consistency - 1e-9
     detector_reg = bool(diff.lost_detections)
     return RegressionReport(
-        quality_regression=detector_reg or downward or similarity_reg,
+        # `reasoning_reg` was computed and then dropped on the floor —
+        # it never contributed to the aggregate flag, so a reasoning
+        # regression was detected and then silently ignored by every
+        # consumer that reads `quality_regression`.
+        quality_regression=(
+            detector_reg or downward or similarity_reg or reasoning_reg
+        ),
         confidence_regression=downward,
         detector_regression=detector_reg,
         trend_regression=detector_reg,
@@ -173,10 +179,30 @@ def _lost_types(regression: RegressionReport | None) -> set[str]:
     return {row["trend_type"] for row in regression.diff.lost_detections}
 
 
+def _degraded_types(regression: RegressionReport | None) -> set[str]:
+    """Trend types whose confidence or strength DROPPED vs the baseline
+    without the detection being lost outright.
+
+    Promotion used to gate on `_lost_types` alone, so a candidate that
+    kept every detection but degraded all of them was still stamped
+    "Approved — ... no regression" while `RegressionReport
+    .confidence_regression` was True. The report and the verdict
+    contradicted each other, and the verdict is what an operator reads.
+    """
+    if regression is None:
+        return set()
+    degraded: set[str] = set()
+    for row in (*regression.diff.confidence_changes, *regression.diff.strength_changes):
+        if row["to"] < row["from"]:
+            degraded.add(row["trend_type"])
+    return degraded
+
+
 def _promotions(
     detectors: list[DetectorReport], regression: RegressionReport | None
 ) -> tuple[list[PromotionReport], list[ExplainabilityReport]]:
     lost = _lost_types(regression)
+    degraded = _degraded_types(regression)
     promotions: list[PromotionReport] = []
     explain: list[ExplainabilityReport] = []
     for d in detectors:
@@ -184,6 +210,14 @@ def _promotions(
         if d.trend_type in lost:
             verdict = "Rejected"
             reasons.append("regression: detections lost vs baseline")
+        elif d.trend_type in degraded:
+            # Kept the detection but weakened it — not a rejection, but
+            # it must never be reported as "no regression".
+            verdict = "Warning"
+            reasons.append(
+                "regression: confidence/strength decreased vs baseline "
+                "(detection retained)"
+            )
         elif d.positive_detections == 0 or d.historical_coverage < _MIN_COVERAGE:
             verdict = "Warning"
             reasons.append(

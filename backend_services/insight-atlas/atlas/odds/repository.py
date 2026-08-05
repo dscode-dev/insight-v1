@@ -80,7 +80,16 @@ class OddsRepository:
             stmt = select(OddsTickRow).where(OddsTickRow.match_id == match_id)
             if market is not None:
                 stmt = stmt.where(OddsTickRow.market == market)
-            stmt = stmt.order_by(OddsTickRow.captured_at.desc()).limit(limit)
+            # Tie-break on (bookmaker, id) so two ticks sharing a
+            # captured_at resolve in a FIXED order. With `captured_at`
+            # alone the database was free to return ties in any order,
+            # which is a real source of ReplayHash flakiness for a
+            # system whose Quality Gate diffs replays byte-for-byte.
+            stmt = stmt.order_by(
+                OddsTickRow.captured_at.desc(),
+                OddsTickRow.bookmaker.desc(),
+                OddsTickRow.id.desc(),
+            ).limit(limit)
             rows = (await session.execute(stmt)).scalars().all()
             return [_to_tick(r) for r in reversed(rows)]
 

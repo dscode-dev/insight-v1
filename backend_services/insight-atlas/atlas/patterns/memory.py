@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from prometheus_client import Counter
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from atlas.registry.models import PatternMemoryRow
@@ -81,28 +82,55 @@ class PatternMemory:
         if not state.terminal:
             return None
         key = pattern_key(competition_id, instance.trend_type, instance.direction)
-        async with self._sf() as session:
-            row = await session.get(PatternMemoryRow, key)
-            if row is None:
-                row = PatternMemoryRow(
-                    pattern_id=key,
-                    competition_id=competition_id,
-                    trend_type=instance.trend_type.value,
-                    direction=instance.direction,
-                    occurrences=0,
-                    confirmed=0,
-                    failed=0,
-                )
-                session.add(row)
-            row.occurrences += 1
-            if state == TrendLifecycleState.CONFIRMED:
-                row.confirmed += 1
-            elif state == TrendLifecycleState.FAILED:
-                row.failed += 1
-            row.updated_at = datetime.now(timezone.utc)
-            await session.commit()
-            PATTERN_OBSERVATIONS_TOTAL.labels(outcome=state.value).inc()
-            return _stats(row)
+        # Read-modify-write on a shared counter row: two workers closing
+        # instances for the same (competition, trend_type, direction)
+        # concurrently would lose a count, and — worse — two concurrent
+        # first-inserts of the same PK raised an UNCAUGHT IntegrityError
+        # that propagated out of the trend pipeline and aborted the whole
+        # tick BEFORE trends were persisted or published. Sibling
+        # repositories (TrendRepository.record,
+        # CorrelatedTrendRepository.record) already handled this; this
+        # one didn't. Retry-once on the insert race, then fall through
+        # to the increment path.
+        for attempt in (0, 1):
+            async with self._sf() as session:
+                row = await session.get(PatternMemoryRow, key)
+                if row is None:
+                    row = PatternMemoryRow(
+                        pattern_id=key,
+                        competition_id=competition_id,
+                        trend_type=instance.trend_type.value,
+                        direction=instance.direction,
+                        occurrences=0,
+                        confirmed=0,
+                        failed=0,
+                    )
+                    session.add(row)
+                row.occurrences += 1
+                if state == TrendLifecycleState.CONFIRMED:
+                    row.confirmed += 1
+                elif state == TrendLifecycleState.FAILED:
+                    row.failed += 1
+                row.updated_at = datetime.now(timezone.utc)
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    await session.rollback()
+                    if attempt == 0:
+                        # Another worker inserted the row between our
+                        # get() and commit() — retry, which now takes
+                        # the increment branch.
+                        logger.info(
+                            "pattern_memory_insert_raced", extra={"pattern_id": key}
+                        )
+                        continue
+                    logger.warning(
+                        "pattern_memory_record_failed", extra={"pattern_id": key}
+                    )
+                    return None
+                PATTERN_OBSERVATIONS_TOTAL.labels(outcome=state.value).inc()
+                return _stats(row)
+        return None
 
     async def lookup(
         self,

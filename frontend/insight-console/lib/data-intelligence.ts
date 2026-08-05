@@ -32,24 +32,30 @@ export async function atlasIntelligenceCall(
     return Response.json({ detail: "atlas_internal_token_missing" }, { status: 503 });
   }
   const normalized = path.replace(/^\/+/, "");
+  // Verified against atlas/api/routes/intelligence_workspace.py.
+  //
+  // This set previously also listed behaviors, patterns, signals, trends,
+  // market, uncertainty, memory, head-to-head and team-memory — none of
+  // which exist under /atlas. All nine live ONLY under
+  // /v1/internal/intelligence/, so any screen calling them would have
+  // 404'd. No screen does today, which is why it went unnoticed; it was
+  // a latent trap for the next feature.
   const runtimePaths = new Set([
-    "ingestion",
-    "reasoning",
-    "intelligence-graph",
     "conflicts",
-    "behaviors",
-    "patterns",
-    "signals",
-    "trends",
-    "market",
-    "uncertainty",
-    "memory",
-    "head-to-head",
-    "team-memory",
+    "ingestion",
+    "intelligence-graph",
+    "reasoning",
   ]);
+  // `intelligence` exists on BOTH routers and is disambiguated only by
+  // method: POST /atlas/intelligence (runtime execution) vs
+  // GET /v1/internal/intelligence/intelligence (historical read).
+  const isRuntimeIntelligence =
+    normalized === "intelligence" && method.toUpperCase() === "POST";
   return serviceCall(
     ATLAS_API_BASE_URL,
-    runtimePaths.has(normalized) || normalized.startsWith("datasets")
+    runtimePaths.has(normalized) ||
+      isRuntimeIntelligence ||
+      normalized.startsWith("datasets")
       ? `/atlas/${normalized}`
       : `/v1/internal/intelligence/${normalized}`,
     method,

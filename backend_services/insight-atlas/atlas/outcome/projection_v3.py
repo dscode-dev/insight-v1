@@ -74,13 +74,35 @@ class HistoricalProjectionV3(HistoricalProjectionV2):
             else 1.35
         )
 
+        # NEUTRAL (= league average = 1.0) when there is no history at
+        # all. Previously an empty window produced attack 0.0 (the WORST
+        # attack in the league) and, simultaneously, defense
+        # `league_rate / 0.25` ≈ 5.4 (the BEST defense in the league,
+        # 4x above average) — the same team rated as both extremes at
+        # once, purely from absence of data.
+        #
+        # This is no longer only an ML-training concern:
+        # `scripts/atlas_similarity_dataset_build.py` feeds these
+        # features into the historical similarity corpus, where they are
+        # compared against LIVE values from `atlas/strength/formulas.py`
+        # — which already returns 1.0 for an empty window. The two paths
+        # encoded the identical cold-start situation at opposite ends of
+        # the scale, so a new team's live query was structurally distant
+        # from every cold-start historical record on four dimensions.
+        #
+        # A team that genuinely played and scored zero still yields 0.0:
+        # only the EMPTY case changes.
         def attack(rows) -> float:  # type: ignore[no-untyped-def]
+            if not rows:
+                return 1.0
             return (
-                sum(row.goals_for for row in rows) / max(len(rows), 1)
+                sum(row.goals_for for row in rows) / len(rows)
             ) / max(league_goal_rate, 0.25)
 
         def defense(rows) -> float:  # type: ignore[no-untyped-def]
-            conceded = sum(row.goals_against for row in rows) / max(len(rows), 1)
+            if not rows:
+                return 1.0
+            conceded = sum(row.goals_against for row in rows) / len(rows)
             return league_goal_rate / max(conceded, 0.25)
 
         participants = {

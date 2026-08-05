@@ -55,32 +55,67 @@ def embed_trend_inputs(inputs: TrendInputs) -> tuple[float, ...] | None:
 
     Returns ``None`` when the tick doesn't carry enough numeric signal to make a
     meaningful vector query. Never fabricates values — absent facets stay 0.
+
+    KNOWN SEMANTIC GAP (tracked for the v2 37-dim migration, NOT fixed
+    here because it would mean redesigning the frozen v1 layout): dims
+    10 and 28 don't mean the same thing here as in the persisted
+    encoder. Dim 10 is `market_pressure` (bookmaker favourite pressure)
+    there but receives `pressure_delta` (on-pitch pressure) here; dim 28
+    is `scoring_tendency`/expected goals there but receives
+    `signal_density` here. The live tick simply has no equivalent of
+    those two facets. Because the query vector is otherwise sparse, the
+    constant bias term also dominates the cosine ranking. Both are
+    resolved properly by moving this probe onto the 15-signal v2 scheme
+    (`atlas/vector_memory/embedding.py::from_report_v2`), which has
+    real slots for what a live tick actually carries.
     """
     ctx = inputs.context or {}
     feats = inputs.features
 
     values = [0.0] * EMBEDDING_DIMENSIONS
-    populated = 0
+    # Count DISTINCT SOURCE FACTS, not `put` calls. Dims 8 and 29 both
+    # resolved `volatility` first, so a tick carrying that single
+    # feature wrote the same number into two slots and counted it
+    # twice; together with the constant at dim 11 that reached
+    # _MIN_SIGNAL_DIMS (3) on ONE real fact, defeating the
+    # "enough signal to query" gate entirely.
+    facts: set[str] = set()
 
-    def put(index: int, value: float | None) -> None:
-        nonlocal populated
+    def put(index: int, value: float | None, *, fact: str | None = None) -> None:
         if value is None:
             return
         values[index] = max(0.0, min(1.0, float(value)))
-        populated += 1
+        if fact is not None:
+            facts.add(fact)
 
-    # 11 market_available, 27 momentum, 29 volatility, 30 market spread —
-    # the dimensions a live tick can honestly fill.
+    volatility = _f(feats, "volatility", "volatility_score")
+    competition_volatility = _f(feats, "competition_volatility", "volatility")
+    momentum = _f(feats, "momentum_score")
+    if momentum is None and isinstance(ctx.get("momentum"), (int, float)):
+        momentum = float(ctx["momentum"])
+    pressure = _f(feats, "pressure_delta")
+    if pressure is None and isinstance(ctx.get("pressure"), (int, float)):
+        pressure = float(ctx["pressure"])
+
+    # market_available is a FLAG derived from the presence of odds, not
+    # an independent measurement — like the bias term it must not count
+    # toward the signal gate.
     put(11, 1.0 if inputs.odds_history else None)
-    put(27, _f(feats, "momentum_score") or (ctx.get("momentum") if isinstance(ctx.get("momentum"), (int, float)) else None))
-    put(8, _f(feats, "volatility", "volatility_score"))
-    put(29, _f(feats, "volatility", "competition_volatility"))
-    put(10, _f(feats, "pressure_delta") or (ctx.get("pressure") if isinstance(ctx.get("pressure"), (int, float)) else None))
-    put(28, _f(feats, "signal_density"))
-    put(30, _f(feats, "bookmaker_spread", "market_spread"))
+    # Dim 27 in the persisted encoder is |home_form - away_form|, a
+    # non-negative MAGNITUDE. `momentum_score` is signed, and the [0,1]
+    # clamp silently mapped every negative value to 0.0 —
+    # indistinguishable from "absent" while still counting as populated.
+    # Taking the magnitude preserves the information and matches what
+    # the stored vectors actually hold.
+    put(27, abs(momentum) if momentum is not None else None, fact="momentum")
+    put(8, volatility, fact="volatility")
+    put(29, competition_volatility, fact="competition_volatility")
+    put(10, pressure, fact="pressure")
+    put(28, _f(feats, "signal_density"), fact="signal_density")
+    put(30, _f(feats, "bookmaker_spread", "market_spread"), fact="market_spread")
     values[31] = 1.0  # bias term (matches the encoder), not counted as signal
 
-    if populated < _MIN_SIGNAL_DIMS:
+    if len(facts) < _MIN_SIGNAL_DIMS:
         return None
     norm = math.sqrt(sum(v * v for v in values))
     if norm <= 1e-12:

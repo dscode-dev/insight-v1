@@ -175,6 +175,40 @@ def _extract_minute(event: dict) -> int | None:
     return None
 
 
+def _load_regression_baseline(settings):
+    """Load the frozen regression baseline, if one is configured.
+
+    Best-effort BY DESIGN: a missing/corrupt/incompatible baseline must
+    degrade to "no regression section in the quality report" — which is
+    exactly the behaviour before baselines existed — rather than
+    preventing the service from starting. It is logged loudly at ERROR
+    either way, because silently running the Quality Gate with no
+    reference is precisely the failure this whole mechanism exists to
+    prevent.
+    """
+    path = (settings.regression_baseline_path or "").strip()
+    if not path:
+        logger.info("atlas_regression_baseline_not_configured")
+        return None
+    try:
+        from atlas.backtest import load_baseline
+
+        result, manifest = load_baseline(path)
+    except Exception:
+        logger.exception("atlas_regression_baseline_load_failed", extra={"path": path})
+        return None
+    logger.info(
+        "atlas_regression_baseline_loaded",
+        extra={
+            "path": path,
+            "scenario_id": result.scenario_id,
+            "replay_hash": result.deterministic_hash,
+            "similarity_version": manifest.similarity_version,
+        },
+    )
+    return result
+
+
 def build_app() -> FastAPI:
     configure_logging(service="atlas")
     settings = get_settings()
@@ -419,7 +453,9 @@ def build_app() -> FastAPI:
         sentiment=sentiment_reader,
         vector_memory=PgVectorMemoryRepository(session_factory),
         similarity=similarity_service,
-        replay=ReplayService(events=event_bus),
+        replay=ReplayService(
+            events=event_bus, baseline=_load_regression_baseline(settings)
+        ),
         ingestion=AtlasIngestionService(ingestion_repository),
         datasets=AtlasDatasetService(
             session_factory, Path(settings.intelligence_dataset_path).parent

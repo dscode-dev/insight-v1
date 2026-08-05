@@ -146,7 +146,17 @@ class AtlasIntelligenceOrchestrator:
         requested_regime=None,
         runtime_context: AtlasRuntimeContext | None = None,
     ) -> AtlasIntelligenceReport:
-        rows = [row for row in rows if row.kickoff_at <= query.kickoff_at]
+        # STRICTLY prior, never the analysed match itself — see the same
+        # fix in report_builder/builder.py. The live path already builds
+        # a synthetic query record with a stable_id uid that can't
+        # collide, but the replay/offline path (execute_record called
+        # directly with a real HistoricalRecord) leaked the match into
+        # its own baseline.
+        rows = [
+            row
+            for row in rows
+            if row.uid != query.uid and row.kickoff_at < query.kickoff_at
+        ]
         if not rows:
             raise ValueError("historical_scope_empty")
         completed = ["evidence_engine"]

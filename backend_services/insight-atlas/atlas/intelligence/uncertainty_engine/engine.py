@@ -34,8 +34,11 @@ class UncertaintyEngine:
             missing.append("complete market coverage")
             recommendations.append("increase market coverage above 50%")
             components.append(1.0 - odds_coverage)
-        else:
-            components.append(max(0.0, 0.5 - odds_coverage))
+        # NOTE: the old `else` branch appended `max(0.0, 0.5 - odds_coverage)`,
+        # which is ALWAYS exactly 0.0 here (this branch means
+        # odds_coverage >= 0.5). Under the previous mean-based combiner
+        # that dead component still diluted the average; it is removed
+        # rather than kept as a no-op that silently lowers uncertainty.
 
         if sample_size < 25:
             missing.append("sufficient historical sample")
@@ -62,7 +65,21 @@ class UncertaintyEngine:
             recommendations.append(f"add historical inputs for {signal}")
             components.append(0.35)
 
-        score = min(1.0, sum(components) / max(len(components), 1))
+        # Saturating (noisy-OR) combiner, NOT a mean. Averaging
+        # heterogeneous deficiencies made the score NON-MONOTONIC:
+        # every additional problem grew the denominator, so adding a
+        # smaller deficiency DILUTED a larger one. Measured on the old
+        # code: "no odds" scored 1.00, while "no odds AND only one
+        # source" — strictly worse data — scored 0.75. Uncertainty fed
+        # behaviour-pattern confidence, the reasoning graph's `weakens`
+        # edge weight and the published explanation, so a report with
+        # fewer problems could look more uncertain than one with more.
+        # 1 - Π(1 - cᵢ) is monotonic by construction: each component can
+        # only ever push the score up, never down.
+        score = 1.0
+        for component in components:
+            score *= 1.0 - max(0.0, min(1.0, component))
+        score = min(1.0, 1.0 - score)
         return UncertaintyInsight(
             insight_id=InsightID(stable_id(scope_key, "uncertainty")),
             uncertainty_score=round(score, 6),

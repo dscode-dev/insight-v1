@@ -76,8 +76,37 @@ class TrendLifecycleEngine:
         ts = now or datetime.now(timezone.utc)
         touched: dict[str, TrendInstance] = {}
         by_type: dict[TrendType, TrendInstance] = {}
+        # `by_type` holds at most ONE open instance per trend type. When
+        # the store hands back more than one (concurrency, replay, or a
+        # new instance opened in the same tick a CONFIRMED one cleared
+        # the slot), a plain `by_type[type] = inst` silently dropped the
+        # losers: never expired, never touched, never persisted — left
+        # ACTIVE in the table forever, reloaded and discarded on every
+        # subsequent tick. Keep the most recently seen and EXPIRE the
+        # rest explicitly, so they reach save_many + PatternMemory
+        # instead of leaking.
         for inst in open_instances:
-            by_type[inst.trend_type] = inst
+            incumbent = by_type.get(inst.trend_type)
+            if incumbent is None:
+                by_type[inst.trend_type] = inst
+                continue
+            stale, keep = (
+                (incumbent, inst)
+                if inst.last_seen_at >= incumbent.last_seen_at
+                else (inst, incumbent)
+            )
+            logger.warning(
+                "lifecycle_duplicate_open_instance_expired",
+                extra={
+                    "trend_type": inst.trend_type.value,
+                    "canonical_match_id": str(inst.canonical_match_id),
+                    "expired_instance_id": str(stale.instance_id),
+                    "kept_instance_id": str(keep.instance_id),
+                },
+            )
+            _mark(stale, TrendLifecycleState.EXPIRED)
+            touched[str(stale.instance_id)] = stale
+            by_type[inst.trend_type] = keep
 
         # 1. Expire stale instances.
         for inst in list(by_type.values()):

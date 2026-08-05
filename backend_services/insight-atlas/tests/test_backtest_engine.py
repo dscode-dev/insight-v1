@@ -33,7 +33,16 @@ def _match(mid: str, sim: float) -> SimilarityMatch:
 
 
 def _context(n: int = 4, agreement: float = 0.85) -> SimilarityContext:
-    matches = [_match(f"m{i}", 0.92 - 0.01 * i) for i in range(n)]
+    # The neighbourhood must MATCH the requested agreement: the Oracle
+    # detector re-scores the set it accepted (and SimilarityService
+    # always derives confidence from these same matches), so a tight
+    # cluster paired with a low `agreement` field is a state production
+    # cannot produce. Low agreement = genuinely wide distance spread.
+    matches = (
+        [_match(f"m{i}", 0.92 - 0.01 * i) for i in range(n)]
+        if agreement >= 0.4
+        else [_match(f"m{i}", 0.95 if i < n // 2 else 0.50) for i in range(n)]
+    )
     sims = [m.similarity for m in matches]
     return SimilarityContext(
         matches=matches,

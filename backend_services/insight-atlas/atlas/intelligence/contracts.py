@@ -22,6 +22,10 @@ from pydantic import (
 )
 
 from atlas.contracts import SourceRef
+from atlas.contracts.no_prediction import (
+    assert_no_prediction_keys,
+    assert_no_prediction_phrases,
+)
 from atlas.intelligence.kernel import (
     INTELLIGENCE_SCHEMA_VERSION,
     Coverage,
@@ -36,6 +40,39 @@ from atlas.intelligence.kernel import (
     ensure_aware,
     utcnow,
 )
+
+
+def _no_prediction_text(where: str):
+    """Field validator factory: enforces the anti-prediction phrase scan
+    on a free-text field (or a list of them).
+
+    The intelligence report's narrative fields are generated from
+    templates today, but they are the widest free-text surface Atlas
+    publishes and nothing structurally prevented forecast language from
+    entering them — the deny-list only ever guarded `ContextOutput`,
+    which is not Atlas's primary output. See
+    `atlas/contracts/no_prediction.py`.
+    """
+
+    def _validate(value):
+        if isinstance(value, str):
+            assert_no_prediction_phrases(value, where=where)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    assert_no_prediction_phrases(item, where=where)
+        elif isinstance(value, dict):
+            for key, nested in value.items():
+                assert_no_prediction_phrases(str(key), where=where)
+                if isinstance(nested, str):
+                    assert_no_prediction_phrases(nested, where=where)
+                elif isinstance(nested, list):
+                    for item in nested:
+                        if isinstance(item, str):
+                            assert_no_prediction_phrases(item, where=where)
+        return value
+
+    return _validate
 
 
 class SignalType(str, enum.Enum):
@@ -146,6 +183,16 @@ class Evidence(BaseModel):
     @classmethod
     def _aware(cls, value: datetime) -> datetime:
         return ensure_aware(value)
+
+    _no_prediction = field_validator("description")(
+        _no_prediction_text("Evidence.description")
+    )
+
+    @field_validator("attributes")
+    @classmethod
+    def _attributes_no_prediction(cls, value: dict[str, Any]) -> dict[str, Any]:
+        assert_no_prediction_keys(value, where="Evidence.attributes")
+        return value
 
 
 class UncertaintyInsight(BaseModel):
@@ -309,6 +356,10 @@ class RegimeInsight(BaseModel):
     expected_behavior: list[str] = Field(default_factory=list)
     risk_factors: list[str] = Field(default_factory=list)
 
+    _no_prediction = field_validator(
+        "characteristics", "expected_behavior", "risk_factors"
+    )(_no_prediction_text("RegimeInsight"))
+
 
 class MarketMovement(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -467,6 +518,10 @@ class ReasoningStatement(BaseModel):
     confidence_effect: float = Field(ge=-1.0, le=1.0)
     uncertainty_effect: float = Field(ge=-1.0, le=1.0)
 
+    _no_prediction = field_validator("conclusion")(
+        _no_prediction_text("ReasoningStatement.conclusion")
+    )
+
 
 class ConflictInsight(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -477,6 +532,10 @@ class ConflictInsight(BaseModel):
     node_ids: list[str] = Field(default_factory=list)
     uncertainty_effect: UnitScore
 
+    _no_prediction = field_validator("description")(
+        _no_prediction_text("ConflictInsight.description")
+    )
+
 
 class ConfidenceExplanation(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -485,6 +544,10 @@ class ConfidenceExplanation(BaseModel):
     score: UnitScore
     positive_factors: list[str] = Field(default_factory=list)
     limiting_factors: list[str] = Field(default_factory=list)
+
+    _no_prediction = field_validator("positive_factors", "limiting_factors")(
+        _no_prediction_text("ConfidenceExplanation")
+    )
 
 
 class UncertaintyExplanation(BaseModel):
@@ -495,6 +558,10 @@ class UncertaintyExplanation(BaseModel):
     missing_inputs: list[str] = Field(default_factory=list)
     reducing_factors: list[str] = Field(default_factory=list)
 
+    _no_prediction = field_validator(
+        "reasons", "missing_inputs", "reducing_factors"
+    )(_no_prediction_text("UncertaintyExplanation"))
+
 
 class ReasoningInsight(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -502,6 +569,10 @@ class ReasoningInsight(BaseModel):
     statements: list[ReasoningStatement] = Field(default_factory=list)
     behavior_explanations: dict[str, list[str]] = Field(default_factory=dict)
     top_supporting_evidence: list[str] = Field(default_factory=list)
+
+    _no_prediction = field_validator(
+        "behavior_explanations", "top_supporting_evidence"
+    )(_no_prediction_text("ReasoningInsight"))
 
 
 class AtlasIntelligenceReport(BaseModel):

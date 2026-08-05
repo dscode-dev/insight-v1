@@ -59,6 +59,27 @@ class ExplorerReadService:
         latest: dict[str, dict[str, Any]] = {}
         for r in rows:
             latest[r.get("ticket_id", id(r))] = r
+
+        # Operator annotations live in a SUBdirectory so the glob above
+        # (non-recursive, and "latest whole record wins") can't mistake a
+        # partial annotation for a full ticket snapshot and wipe the
+        # ticket's own fields. Tickets stay append-only; the annotation
+        # is a separate append-only record merged on read.
+        for annotation in self._read_jsonl(
+            d / "annotations" / "annotations.jsonl"
+        ):
+            ticket = latest.get(annotation.get("ticket_id"))
+            if ticket is None:
+                continue
+            for key in ("assignment", "comment", "execution_id", "pipeline_id"):
+                if annotation.get(key):
+                    ticket[key] = annotation[key]
+            # An annotation may close a ticket; only an explicit value wins.
+            if annotation.get("status"):
+                ticket["status"] = annotation["status"]
+            ticket["annotated_at"] = annotation.get("annotated_at")
+            ticket["annotated_by"] = annotation.get("actor")
+
         out = list(latest.values())
         if status:
             out = [r for r in out if r.get("status") == status]
@@ -186,6 +207,10 @@ class ExplorerReadService:
                 "name": adapter.name,
                 "trust_level": getattr(adapter, "trust_level", "unknown"),
                 "enabled": cfg.source_enabled(adapter.name),
+                # Operator-set collection priority (lower = higher
+                # priority). The Console's Sources screen renders and
+                # edits this.
+                "priority": cfg.priority_for(adapter.name),
                 "jobs_run": len(sjobs),
                 "records_collected": sum(j.get("records_collected", 0) for j in sjobs),
                 "records_validated": sum(j.get("records_validated", 0) for j in sjobs),
@@ -555,6 +580,58 @@ class ExplorerReadService:
             return SignalSourceStore(self.root).get(source_id).to_public_dict()
         except SignalSourceNotFound:
             return None
+
+    def data_intelligence_dashboard(self) -> dict[str, Any]:
+        """Composite Data Intelligence overview for the Console.
+
+        The Console has been calling `GET /explorer/data-intelligence/dashboard`
+        from four screens (`data-intelligence-center`, `explorer-ops`,
+        `operational-command-center`, `operations-center`) but the endpoint
+        never existed server-side — every one of those screens has been
+        rendering a 404 as an empty dashboard. This is the aggregate they
+        expect; the exact key set is what those components read:
+        `active_jobs`, `failed_jobs`, `retries`,
+        `throughput_records_per_second`, `sources`, `datasets` and
+        `records_per_source`.
+
+        Composed from the existing read methods rather than re-deriving
+        anything, so it can never disagree with the screens that show the
+        same numbers individually.
+        """
+        jobs = self.jobs()
+        sources = self.sources()
+        datasets = self.datasets()
+
+        completed = [job for job in jobs if job.get("status") == "completed"]
+        validated_total = sum(job.get("records_validated", 0) for job in completed)
+        duration_seconds = sum(job.get("duration_ms", 0) for job in completed) / 1000.0
+
+        # `retries` lives on Mission Center executions, not on JobRecord —
+        # a job either completes or fails, retries are an execution-level
+        # concern. Absent execution history simply means zero.
+        retries = sum(
+            execution.get("retries", 0) for execution in self.executions()
+        )
+
+        return {
+            "active_jobs": sum(1 for job in jobs if job.get("status") == "running"),
+            "failed_jobs": sum(1 for job in jobs if job.get("status") == "failed"),
+            "retries": retries,
+            # Validated records per second of real collection time. Zero
+            # duration (nothing finished yet) yields 0.0 rather than a
+            # division error.
+            "throughput_records_per_second": (
+                round(validated_total / duration_seconds, 4)
+                if duration_seconds > 0
+                else 0.0
+            ),
+            "sources": sources,
+            "datasets": datasets,
+            "records_per_source": {
+                source["name"]: source.get("records_validated", 0)
+                for source in sources
+            },
+        }
 
     def execution_dataset(self, execution_id: str) -> dict[str, Any] | None:
         from explorer.datalake.lake import DataLake

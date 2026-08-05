@@ -189,6 +189,15 @@ class Settings(BaseSettings):
     strength_sync_min_interval_seconds: float = Field(
         default=1800.0, alias="ATLAS_STRENGTH_SYNC_MIN_INTERVAL_SECONDS", gt=0.0
     )
+    # Frozen regression baseline (ATLAS_V1_FROZEN.md). Empty = no
+    # baseline loaded, which is the historical behaviour: every replay
+    # then reports quality WITHOUT a regression section, because there
+    # is nothing to diff against. Record one with
+    # `scripts/atlas_record_baseline.py` and point this at it to make
+    # the Quality Gate's regression half actually able to fire.
+    regression_baseline_path: str = Field(
+        default="", alias="ATLAS_REGRESSION_BASELINE_PATH"
+    )
     atlas_consumer_group: str = Field(
         default="insight-atlas", alias="ATLAS_CONSUMER_GROUP"
     )

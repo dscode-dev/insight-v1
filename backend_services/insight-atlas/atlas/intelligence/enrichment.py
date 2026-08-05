@@ -30,6 +30,10 @@ from atlas.intelligence.regimes import RegimeEngine
 from atlas.trends.lifecycle.models import TrendInstance
 from atlas.trends.models import Trend
 
+# Only sweep expired cache entries once the dict has grown past this —
+# keeps the common read path O(1) instead of scanning on every call.
+_CACHE_SWEEP_THRESHOLD = 512
+
 
 class IntelligenceEnricher:
     def __init__(
@@ -77,7 +81,19 @@ class IntelligenceEnricher:
             return hit[1]
         value = await loader()
         self._cache[key] = (now + self._cache_seconds, value)
+        # Expired entries were NEVER removed: the dict grew with
+        # (4 profile kinds × trend types × competitions) and held dead
+        # tuples for the process lifetime. Sweep opportunistically —
+        # only when the cache has grown past a threshold, so the common
+        # path stays O(1).
+        if len(self._cache) > _CACHE_SWEEP_THRESHOLD:
+            self._evict_expired(now)
         return value
+
+    def _evict_expired(self, now: float) -> None:
+        expired = [key for key, (expiry, _) in self._cache.items() if expiry <= now]
+        for key in expired:
+            del self._cache[key]
 
     async def trend_fields(
         self, trend: Trend, *, competition_id: UUID | None

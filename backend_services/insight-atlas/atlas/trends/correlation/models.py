@@ -69,6 +69,22 @@ class CorrelationRule:
     window_seconds: int = 600
     require_direction_agreement: bool = False
 
+    @property
+    def rule_id(self) -> str:
+        """Stable identity for THIS rule, not just its output category.
+
+        Several distinct rules deliberately share a `correlation_type`
+        (MARKET_CONVICTION is produced both by market_shift +
+        market_acceleration and by market_consensus_growing +
+        confidence_acceleration). Keying the cooldown on
+        `correlation_type` alone let whichever fired first silently
+        block the other for the whole window, with no log — two
+        genuinely different correlations collapsed into one slot. The
+        member pair is what actually distinguishes them.
+        """
+        first, second = self.members
+        return f"{self.correlation_type.value}:{first.value}+{second.value}"
+
 
 DEFAULT_CORRELATION_RULES: tuple[CorrelationRule, ...] = (
     CorrelationRule(

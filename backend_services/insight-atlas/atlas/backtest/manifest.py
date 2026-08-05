@@ -40,6 +40,12 @@ class ReplayManifest(BaseModel):
     time_interval: str = ""
     explorer_dataset_version: str = "unknown"
     feature_schema_version: str
+    # Defaults to the frozen v1 constant, but is now settable: the
+    # 37-dim v2 embedding (EMBEDDING_VERSION_V2) coexists with v1 in
+    # atlas.atlas_vector_memory, so a replay executed against v2
+    # vectors must not be stamped as v1 — two replays over DIFFERENT
+    # embedding schemes would otherwise carry identical provenance and
+    # be diffed against each other as if comparable.
     similarity_version: str = EMBEDDING_VERSION
     oracle_version: str = INTELLIGENCE_SCHEMA_VERSION
     behavior_version: str = INTELLIGENCE_SCHEMA_VERSION
@@ -64,6 +70,7 @@ def build_manifest(
     time_interval: str = "",
     explorer_dataset_version: str = "unknown",
     artifact_locations: list[str] | None = None,
+    similarity_version: str = EMBEDDING_VERSION,
 ) -> ReplayManifest:
     return ReplayManifest(
         replay_id=replay_id,
@@ -74,6 +81,7 @@ def build_manifest(
         time_interval=time_interval,
         explorer_dataset_version=explorer_dataset_version,
         feature_schema_version=feature_schema_version(),
+        similarity_version=similarity_version,
         detector_versions=detector_versions(),
         execution_timestamp=execution_timestamp,
         execution_duration_ms=execution_duration_ms,

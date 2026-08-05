@@ -107,15 +107,19 @@ class CrossMatchEngine:
 
     async def _team_matches(self, team: str) -> list[UUID]:
         since = datetime.now(timezone.utc) - timedelta(days=self._window_days)
+        # `kickoff IS NULL` used to be OR'd in unconditionally, so EVERY
+        # match with an unknown kickoff entered the denominator
+        # regardless of age — inflating `matches` against a numerator
+        # that is (now) genuinely windowed. A row with no kickoff can't
+        # be shown to be inside the window, so it stays out of both
+        # sides rather than only out of one.
         stmt = select(CanonicalMatchRow.canonical_match_id).where(
             or_(
                 CanonicalMatchRow.home_team == team,
                 CanonicalMatchRow.away_team == team,
             ),
-            or_(
-                CanonicalMatchRow.kickoff.is_(None),
-                CanonicalMatchRow.kickoff >= since,
-            ),
+            CanonicalMatchRow.kickoff.is_not(None),
+            CanonicalMatchRow.kickoff >= since,
         )
         async with self._sf() as session:
             return [
@@ -133,23 +137,34 @@ class CrossMatchEngine:
                 window_days=self._window_days,
             )
         t = TrendEventRow
+        since = datetime.now(timezone.utc) - timedelta(days=self._window_days)
 
-        async def distinct_matches(types: tuple[str, ...]) -> int:
+        async def distinct_matches(session, types: tuple[str, ...]) -> int:
+            # `detected_at >= since` was MISSING here while the
+            # denominator (`_team_matches`) was windowed — an unbounded
+            # numerator over a windowed denominator, so the resulting
+            # rates had no well-defined interpretation.
             stmt = select(
                 func.count(func.distinct(t.canonical_match_id))
             ).where(
                 t.canonical_match_id.in_(match_ids),
                 t.trend_type.in_(types),
+                t.detected_at >= since,
             )
-            async with self._sf() as session:
-                return int((await session.execute(stmt)).scalar_one() or 0)
+            return int((await session.execute(stmt)).scalar_one() or 0)
+
+        # One session for all three counts (was opening three).
+        async with self._sf() as session:
+            market_shift = await distinct_matches(session, _MARKET_SHIFT_TYPES)
+            volatility = await distinct_matches(session, _VOLATILITY_TYPES)
+            uncertainty = await distinct_matches(session, _UNCERTAINTY_TYPES)
 
         profile = CrossMatchProfile(
             scope=scope,
             matches=len(match_ids),
-            market_shift_matches=await distinct_matches(_MARKET_SHIFT_TYPES),
-            volatility_matches=await distinct_matches(_VOLATILITY_TYPES),
-            uncertainty_matches=await distinct_matches(_UNCERTAINTY_TYPES),
+            market_shift_matches=market_shift,
+            volatility_matches=volatility,
+            uncertainty_matches=uncertainty,
             window_days=self._window_days,
         )
         CROSSMATCH_PATTERNS_TOTAL.labels(
