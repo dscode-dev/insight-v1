@@ -132,6 +132,41 @@ class PgVectorMemoryRepository:
             await session.commit()
         return len(embeddings)
 
+    async def coverage_by_version(self) -> list[dict]:
+        """Row/match counts per embedding_version.
+
+        Lives here rather than in the route because the session factory
+        is this class's own; the route previously reached into `_sf`
+        directly, which is exactly the coupling that breaks the next
+        time this repository changes how it holds its session.
+
+        `row_count`, not `rows`: ROWS is a reserved word in Postgres
+        (FETCH FIRST n ROWS), so an unquoted `COUNT(*) AS rows` alias is
+        a syntax error on the real database while passing review.
+        """
+        statement = text(
+            """
+            SELECT embedding_version,
+                   COUNT(*)                        AS row_count,
+                   COUNT(DISTINCT source_match_id) AS match_count,
+                   MAX(created_at)                 AS newest
+              FROM atlas.atlas_vector_memory
+             GROUP BY embedding_version
+             ORDER BY embedding_version
+            """
+        )
+        async with self._sf() as session:
+            result = (await session.execute(statement)).all()
+        return [
+            {
+                "embedding_version": row.embedding_version,
+                "rows": int(row.row_count),
+                "matches": int(row.match_count),
+                "newest": row.newest.isoformat() if row.newest else None,
+            }
+            for row in result
+        ]
+
 
 def _params(embedding: MemoryEmbedding) -> dict:
     return {
@@ -184,39 +219,3 @@ def _params_v2(embedding: MemoryEmbeddingV2) -> dict:
 
 def _vector(values: tuple[float, ...]) -> str:
     return "[" + ",".join(f"{value:.8f}" for value in values) + "]"
-
-
-    async def coverage_by_version(self) -> list[dict]:
-        """Row/match counts per embedding_version.
-
-        Lives here rather than in the route because the session factory
-        is this class's own; the route previously reached into `_sf`
-        directly, which is exactly the coupling that breaks the next
-        time this repository changes how it holds its session.
-
-        `row_count`, not `rows`: ROWS is a reserved word in Postgres
-        (FETCH FIRST n ROWS), so an unquoted `COUNT(*) AS rows` alias is
-        a syntax error on the real database while passing review.
-        """
-        statement = text(
-            """
-            SELECT embedding_version,
-                   COUNT(*)                        AS row_count,
-                   COUNT(DISTINCT source_match_id) AS match_count,
-                   MAX(created_at)                 AS newest
-              FROM atlas.atlas_vector_memory
-             GROUP BY embedding_version
-             ORDER BY embedding_version
-            """
-        )
-        async with self._sf() as session:
-            result = (await session.execute(statement)).all()
-        return [
-            {
-                "embedding_version": row.embedding_version,
-                "rows": int(row.row_count),
-                "matches": int(row.match_count),
-                "newest": row.newest.isoformat() if row.newest else None,
-            }
-            for row in result
-        ]

@@ -427,6 +427,8 @@ def build_app() -> FastAPI:
         base_url=settings.anvil_api_base_url,
         api_key=settings.anvil_api_key,
         timeout_seconds=settings.anvil_api_timeout_seconds,
+        features_path_prefix=settings.anvil_features_path_prefix,
+        api_key_header=settings.anvil_api_key_header,
     )
     # Consolidation Sprint 0: sentiment features come from the
     # canonical context stream; no HTTP sentiment dependency remains.

@@ -39,9 +39,30 @@ class Settings(BaseSettings):
         default=10, alias="INFERENCE_CACHE_TTL_SECONDS"
     )
 
-    # --- Anvil analytics API (Gateway mediated) ---
+    # --- Anvil analytics API (Gateway mediated by default) ---
     anvil_api_base_url: str = Field(..., alias="ATLAS_ANVIL_API_BASE_URL")
     anvil_api_key: str = Field(..., alias="ATLAS_ANVIL_API_KEY", min_length=32)
+    # Path prefix for the feature read.
+    #
+    # The default is the GATEWAY-facing route: the Insight Gateway
+    # authenticates Atlas, then forwards to Anvil, rewriting
+    # `/internal/anvil/features/...` to the `/internal/features/...`
+    # that Anvil itself serves. When Anvil runs alongside Atlas (same
+    # host, no gateway in between) nothing performs that rewrite, and
+    # the default prefix 404s against a direct Anvil. Set this to
+    # `/internal/features` in that deployment.
+    anvil_features_path_prefix: str = Field(
+        default="/internal/anvil/features", alias="ATLAS_ANVIL_FEATURES_PATH_PREFIX"
+    )
+    # Header carrying the API key. Same reasoning as the path prefix:
+    # the gateway accepts `X-Atlas-Anvil-Key` and re-signs the call with
+    # the `x-anvil-api-key` Anvil actually checks. Talking straight to
+    # Anvil, nothing translates, and the mismatch surfaces as a 401 that
+    # looks exactly like a wrong key. Set to `x-anvil-api-key` when
+    # Anvil is colocated.
+    anvil_api_key_header: str = Field(
+        default="X-Atlas-Anvil-Key", alias="ATLAS_ANVIL_API_KEY_HEADER"
+    )
     anvil_api_timeout_seconds: float = Field(
         default=8.0, alias="ATLAS_ANVIL_API_TIMEOUT_SECONDS"
     )

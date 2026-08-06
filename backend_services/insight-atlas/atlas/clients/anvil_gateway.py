@@ -1,18 +1,41 @@
-"""Gateway-mediated Anvil analytics reader.
+"""Anvil analytics reader.
 
-Atlas never receives ClickHouse credentials. The Insight Gateway authenticates
-this client and forwards the narrow feature query to Anvil.
+Atlas never receives ClickHouse credentials. In the default (gateway
+mediated) topology the Insight Gateway authenticates this client and
+forwards the narrow feature query to Anvil, rewriting the path on the
+way. When Anvil runs alongside Atlas there is no gateway to do that
+rewrite, so the path prefix is configurable — see
+`Settings.anvil_features_path_prefix`.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
 import time
+from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
 import httpx
+
+# Gateway-facing route. The gateway maps it onto the `/internal/features`
+# path Anvil actually serves; a direct-to-Anvil deployment must override
+# this or every feature read 404s.
+DEFAULT_FEATURES_PATH_PREFIX = "/internal/anvil/features"
+
+# What Anvil itself serves (anvil/runtime/health.py). Exported so a
+# direct deployment references the real value instead of retyping it.
+DIRECT_FEATURES_PATH_PREFIX = "/internal/features"
+
+# Header the gateway expects from Atlas.
+DEFAULT_API_KEY_HEADER = "X-Atlas-Anvil-Key"
+
+# Header Anvil itself checks (anvil/runtime/health.py compares
+# `x-anvil-api-key`). The gateway translates between the two; a direct
+# deployment has nobody to do that, and the mismatch fails as a 401 —
+# indistinguishable from a wrong key, which is a genuinely confusing
+# thing to debug.
+DIRECT_API_KEY_HEADER = "x-anvil-api-key"
 
 
 class AnvilGatewayError(Exception):
@@ -26,15 +49,29 @@ class AnvilGatewayReader:
         base_url: str,
         api_key: str,
         timeout_seconds: float = 8.0,
+        features_path_prefix: str = DEFAULT_FEATURES_PATH_PREFIX,
+        api_key_header: str = DEFAULT_API_KEY_HEADER,
     ) -> None:
         if not base_url.strip():
             raise ValueError("Anvil Gateway base URL is required")
         if len(api_key.strip()) < 32:
             raise ValueError("Anvil Gateway API key must be at least 32 characters")
+        # Strip BEFORE validating: "/" and "//" are non-empty strings
+        # that normalise to nothing, and would build `/matches/{id}` —
+        # a real route on some other service, queried silently.
+        prefix = features_path_prefix.strip().strip("/")
+        if not prefix:
+            raise ValueError("Anvil features path prefix is required")
+        # Normalised once here so callers may pass it with or without
+        # surrounding slashes and the built URL is identical either way.
+        self._prefix = f"/{prefix}"
+        header = api_key_header.strip()
+        if not header:
+            raise ValueError("Anvil API key header is required")
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             timeout=timeout_seconds,
-            headers={"X-Atlas-Anvil-Key": api_key},
+            headers={header: api_key},
         )
         self._cache: dict[tuple[Any, ...], tuple[float, dict[str, Any]]] = {}
 
@@ -62,7 +99,7 @@ class AnvilGatewayReader:
         cached = self._cache.get(cache_key)
         if cached is not None and cached[0] > time.monotonic():
             return cached[1]
-        path = f"/internal/anvil/features/matches/{quote(str(match_id), safe='')}"
+        path = f"{self._prefix}/matches/{quote(str(match_id), safe='')}"
         try:
             response = await self._client.get(
                 path,

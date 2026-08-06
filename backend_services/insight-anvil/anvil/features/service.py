@@ -34,14 +34,24 @@ class FeatureQueryService:
             """,
             {"match_id": match_id, "as_of": as_of, "window": pressure_window_seconds},
         )
+        # `watermark_ingest_ts`, NOT `ts_ingest`: market_snapshots has no
+        # such column and never did (0002_market_snapshots.sql), so this
+        # query raised UNKNOWN_IDENTIFIER on every call — the market half
+        # of the feature snapshot has never returned a value. The other
+        # two tables here genuinely do have `ts_ingest`, which is why the
+        # mistake looked consistent.
+        #
+        # `watermark_ingest_ts` is the right counterpart: the mapper
+        # fills it from the same payload field that becomes `ts_ingest`
+        # in metric_ticks (see mappers/market_snapshot.py).
         market = await self._one(
             """
             SELECT stddevPop(home_consensus_odd) AS volatility,
                    (anyLast(home_consensus_odd) - any(home_consensus_odd)) AS consensus_shift
             FROM market_snapshots
             WHERE match_id = {match_id:UUID}
-              AND ts_ingest <= {as_of:DateTime64}
-              AND ts_ingest >= {as_of:DateTime64} - INTERVAL {window:UInt32} SECOND
+              AND watermark_ingest_ts <= {as_of:DateTime64}
+              AND watermark_ingest_ts >= {as_of:DateTime64} - INTERVAL {window:UInt32} SECOND
             """,
             {"match_id": match_id, "as_of": as_of, "window": market_window_seconds},
         )
@@ -66,15 +76,19 @@ class FeatureQueryService:
             """,
             {"match_id": match_id, "as_of": as_of, "limit": series_limit},
         )
-        minute = await self._one(
-            """
-            SELECT anyLast(minute) AS minute
-            FROM metric_ticks
-            WHERE match_id = {match_id:UUID}
-              AND ts_ingest <= {as_of:DateTime64}
-            """,
-            {"match_id": match_id, "as_of": as_of},
-        )
+        # `minute` is NOT queried, because `metric_ticks` has no such
+        # column: it is absent from 0003_metric_ticks.sql AND from
+        # mappers/metric_tick.py, so nothing has ever written it. The
+        # query that used to be here failed with UNKNOWN_IDENTIFIER,
+        # which took down the ENTIRE snapshot — pressure, market,
+        # signals and series all returned 500 because of this one field.
+        #
+        # Reporting None keeps the other four features working and
+        # matches the contract (Atlas's `match_minute` is already
+        # `int | None`). Restoring the feature for real needs a `minute`
+        # column in the DDL and a mapper that populates it from the
+        # derived event — a schema decision, not a fix to make here.
+        minute: dict[str, Any] = {}
         return {
             "match_id": str(match_id),
             "as_of": as_of.isoformat(),
