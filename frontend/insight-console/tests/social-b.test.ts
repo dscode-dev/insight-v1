@@ -11,6 +11,14 @@ import { SocialControlPlane } from "@/lib/control-plane/adapters/social";
 import type { OperatorContext } from "@/lib/control-plane/security/operator-context";
 import type { Permission, Role } from "@/types/auth";
 
+// Social enforcement goes through the Insight Control Plane now, and it
+// authenticates with the operator's session cookie.
+vi.mock("@/lib/session-cookie", () => ({
+  SESSION_COOKIE: "insight_console_session",
+  readSessionCookie: () => "op-tok",
+}));
+
+
 function op(permissions: Permission[], roles: Role[] = ["Operations"]): OperatorContext {
   return {
     operatorId: "op-1", operatorDisplayName: "Op", operatorUsername: "op", identityId: "op-1",

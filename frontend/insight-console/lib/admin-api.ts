@@ -13,9 +13,12 @@
 
 import { z } from "zod";
 
-const ADMIN_API_BASE_URL =
-  process.env.ADMIN_API_BASE_URL ?? "https://insight-api.konohalabs.com.br/v1";
-const ADMIN_API_INTERNAL_TOKEN = process.env.ADMIN_API_INTERNAL_TOKEN ?? "";
+import { consoleApiCall } from "@/lib/control-plane/adapters/console-api";
+
+// ADMIN_API_BASE_URL and ADMIN_API_INTERNAL_TOKEN are deliberately NOT
+// read here any more. They moved to the Control Plane along with the
+// calls that used them — a dead env read is how a "we no longer talk to
+// that service" claim quietly stops being true.
 
 export class ConsoleApiError extends Error {
   readonly status: number;
@@ -47,63 +50,28 @@ export interface AdminCallOptions {
   timeoutMs?: number;
 }
 
-function adminURL(path: string): string {
-  const base = ADMIN_API_BASE_URL.replace(/\/+$/, "");
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  if (base.endsWith("/v1") && normalizedPath.startsWith("/v1/")) {
-    return `${base}${normalizedPath.slice(3)}`;
-  }
-  return `${base}${normalizedPath}`;
-}
-
 /**
- * Low-level fetch wrapper. Returns the raw Response so individual
- * BFF routes can shape the response (some pass through, some
- * transform, some aggregate). Throws ConsoleApiError on transport
- * failures (timeout, connection reset). HTTP-level errors are NOT
- * thrown — the caller inspects status.
+ * Every admin/social call now leaves through the Insight Control Plane.
+ *
+ * insight-context.md v2.0: the console "nunca acessa diretamente os
+ * demais serviços". The cloud Gateway is a Product-plane service, so the
+ * Control Plane is what talks to it on an operator's behalf — and
+ * ADMIN_API_INTERNAL_TOKEN moved there with the calls. This process no
+ * longer holds it, and no longer sends the operator token either: the
+ * Control Plane already resolved the session and derives attribution
+ * from it.
+ *
+ * The path is passed through unchanged; the Control Plane classifies it
+ * against a closed allow-list (`gateway-path-policy.ts`) and refuses
+ * anything it does not recognise.
  */
 export async function adminFetch(
   path: string,
   options: AdminCallOptions = {},
 ): Promise<Response> {
-  if (!ADMIN_API_INTERNAL_TOKEN && process.env.NODE_ENV === "production") {
-    throw new ConsoleApiError(503, "admin_api_token_missing");
-  }
-  const { operatorToken, correlationId, method = "GET", body, timeoutMs = 5000 } =
-    options;
-  const url = adminURL(path);
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "X-Console-Service-Token": ADMIN_API_INTERNAL_TOKEN,
-  };
-  if (operatorToken) headers["Authorization"] = `Bearer ${operatorToken}`;
-  if (correlationId) headers["X-Request-Id"] = correlationId;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-      // Server-side; no need for credentials.
-      cache: "no-store",
-    });
-    return res;
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new ConsoleApiError(504, "admin_api_timeout", { correlationId });
-    }
-    throw new ConsoleApiError(502, "admin_api_unreachable", {
-      correlationId,
-      upstreamCode: (err as Error).message,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  const { method = "GET", body } = options;
+  const normalized = path.startsWith("/") ? path.slice(1) : path;
+  return consoleApiCall(`product-plane/${normalized}`, method, body);
 }
 
 /**

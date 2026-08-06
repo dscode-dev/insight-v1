@@ -3,8 +3,8 @@ import { UpstreamService } from '../upstream/upstream.service';
 import { ExplorerOpsService } from './explorer-ops.service';
 
 const BASE_ENV = {
-  CONSOLE_API_SIGNING_SECRET: 'a'.repeat(48),
-  ROBOZAO_GATEWAY_URL: 'http://gateway:8095',
+  CONTROL_PLANE_DATABASE_URL: 'postgres://u:p@postgres:5432/insight_db',
+  ROBOZAO_GATEWAY_URL: 'http://robozao-gateway:8095',
   EXPLORER_API_BASE_URL: 'http://insight-explorer:8090',
   EXPLORER_OPS_TOKEN: 'ops-token',
 };

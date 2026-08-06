@@ -1,28 +1,45 @@
 import { loadConfig, resetConfigForTests } from '../config/config';
+import type {
+  OperatorRepository,
+  ResolvedSession,
+} from '../identity/operator.repository';
 import { SessionCacheService } from './session-cache.service';
 
 const BASE_ENV = {
-  CONSOLE_API_SIGNING_SECRET: 'a'.repeat(48),
-  ROBOZAO_GATEWAY_URL: 'http://gateway:8095',
+  CONTROL_PLANE_DATABASE_URL: 'postgres://u:p@postgres:5432/insight_db',
+  ROBOZAO_GATEWAY_URL: 'http://robozao-gateway:8095',
   SESSION_CACHE_TTL_SECONDS: '30',
   SESSION_CACHE_MAX_ENTRIES: '3',
 };
 
-/**
- * Returns a fetcher that yields a FRESH Response per call.
- *
- * `mockResolvedValue(new Response(...))` hands back the same instance
- * every time, and a Response body can only be consumed once — the
- * second resolve() then fails to parse and silently returns null,
- * which makes multi-call tests pass or fail for the wrong reason.
- */
-function okFetcher(body: unknown): jest.Mock {
-  return jest.fn().mockImplementation(async () =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }),
-  );
+function session(id = 'op-1'): ResolvedSession {
+  return {
+    operator: {
+      id,
+      username: 'ana',
+      email: 'ana@konoha.lab',
+      displayName: 'Ana',
+      role: 'SuperAdmin',
+      permissions: ['console.access'],
+      isActive: true,
+    },
+    sessionId: 'ignored-by-these-tests',
+    expiresAt: new Date(Date.now() + 3_600_000),
+  };
+}
+
+/** Repository stub recording how often the database was consulted. */
+function repo(
+  resolve: (token: string) => Promise<ResolvedSession | null>,
+): { repo: OperatorRepository; calls: () => number } {
+  let calls = 0;
+  const stub = {
+    resolveSession: async (token: string) => {
+      calls += 1;
+      return resolve(token);
+    },
+  } as unknown as OperatorRepository;
+  return { repo: stub, calls: () => calls };
 }
 
 describe('SessionCacheService', () => {
@@ -39,114 +56,110 @@ describe('SessionCacheService', () => {
 
   const now = () => clock;
 
-  it('calls the gateway on a miss and returns the operator', async () => {
-    const fetcher = okFetcher({
-      id: 'op-1', username: 'ana', role: 'SuperAdmin', permissions: ['a'],
-    });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('resolves through the repository on a miss', async () => {
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
-    const session = await cache.resolve('token-1');
+    const resolved = await cache.resolve('token-1');
 
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(session?.operatorId).toBe('op-1');
-    expect(session?.permissions).toEqual(['a']);
+    expect(calls()).toBe(1);
+    expect(resolved?.operator.id).toBe('op-1');
+    expect(resolved?.operator.permissions).toEqual(['console.access']);
   });
 
-  it('serves a second request from cache without hitting the gateway', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('serves a second request from cache without touching the database', async () => {
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
     await cache.resolve('token-1');
     await cache.resolve('token-1');
 
-    // This is the entire point of the service.
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    // The entire point: 14 polling points × one resolution each would
+    // otherwise be a query per request per open tab.
+    expect(calls()).toBe(1);
   });
 
   it('re-resolves once the TTL expires', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
     await cache.resolve('token-1');
     clock += 31_000; // TTL is 30s
     await cache.resolve('token-1');
 
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    // This TTL is the ONLY staleness window for revocation, since
+    // resolveSession enforces revoked/expired/inactive in SQL.
+    expect(calls()).toBe(2);
   });
 
   it('keys on the token, not the operator', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
     await cache.resolve('token-1');
     await cache.resolve('token-2');
 
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(calls()).toBe(2);
   });
 
-  it('never stores the raw token as a key', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('never uses the raw token as a key', async () => {
+    const { repo: r } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
-    const session = await cache.resolve('super-secret-token');
+    await cache.resolve('super-secret-token');
 
-    expect(session?.sessionId).toBe(
-      SessionCacheService.sessionKey('super-secret-token'),
-    );
-    expect(session?.sessionId).not.toContain('super-secret-token');
+    const key = SessionCacheService.sessionKey('super-secret-token');
+    expect(key).not.toContain('super-secret-token');
+    expect(key).toHaveLength(64);
   });
 
-  it('invalidate() forces the next resolve back to the gateway', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('invalidate() forces the next resolve back to the database', async () => {
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
     await cache.resolve('token-1');
     cache.invalidate('token-1');
     await cache.resolve('token-1');
 
     // Logout must not leave the operator working off a cached entry.
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(calls()).toBe(2);
   });
 
-  it('returns null and does NOT cache when the gateway rejects the token', async () => {
-    const fetcher = jest
-      .fn()
-      .mockImplementation(async () => new Response('', { status: 401 }));
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('returns null and does NOT cache an unresolvable session', async () => {
+    const { repo: r, calls } = repo(async () => null);
+    const cache = new SessionCacheService(r, now);
 
     expect(await cache.resolve('bad-token')).toBeNull();
     expect(cache.size).toBe(0);
     await cache.resolve('bad-token');
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    // Caching the rejection would keep refusing a token that was just
+    // re-issued for the same value.
+    expect(calls()).toBe(2);
   });
 
-  it('returns null and does NOT cache when the gateway is unreachable', async () => {
-    const fetcher = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('returns null and does NOT cache a database outage', async () => {
+    const { repo: r } = repo(async () => {
+      throw new Error('ECONNREFUSED');
+    });
+    const cache = new SessionCacheService(r, now);
 
-    // An outage must never be cached — that would lock every operator
-    // out for the whole TTL even after the gateway recovers.
+    // An outage must never be cached — it would lock every operator out
+    // for the whole TTL even after Postgres recovers.
     expect(await cache.resolve('token-1')).toBeNull();
     expect(cache.size).toBe(0);
   });
 
-  it('rejects a gateway response with no operator id', async () => {
-    const fetcher = okFetcher({ username: 'ana' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('returns null for an empty token without querying', async () => {
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
-    expect(await cache.resolve('token-1')).toBeNull();
-  });
-
-  it('accepts operator_id as well as id', async () => {
-    const fetcher = okFetcher({ operator_id: 'op-9' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
-
-    expect((await cache.resolve('token-1'))?.operatorId).toBe('op-9');
+    expect(await cache.resolve('')).toBeNull();
+    expect(calls()).toBe(0);
   });
 
   it('evicts the least recently used entry past the cap', async () => {
-    const fetcher = okFetcher({ id: 'op-1' });
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+    const { repo: r, calls } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
     await cache.resolve('t1');
     await cache.resolve('t2');
@@ -155,18 +168,21 @@ describe('SessionCacheService', () => {
     await cache.resolve('t4'); // cap is 3 → evicts t2
 
     expect(cache.size).toBe(3);
-    fetcher.mockClear();
+    const before = calls();
     await cache.resolve('t1');
-    expect(fetcher).not.toHaveBeenCalled(); // t1 survived
+    expect(calls()).toBe(before); // t1 survived
     await cache.resolve('t2');
-    expect(fetcher).toHaveBeenCalledTimes(1); // t2 was evicted
+    expect(calls()).toBe(before + 1); // t2 was evicted
   });
 
-  it('returns null for an empty token without calling the gateway', async () => {
-    const fetcher = jest.fn();
-    const cache = new SessionCacheService(fetcher as unknown as typeof fetch, now);
+  it('invalidateAll() drops every entry', async () => {
+    const { repo: r } = repo(async () => session());
+    const cache = new SessionCacheService(r, now);
 
-    expect(await cache.resolve('')).toBeNull();
-    expect(fetcher).not.toHaveBeenCalled();
+    await cache.resolve('t1');
+    await cache.resolve('t2');
+    cache.invalidateAll();
+
+    expect(cache.size).toBe(0);
   });
 });

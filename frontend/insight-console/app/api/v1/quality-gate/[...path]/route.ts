@@ -44,21 +44,14 @@ export const GET = withApiHandler(async (req) => {
   await requirePermission("config.read");
   const operator = await requireOperator();
   const { path, search } = pathOf(req);
-  return consoleApiCall(
-    operatorContextFromOperator(operator, req),
-    `quality-gate/${path}${search}`,
-  );
+  return consoleApiCall(`quality-gate/${path}${search}`);
 });
 
 export const DELETE = withApiHandler(async (req) => {
   await requirePermission(PROMOTE_PERMISSION);
   const operator = await requireOperator();
   const { path, search } = pathOf(req);
-  return consoleApiCall(
-    operatorContextFromOperator(operator, req),
-    `quality-gate/${path}${search}`,
-    "DELETE",
-  );
+  return consoleApiCall(`quality-gate/${path}${search}`, "DELETE");
 });
 
 export const POST = withApiHandler(async (req) => {
@@ -72,9 +65,10 @@ export const POST = withApiHandler(async (req) => {
   } catch {
     throw new ConsoleApiError(400, "invalid_json");
   }
-  // A decision's author is derived server-side end to end: this context,
-  // signed across to insight-console-api, forwarded to Atlas as
-  // X-Operator. Nothing the browser sends can name the decider.
+  // A decision's author is derived server-side end to end: the session
+  // cookie resolves to an operator IN the Control Plane, which forwards
+  // it to Atlas as X-Operator. Nothing the browser sends names the
+  // decider.
   assertNoClientActor(body);
 
   const route = classifyQualityGateWrite(path);
@@ -87,7 +81,7 @@ export const POST = withApiHandler(async (req) => {
     // Submitting or cancelling a replay — a normal operation, not a
     // governance act. No baseline is changed by running one.
     await requirePermission(PROMOTE_PERMISSION);
-    return consoleApiCall(ctx, `quality-gate/${path}${search}`, "POST", body);
+    return consoleApiCall(`quality-gate/${path}${search}`, "POST", body);
   }
   const executionId = route.executionId;
 
@@ -137,12 +131,7 @@ export const POST = withApiHandler(async (req) => {
     });
   }
 
-  const response = await consoleApiCall(
-    ctx,
-    `quality-gate/${path}`,
-    "POST",
-    body,
-  );
+  const response = await consoleApiCall(`quality-gate/${path}`, "POST", body);
 
   if (response.ok) {
     await AdministrativeAudit.outcome(ctx, decision, "COMPLETED", {

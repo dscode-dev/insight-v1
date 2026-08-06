@@ -19,6 +19,10 @@ ENV NODE_ENV=production
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
+# The CLI resolves migrations relative to dist/, and the image has no
+# shell or psql — `node dist/cli.js migrate|seed` is the only way to
+# apply schema or bootstrap the first operator.
+COPY migrations ./migrations
 
 # Never run as root.
 USER node

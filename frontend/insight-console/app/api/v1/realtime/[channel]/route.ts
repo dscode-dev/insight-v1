@@ -24,7 +24,7 @@ async function stream(req: Request): Promise<Response> {
   const channel = decodeURIComponent(segments[segments.length - 1] ?? "");
   // req.signal aborts when the browser disconnects, which tears down the
   // upstream subscription and lets an idle channel stop polling.
-  return consoleApiStream(ctx, channel, req.signal);
+  return consoleApiStream(channel, req.signal);
 }
 
 export const GET = withApiHandler(stream);

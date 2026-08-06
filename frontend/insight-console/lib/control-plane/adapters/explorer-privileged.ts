@@ -1,16 +1,16 @@
-// Operator-bound Explorer privileged adapter (CONSOLE-SECURITY-A1, Stage 10).
-// SERVER-ONLY.
+// Operator-bound Explorer adapter. SERVER-ONLY.
 //
-// Closes the SECURITY-A0 debt: Explorer's `X-Operator` is now derived SERVER-SIDE
-// from the verified OperatorContext and can never be controlled by the browser.
-// Correlation is propagated. This is a thin, typed containment over the existing
-// Explorer client — Explorer intelligence logic is untouched, and Atlas (frozen,
-// read-only, service-token) is deliberately NOT routed here.
+// WHAT THIS IS NOW. Its original job was deriving Explorer's
+// `X-Operator` server-side from the verified OperatorContext, so the
+// browser could never control attribution. That derivation moved to the
+// Insight Control Plane, which resolves the operator from the session
+// itself and forwards it — the console does not send an actor at all
+// any more, which is a stronger guarantee than sending a trustworthy
+// one: there is no field to spoof.
 //
-// HONEST NOTE: Explorer does not currently *verify* X-Operator — it is attribution
-// metadata, not authentication. This adapter guarantees the value is trustworthy
-// on the Console side (server-derived) and contains the flow behind one seam;
-// stronger Explorer-side operator verification is recorded as future debt.
+// The seam is kept for its security telemetry. Every privileged
+// Explorer flow still passes through one place that observes it, and
+// the console's audit spine reads those events.
 
 import { explorerCall } from "@/lib/data-intelligence";
 import { observeSecurity } from "@/lib/control-plane/security/observability";
@@ -22,15 +22,13 @@ export async function explorerPrivilegedCall(
   method: string,
   body: unknown,
 ): Promise<Response> {
-  // Server-derived attribution ONLY (username??id). Never a client value.
-  const actor = operator.operatorUsername ?? operator.operatorId;
   observeSecurity("privileged_adapter_request", {
     operatorId: operator.operatorId,
     service: "explorer",
     correlationId: operator.correlationId,
   });
   try {
-    return await explorerCall(path, method, body, actor, operator.correlationId ?? undefined);
+    return await explorerCall(path, method, body);
   } catch (err) {
     observeSecurity("privileged_adapter_failure", {
       operatorId: operator.operatorId,

@@ -18,7 +18,7 @@ async function proxy(req: Request): Promise<Response> {
   const path = decodeURIComponent(url.pathname.split(marker)[1] ?? "");
   const hasBody = req.method !== "GET" && req.method !== "DELETE";
   const body = hasBody ? await req.json() : undefined;
-  return consoleApiCall(ctx, path + (url.search || ""), req.method, body);
+  return consoleApiCall(path + (url.search || ""), req.method, body);
 }
 
 export const GET = withApiHandler(proxy);

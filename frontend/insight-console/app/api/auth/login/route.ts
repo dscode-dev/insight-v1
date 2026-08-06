@@ -1,13 +1,17 @@
 // POST /api/auth/login.
 //
-// Console is not an identity provider. It forwards credentials to Gateway,
-// stores only the opaque Gateway operator session in an HttpOnly cookie, and
-// returns the Gateway-resolved operator.
+// Console is not an identity provider. It forwards credentials to the
+// INSIGHT CONTROL PLANE, stores only the opaque operator session in an
+// HttpOnly cookie, and returns the Control-Plane-resolved operator.
+//
+// Previously this posted to the Insight Gateway's public API. Per
+// insight-context.md v2.0 the Gateway is not responsible for operators
+// or administration — that is the Control Plane's job.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminFetch } from "@/lib/admin-api";
+import { controlPlaneFetch } from "@/lib/control-plane/adapters/console-api";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
 const loginSchema = z.object({
@@ -32,7 +36,7 @@ export async function POST(req: Request) {
 
   let upstream: Response;
   try {
-    upstream = await adminFetch("/v1/operator/auth/login", {
+    upstream = await controlPlaneFetch("/v1/operator/auth/login", {
       method: "POST",
       body: parsed.data,
     });

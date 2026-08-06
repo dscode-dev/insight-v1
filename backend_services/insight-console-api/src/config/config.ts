@@ -12,18 +12,39 @@ const schema = z.object({
   HOST: z.string().default('0.0.0.0'),
 
   /**
-   * Shared secret used to verify the identity envelope the Next.js BFF
-   * signs. This is the ONLY thing standing between "identity resolved
-   * server-side by the console" and "identity asserted by whoever can
-   * reach this port", so it is required with a real minimum length —
-   * never defaulted.
+   * The Control Plane's own database. It is authority over
+   * administrative identity — operators, sessions, RBAC, the audit
+   * spine — so this is required, not defaulted: a Control Plane that
+   * boots without it can authenticate nobody.
    */
-  CONSOLE_API_SIGNING_SECRET: z.string().min(32),
+  CONTROL_PLANE_DATABASE_URL: z.string().min(1),
+  DATABASE_POOL_SIZE: z.coerce.number().int().positive().max(50).default(10),
 
-  /** Robozão Gateway — owner of operator identity/session/roles. */
+  /** Apply migrations/*.sql at boot. Off in production by default. */
+  AUTO_APPLY_MIGRATIONS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
+  /** How long an issued operator session lives. */
+  SESSION_TTL_HOURS: z.coerce.number().int().positive().max(72).default(8),
+
+  /**
+   * Node Agent (Robozão) — machine state, containers, controlled
+   * deploy. NOT an identity provider: insight-context.md v2.0 assigns
+   * operator auth to the Control Plane, and the Node Agent explicitly
+   * "nunca deve oferecer proxy HTTP".
+   */
   ROBOZAO_GATEWAY_URL: z.string().url(),
 
-  /** Seconds a resolved session stays cached. Short by intent. */
+  /**
+   * Seconds a resolved session stays cached.
+   *
+   * This is the ONLY staleness window for revocation: resolveSession
+   * enforces expiry, revocation and the operator's active flag in SQL,
+   * so a logged-out or deactivated operator keeps working for at most
+   * this long. Short by intent.
+   */
   SESSION_CACHE_TTL_SECONDS: z.coerce.number().int().positive().max(300).default(30),
 
   /** Max cached sessions before LRU eviction. */
@@ -39,6 +60,16 @@ const schema = z.object({
   EXPLORER_OPS_TOKEN: z.string().default(''),
   ATLAS_API_BASE_URL: z.string().url().default('http://atlas:8085'),
   ATLAS_INTERNAL_TOKEN: z.string().default(''),
+  /** Empty = the Control Plane has no route to it, not a crash. */
+  NEXUS_API_BASE_URL: z.string().default(''),
+  ANVIL_API_BASE_URL: z.string().default(''),
+  /**
+   * Cloud Gateway (Product plane). The Control Plane is the ONLY thing
+   * that reaches it on an operator's behalf, so its internal token
+   * lives here rather than in the console.
+   */
+  ADMIN_API_BASE_URL: z.string().default(''),
+  ADMIN_API_INTERNAL_TOKEN: z.string().default(''),
 });
 
 export type AppConfig = z.infer<typeof schema>;

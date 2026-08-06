@@ -1,98 +1,92 @@
-// Console backend (insight-console-api) adapter. SERVER-ONLY.
+// Insight Control Plane adapter. SERVER-ONLY.
 //
-// The Nest service owns session caching, realtime SSE fan-out, and the
-// console domains being strangled out of this BFF. It never mints
-// identity — the Gateway does, this BFF resolves it, and we hand the
-// already-resolved OperatorContext across as an HMAC-signed envelope.
+// Per insight-context.md v2.0 the Control Plane is the administrative
+// authority for the Intelligence plane — it authenticates operators,
+// owns their sessions and RBAC, carries the audit spine, and is the one
+// service the Console talks to. Everything else (Explorer, Atlas,
+// Nexus, the Node Agent) is reached THROUGH it.
 //
-// WHY SIGNED: without a signature, anything able to reach the Nest port
-// could assert any operator, which would break the console's core rule
-// that identity is server-derived and never caller-asserted (see
-// `assertNoClientActor` in security/operator-context.ts). The signature
-// proves the identity came from this process.
+// WHAT REPLACED WHAT. This adapter used to sign an HMAC envelope
+// describing an operator the Console had already resolved against the
+// Gateway. That inverted the authority: the Console decided who you
+// were and the backend believed it. Now the Console forwards the opaque
+// session token from its HttpOnly cookie and the Control Plane decides
+// — which also removes a round-trip, since resolving an identity purely
+// in order to sign it is no longer necessary.
+//
+// It also drops a `node:crypto` import from this module. `session.ts`
+// imports it, and Next's bundler follows that chain: the HMAC helper
+// made `next build` fail with UnhandledSchemeError on "node:crypto".
 
-import { createHmac } from "node:crypto";
+import { readSessionCookie } from "@/lib/session-cookie";
 
-import type { OperatorContext } from "@/lib/control-plane/security/operator-context";
-
-const CONSOLE_API_BASE_URL =
-  process.env.CONSOLE_API_BASE_URL ?? "http://insight-console-api:3002";
-const CONSOLE_API_SIGNING_SECRET = process.env.CONSOLE_API_SIGNING_SECRET ?? "";
-
-export const IDENTITY_HEADER = "x-console-identity";
-export const IDENTITY_SIGNATURE_HEADER = "x-console-identity-signature";
-
-export class ConsoleApiUnconfiguredError extends Error {
-  constructor() {
-    super("console_api_signing_secret_missing");
-  }
+/**
+ * Read at CALL time, not module load.
+ *
+ * A module-level capture is invisible to anything that sets the
+ * variable afterwards, which makes this module untestable and makes a
+ * config change depend on process restart order rather than on config.
+ */
+function baseUrl(): string {
+  return (
+    process.env.CONSOLE_API_BASE_URL ?? "http://insight-console-api:3002"
+  ).replace(/\/+$/, "");
 }
 
-/** Build the signed headers carrying `operator` to the console backend. */
-export function identityHeaders(
-  operator: OperatorContext,
-): Record<string, string> {
-  if (!CONSOLE_API_SIGNING_SECRET) {
-    throw new ConsoleApiUnconfiguredError();
-  }
-  const identity = {
-    operatorId: operator.operatorId,
-    operatorUsername: operator.operatorUsername,
-    identityId: operator.identityId,
-    identityKind: operator.identityKind,
-    permissions: operator.permissions ?? [],
-    // OperatorContext carries `roles` (plural); the backend envelope
-    // keeps a single canonical role string for logging/attribution.
-    role: operator.roles?.[0] ?? "",
-    sessionId: operator.sessionId,
-    correlationId: operator.correlationId ?? null,
-    // Verified against a 60s window on the other side — bounds replay
-    // if an envelope ever lands in a log.
-    issuedAt: Math.floor(Date.now() / 1000),
-  };
-  const envelope = Buffer.from(JSON.stringify(identity), "utf8").toString(
-    "base64url",
-  );
-  const signature = createHmac("sha256", CONSOLE_API_SIGNING_SECRET)
-    .update(envelope)
-    .digest("hex");
-  return {
-    [IDENTITY_HEADER]: envelope,
-    [IDENTITY_SIGNATURE_HEADER]: signature,
-  };
+function url(path: string): string {
+  return `${baseUrl()}/${path.replace(/^\/+/, "")}`;
 }
 
-/** JSON call against the console backend, carrying signed identity. */
+/**
+ * Call the Control Plane with an explicit session token.
+ *
+ * Takes a raw token rather than an OperatorContext because the two
+ * callers that need it — login and session resolution — run before any
+ * operator has been resolved.
+ */
+export async function controlPlaneFetch(
+  path: string,
+  init: {
+    method?: string;
+    body?: unknown;
+    token?: string | null;
+    timeoutMs?: number;
+  } = {},
+): Promise<Response> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (init.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (init.token) {
+    headers.Authorization = `Bearer ${init.token}`;
+  }
+  return fetch(url(path), {
+    method: init.method ?? "GET",
+    cache: "no-store",
+    signal: AbortSignal.timeout(init.timeoutMs ?? 10_000),
+    headers,
+    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+  });
+}
+
+/**
+ * JSON call against the Control Plane on behalf of the signed-in
+ * operator. Reads the session cookie itself: the token is a credential
+ * and threading it through every call site only widens its exposure.
+ */
 export async function consoleApiCall(
-  operator: OperatorContext,
   path: string,
   method: string = "GET",
   body?: unknown,
 ): Promise<Response> {
-  let headers: Record<string, string>;
-  try {
-    headers = identityHeaders(operator);
-  } catch {
-    return Response.json(
-      { detail: "console_api_signing_secret_missing" },
-      { status: 503 },
-    );
+  const token = readSessionCookie();
+  if (!token) {
+    // No cookie means no session. Answering 401 here keeps the failure
+    // shaped like an auth problem rather than an upstream one.
+    return Response.json({ detail: "unauthenticated" }, { status: 401 });
   }
 
-  const upstream = await fetch(
-    `${CONSOLE_API_BASE_URL.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`,
-    {
-      method,
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-      headers: {
-        Accept: "application/json",
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...headers,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    },
-  );
+  const upstream = await controlPlaneFetch(path, { method, body, token });
   const text = await upstream.text();
   return new Response(text, {
     status: upstream.status,
@@ -105,37 +99,34 @@ export async function consoleApiCall(
 }
 
 /**
- * Pipe an SSE stream from the console backend to the browser.
+ * Pipe an SSE stream from the Control Plane to the browser.
  *
  * The Next server is `output: "standalone"` (a real Node process), so
- * holding this connection open is fine. Streaming through the BFF keeps
- * the browser on one origin, so the session cookie and CSP are unchanged
- * and no edge-proxy reconfiguration is needed to adopt realtime.
+ * holding this connection open is fine. Streaming through the Console
+ * keeps the browser on one origin, so the session cookie and CSP are
+ * unchanged and no edge-proxy reconfiguration is needed.
  */
 export async function consoleApiStream(
-  operator: OperatorContext,
   channel: string,
   signal: AbortSignal,
 ): Promise<Response> {
-  let headers: Record<string, string>;
-  try {
-    headers = identityHeaders(operator);
-  } catch {
-    return Response.json(
-      { detail: "console_api_signing_secret_missing" },
-      { status: 503 },
-    );
+  const token = readSessionCookie();
+  if (!token) {
+    return Response.json({ detail: "unauthenticated" }, { status: 401 });
   }
 
   const upstream = await fetch(
-    `${CONSOLE_API_BASE_URL.replace(/\/+$/, "")}/realtime/channels/${encodeURIComponent(channel)}`,
+    url(`realtime/channels/${encodeURIComponent(channel)}`),
     {
       method: "GET",
       cache: "no-store",
       // Deliberately NO timeout: an SSE stream is meant to stay open.
       // The caller's abort signal (client disconnect) is what ends it.
       signal,
-      headers: { Accept: "text/event-stream", ...headers },
+      headers: {
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${token}`,
+      },
     },
   );
 

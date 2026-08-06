@@ -135,7 +135,7 @@ export class ExplorerOpsController {
 
 function actorOf(request: RequestWithIdentity): string {
   const identity = request[IDENTITY_REQUEST_KEY];
-  const actor = identity?.operatorUsername || identity?.operatorId || '';
+  const actor = identity?.operator.username || identity?.operator.id || '';
   if (!actor) {
     // The global IdentityGuard fills this before any handler runs, so an
     // empty value means the guard was bypassed. Explorer records the

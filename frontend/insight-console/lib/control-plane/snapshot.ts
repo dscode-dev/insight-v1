@@ -11,11 +11,8 @@
 // collapse the snapshot.
 
 import type { AdapterContext, HealthReport } from "@/lib/control-plane/adapters/base";
-import { AtlasAdapter } from "@/lib/control-plane/adapters/atlas";
-import { ExplorerAdapter } from "@/lib/control-plane/adapters/explorer";
+import { PlatformAdapter } from "@/lib/control-plane/adapters/platform";
 import { GatewayAdapter } from "@/lib/control-plane/adapters/gateway";
-import { NexusAdapter } from "@/lib/control-plane/adapters/nexus";
-import { RobozaoAdapter } from "@/lib/control-plane/adapters/robozao";
 import { observe } from "@/lib/control-plane/observability";
 import { EnvironmentRegistry } from "@/lib/control-plane/registries/environments";
 import {
@@ -56,27 +53,49 @@ export const PlatformSnapshotService = {
     const environments = EnvironmentRegistry.list();
     const services = ServiceRegistry.list();
 
-    // Fire the fixed set of adapters in parallel; each is failure-isolated.
-    const [atlasR, explorerR, nexusR, cloudR, roboR] = await Promise.all([
-      AtlasAdapter.readHealth(ctx),
-      ExplorerAdapter.readHealth(ctx),
-      NexusAdapter.readHealth(ctx),
+    // Two calls, not five. The Intelligence plane's services (Atlas,
+    // Explorer, Nexus, Anvil) and the Node Agent are now observed by the
+    // CONTROL PLANE and returned together — the console no longer
+    // probes them itself, and no longer holds their service tokens.
+    // The Gateway probe stays direct because it reports the PRODUCT
+    // plane (social, cloud datastores), which the Control Plane has no
+    // route to.
+    const [platformR, cloudR] = await Promise.all([
+      PlatformAdapter.readHealth(ctx),
       GatewayAdapter.readCloud(ctx),
-      RobozaoAdapter.readOperations(ctx),
     ]);
 
-    const sources: SourceStatus[] = [atlasR.source, explorerR.source, nexusR.source, cloudR.source, roboR.source];
+    const sources: SourceStatus[] = [platformR.source, cloudR.source];
     const resolved = new Map<string, ResolvedHealth>();
 
-    // Direct-adapter services (authoritative for their own health).
-    if (atlasR.ok) resolved.set("atlas", { report: atlasR.value, source: atlasR.source });
-    else resolved.set("atlas", { report: { ...UNKNOWN_REPORT, health: "unavailable", detail: atlasR.error.message }, source: atlasR.source });
-
-    if (explorerR.ok) resolved.set("explorer", { report: explorerR.value, source: explorerR.source });
-    else resolved.set("explorer", { report: { ...UNKNOWN_REPORT, health: "unavailable", detail: explorerR.error.message }, source: explorerR.source });
-
-    if (nexusR.ok) resolved.set("nexus", { report: nexusR.value, source: nexusR.source });
-    else resolved.set("nexus", { report: { ...UNKNOWN_REPORT, detail: nexusR.error.message }, source: nexusR.source });
+    // Intelligence-plane services, as observed by the Control Plane.
+    const intelligenceObserved = ["atlas", "explorer", "nexus", "anvil"];
+    if (platformR.ok) {
+      for (const id of intelligenceObserved) {
+        const report = platformR.value.services[id];
+        // Absent ⇒ the Control Plane has no probe configured for it.
+        // Honestly unknown, NOT down: reporting a service as down
+        // because nobody looked is how a false incident starts.
+        resolved.set(id, { report: report ?? UNKNOWN_REPORT, source: platformR.source });
+      }
+      resolved.set("robozao-gateway", {
+        report: platformR.value.nodeAgent.self,
+        source: platformR.source,
+      });
+    } else {
+      // The Control Plane itself is unreachable, so nothing behind it
+      // can be spoken for.
+      for (const id of intelligenceObserved) {
+        resolved.set(id, {
+          report: { ...UNKNOWN_REPORT, detail: platformR.error.message },
+          source: platformR.source,
+        });
+      }
+      resolved.set("robozao-gateway", {
+        report: { ...UNKNOWN_REPORT, health: "unavailable", detail: platformR.error.message },
+        source: platformR.source,
+      });
+    }
 
     // Cloud services via the gateway platform-health probe.
     const cloudObserved = ["social", "anvil", "cloud-postgres", "cloud-redis", "cloud-clickhouse"];
@@ -92,10 +111,6 @@ export const PlatformSnapshotService = {
       resolved.set("gateway", { report: { ...UNKNOWN_REPORT, health: "unavailable", detail: cloudR.error.message }, source: cloudR.source });
       for (const id of cloudObserved) resolved.set(id, { report: UNKNOWN_REPORT, source: cloudR.source });
     }
-
-    // Robozão gateway self.
-    if (roboR.ok) resolved.set("robozao-gateway", { report: roboR.value.self, source: roboR.source });
-    else resolved.set("robozao-gateway", { report: { ...UNKNOWN_REPORT, health: "unavailable", detail: roboR.error.message }, source: roboR.source });
 
     // Console self (we are serving this request).
     resolved.set("console", {

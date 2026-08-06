@@ -4,8 +4,8 @@ import { QualityEvaluation, summarizeGate } from './quality-gate.contracts';
 import { QualityGateService } from './quality-gate.service';
 
 const BASE_ENV = {
-  CONSOLE_API_SIGNING_SECRET: 'a'.repeat(48),
-  ROBOZAO_GATEWAY_URL: 'http://gateway:8095',
+  CONTROL_PLANE_DATABASE_URL: 'postgres://u:p@postgres:5432/insight_db',
+  ROBOZAO_GATEWAY_URL: 'http://robozao-gateway:8095',
   ATLAS_API_BASE_URL: 'http://atlas:8085',
   ATLAS_INTERNAL_TOKEN: 'internal-token',
 };

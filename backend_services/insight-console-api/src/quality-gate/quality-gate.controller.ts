@@ -125,7 +125,7 @@ function actorOf(request: RequestWithIdentity): string {
   // The global IdentityGuard populates this before any handler runs, so
   // an empty value here means the guard was bypassed — refuse rather
   // than recording an unattributed decision.
-  const actor = identity?.operatorUsername || identity?.operatorId || '';
+  const actor = identity?.operator.username || identity?.operator.id || '';
   if (!actor) {
     throw new BadRequestException('operator_identity_missing');
   }

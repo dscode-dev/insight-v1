@@ -8,6 +8,16 @@ import { SocialControlPlane } from "@/lib/control-plane/adapters/social";
 import type { OperatorContext } from "@/lib/control-plane/security/operator-context";
 import type { Permission, Role } from "@/types/auth";
 
+// The console reaches Social through the Insight Control Plane now, and
+// that call authenticates with the operator's session cookie. Without a
+// cookie every request short-circuits to 401, and every assertion below
+// would fail for the wrong reason.
+vi.mock("@/lib/session-cookie", () => ({
+  SESSION_COOKIE: "insight_console_session",
+  readSessionCookie: () => "op-tok",
+}));
+
+
 function op(permissions: Permission[], roles: Role[] = ["Operations"]): OperatorContext {
   return {
     operatorId: "op-1", operatorDisplayName: "Op", operatorUsername: "op", identityId: "op-1",
@@ -36,9 +46,8 @@ describe("A2 capabilities + authorization", () => {
 describe("A2 adapter routing (browser never reaches Social)", () => {
   afterEach(() => vi.unstubAllGlobals());
   it("targets the gateway social read plane for investigation reads", async () => {
-    process.env.ADMIN_API_BASE_URL = "http://gw.test/v1";
-    process.env.ADMIN_API_INTERNAL_TOKEN = "svc";
-    const calls: string[] = [];
+    process.env.CONSOLE_API_BASE_URL = "http://control-plane.test:3002";
+      const calls: string[] = [];
     vi.stubGlobal("fetch", vi.fn((u: unknown) => { calls.push(String(u)); return Promise.resolve(new Response("{}", { status: 200 })); }));
     const ctx = { operatorToken: "t", correlationId: "c" };
     await SocialControlPlane.listComments(ctx, { post_id: "p" });

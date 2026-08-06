@@ -2,6 +2,15 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The console reaches Social through the Insight Control Plane now, and
+// that call authenticates with the operator's session cookie. Without a
+// cookie every request short-circuits to 401 and every assertion below
+// would fail for the wrong reason.
+vi.mock("@/lib/session-cookie", () => ({
+  SESSION_COOKIE: "insight_console_session",
+  readSessionCookie: () => "op-tok",
+}));
+
 import { SocialControlPlane } from "@/lib/control-plane/adapters/social";
 import { ControlPlaneError } from "@/lib/control-plane/errors";
 import { CapabilityRegistry } from "@/lib/control-plane/registries/capabilities";
@@ -16,8 +25,7 @@ function mockFetch(status: number, body: unknown) {
 }
 
 beforeEach(() => {
-  process.env.ADMIN_API_BASE_URL = "http://gw.test/v1";
-  process.env.ADMIN_API_INTERNAL_TOKEN = "svc";
+  process.env.CONSOLE_API_BASE_URL = "http://control-plane.test:3002";
 });
 afterEach(() => {
   vi.unstubAllGlobals();

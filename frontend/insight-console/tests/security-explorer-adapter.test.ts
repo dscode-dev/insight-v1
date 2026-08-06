@@ -1,14 +1,26 @@
-// CONSOLE-SECURITY-A1 — Explorer privileged adapter (Stage 10) attribution test.
+// Explorer privileged adapter — attribution and telemetry.
+//
+// This used to assert that the console derived `X-Operator` server-side
+// and passed it down. It no longer passes an actor AT ALL: the Insight
+// Control Plane resolves the operator from the session it already
+// verified and forwards it to Explorer itself.
+//
+// That is a stronger guarantee than sending a trustworthy value —
+// there is no actor field on this path for anything to influence — so
+// the test now pins the absence rather than the value.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Mock the underlying Explorer client so we can inspect the attribution passed.
 vi.mock("@/lib/data-intelligence", () => ({
   explorerCall: vi.fn(async () => new Response("{}", { status: 200 })),
+}));
+vi.mock("@/lib/control-plane/security/observability", () => ({
+  observeSecurity: vi.fn(),
 }));
 
 import { explorerCall } from "@/lib/data-intelligence";
 import { explorerPrivilegedCall } from "@/lib/control-plane/adapters/explorer-privileged";
+import { observeSecurity } from "@/lib/control-plane/security/observability";
 import type { OperatorContext } from "@/lib/control-plane/security/operator-context";
 
 function op(overrides: Partial<OperatorContext> = {}): OperatorContext {
@@ -24,21 +36,37 @@ function op(overrides: Partial<OperatorContext> = {}): OperatorContext {
 afterEach(() => vi.clearAllMocks());
 
 describe("explorerPrivilegedCall", () => {
-  it("derives X-Operator attribution server-side (username) + propagates correlation", async () => {
+  it("forwards only path, method and body — no actor travels from the console", async () => {
     await explorerPrivilegedCall(op(), "missions", "POST", { a: 1 });
-    expect(explorerCall).toHaveBeenCalledWith("missions", "POST", { a: 1 }, "darlan", "corr-77");
+    expect(explorerCall).toHaveBeenCalledWith("missions", "POST", { a: 1 });
   });
 
-  it("falls back to operator id when username is absent (still server-derived)", async () => {
-    await explorerPrivilegedCall(op({ operatorUsername: null }), "jobs", "GET", undefined);
-    expect(explorerCall).toHaveBeenCalledWith("jobs", "GET", undefined, "op-uuid", "corr-77");
-  });
-
-  it("the attribution comes ONLY from OperatorContext — there is no browser input to it", async () => {
-    // The adapter signature accepts no client-controlled actor; the only actor
-    // source is the verified OperatorContext.
+  it("passes no operator identity in any argument", async () => {
+    // The whole point: with no actor argument there is nothing for a
+    // caller — or a future refactor — to populate from browser input.
     await explorerPrivilegedCall(op({ operatorUsername: "verified" }), "sources", "GET", undefined);
     const call = vi.mocked(explorerCall).mock.calls[0]!;
-    expect(call[3]).toBe("verified");
+    expect(call).toHaveLength(3);
+    expect(JSON.stringify(call)).not.toContain("verified");
+    expect(JSON.stringify(call)).not.toContain("op-uuid");
+  });
+
+  it("still emits security telemetry for the privileged flow", async () => {
+    await explorerPrivilegedCall(op(), "jobs", "GET", undefined);
+    expect(observeSecurity).toHaveBeenCalledWith(
+      "privileged_adapter_request",
+      expect.objectContaining({ operatorId: "op-uuid", service: "explorer" }),
+    );
+  });
+
+  it("reports a failure through telemetry and rethrows", async () => {
+    vi.mocked(explorerCall).mockRejectedValueOnce(new Error("explorer down"));
+    await expect(
+      explorerPrivilegedCall(op(), "jobs", "GET", undefined),
+    ).rejects.toThrow("explorer down");
+    expect(observeSecurity).toHaveBeenCalledWith(
+      "privileged_adapter_failure",
+      expect.objectContaining({ service: "explorer" }),
+    );
   });
 });

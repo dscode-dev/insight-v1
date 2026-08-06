@@ -40,7 +40,7 @@ def _columns_by_table() -> dict[str, set[str]]:
             r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"
             r"(?:[\w{}$]+\.)?(\w+)\s*\((.*?)\)\s*ENGINE",
             sql,
-            re.S | re.I,
+            re.DOTALL | re.IGNORECASE,
         ):
             table, body = match.group(1), match.group(2)
             columns = tables.setdefault(table, set())
@@ -58,8 +58,8 @@ def _queries() -> list[tuple[str, str]]:
     """(table, sql) for each SELECT in the feature service."""
     source = _SERVICE.read_text(encoding="utf-8")
     out: list[tuple[str, str]] = []
-    for block in re.findall(r'"""(\s*SELECT.*?)"""', source, re.S | re.I):
-        table = re.search(r"FROM\s+(\w+)", block, re.I)
+    for block in re.findall(r'"""(\s*SELECT.*?)"""', source, re.DOTALL | re.IGNORECASE):
+        table = re.search(r"FROM\s+(\w+)", block, re.IGNORECASE)
         if table:
             out.append((table.group(1).lower(), block))
     return out
@@ -90,11 +90,11 @@ def test_query_only_references_real_columns(table: str, sql: str) -> None:
     stripped = re.sub(r"\{[^}]*\}", " ", sql)
     referenced = {
         token.lower()
-        for token in re.findall(r"\b[a-z_][a-z0-9_]*\b", stripped, re.I)
+        for token in re.findall(r"\b[a-z_][a-z0-9_]*\b", stripped, re.IGNORECASE)
         if token.lower() not in _NOT_COLUMNS
     }
     # Aliases introduced by `AS x` are outputs, not columns.
-    referenced -= {a.lower() for a in re.findall(r"\bAS\s+(\w+)", sql, re.I)}
+    referenced -= {a.lower() for a in re.findall(r"\bAS\s+(\w+)", sql, re.IGNORECASE)}
     referenced.discard(table)
 
     unknown = sorted(referenced - columns)
@@ -128,7 +128,7 @@ def test_no_alias_shadows_the_column_it_reads():
     for table, sql in _queries():
         columns = tables.get(table, set())
         for expression, alias in re.findall(
-            r"(\w+)\s*\(\s*(\w+)\s*\)\s+AS\s+\2\b", sql, re.I
+            r"(\w+)\s*\(\s*(\w+)\s*\)\s+AS\s+\2\b", sql, re.IGNORECASE
         ):
             if alias.lower() in columns:
                 offenders.append(f"{table}: {expression}({alias}) AS {alias}")

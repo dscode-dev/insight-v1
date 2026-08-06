@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
@@ -327,7 +327,30 @@ class MultiStreamConsumer:
     ) -> None:
         try:
             event = self._parse(raw_fields)
-            await handler(event)
+
+            # The handler OWNS the acknowledgement.
+            #
+            # Anvil's handler only buffers the row; it becomes durable on
+            # a later batch flush. ACKing here — as this consumer used to
+            # — marked messages delivered while their rows were still in
+            # memory, so a crash or a redeploy dropped them silently.
+            # Passing the ack through lets the handler fire it after the
+            # flush that carried the row.
+            #
+            # An un-acked message stays pending and Redis redelivers it
+            # via XAUTOCLAIM: at-least-once, which ReplacingMergeTree
+            # reconciles. Failing to ack is therefore the safe direction.
+            acked = False
+
+            async def ack() -> None:
+                nonlocal acked
+                if acked:
+                    return
+                acked = True
+                await self._r.xack(stream, self._group, msg_id)
+                await self._retry.clear(stream, self._group, msg_id_str)
+
+            await handler(event, ack)
 
             handler_elapsed = time.perf_counter() - handler_t0
             event_type = event.get("event_type") or "unknown"
@@ -349,17 +372,16 @@ class MultiStreamConsumer:
             except Exception:
                 pass
 
-            # ACK only here (handler guaranteed CAS + publish before returning).
-            await self._r.xack(stream, self._group, msg_id)
-            await self._retry.clear(stream, self._group, msg_id_str)
-
             events_processed_total.labels(
                 stream=stream, group=self._group, event_type=event_type, source=source
             ).inc()
 
             logger.info(
-                "event_acked",
+                "event_handled",
                 extra={
+                    # False means the row is buffered and the ack fires
+                    # on the next flush — not a failure.
+                    "acked_inline": acked,
                     "source": source,
                     "stream": stream,
                     "group": self._group,

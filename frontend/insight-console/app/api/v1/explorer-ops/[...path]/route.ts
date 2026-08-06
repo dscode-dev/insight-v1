@@ -40,10 +40,7 @@ export const GET = withApiHandler(async (req) => {
   await requirePermission("config.read");
   const operator = await requireOperator();
   const { path, search } = pathOf(req);
-  return consoleApiCall(
-    operatorContextFromOperator(operator, req),
-    `explorer-ops/${path}${search}`,
-  );
+  return consoleApiCall(`explorer-ops/${path}${search}`);
 });
 
 export const POST = withApiHandler(async (req) => {
@@ -70,7 +67,7 @@ export const POST = withApiHandler(async (req) => {
   if (route.kind === "ordinary") {
     // Operational steering — re-running or pausing work, not deciding
     // what is true. Explorer keeps its own audit entry for these.
-    return consoleApiCall(ctx, `explorer-ops/${path}`, "POST", body);
+    return consoleApiCall(`explorer-ops/${path}`, "POST", body);
   }
 
   const target = {
@@ -115,7 +112,7 @@ export const POST = withApiHandler(async (req) => {
     });
   }
 
-  const response = await consoleApiCall(ctx, `explorer-ops/${path}`, "POST", body);
+  const response = await consoleApiCall(`explorer-ops/${path}`, "POST", body);
   await AdministrativeAudit.outcome(
     ctx,
     decision,
