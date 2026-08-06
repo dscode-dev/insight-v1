@@ -28,7 +28,11 @@ export class PlatformController {
     const identity = request[IDENTITY_REQUEST_KEY];
     const [platform, nodeAgent] = await Promise.all([
       this.platform.health(),
-      this.nodeAgent.status(identity?.token ?? ''),
+      this.nodeAgent.status({
+        id: identity?.operator.id,
+        username: identity?.operator.username,
+        role: identity?.operator.role,
+      }),
     ]);
     return { ...platform, nodeAgent };
   }

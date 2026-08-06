@@ -36,6 +36,14 @@ const schema = z.object({
    * "nunca deve oferecer proxy HTTP".
    */
   ROBOZAO_GATEWAY_URL: z.string().url(),
+  /**
+   * Segredo compartilhado com o Node Agent. Este salto é
+   * serviço-a-serviço: o Control Plane já autenticou a pessoa, e o Node
+   * Agent não é um segundo provedor de identidade. Vazio = o Node Agent
+   * cai no caminho legado (validar sessão no gateway público), que
+   * devolve 401 para sessões do Control Plane.
+   */
+  NODE_AGENT_TOKEN: z.string().default(''),
 
   /**
    * Seconds a resolved session stays cached.

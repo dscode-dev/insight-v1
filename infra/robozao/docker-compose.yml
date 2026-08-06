@@ -71,7 +71,7 @@ services:
       - robozao-ops
 
   insight-console:
-    image: konohalabs/insight-console:1.3.0
+    image: konohalabs/insight-console:1.6.0
     container_name: insight-console
     restart: unless-stopped
     logging: *default-logging
@@ -121,7 +121,7 @@ services:
   # atlas-migrate: applying schema from inside the serving process
   # means N replicas racing on the same DDL.
   control-plane-migrate:
-    image: konohalabs/insight-console-api:1.3.0
+    image: konohalabs/insight-console-api:1.4.0
     restart: "no"
     logging: *default-logging
     environment:
@@ -143,7 +143,7 @@ services:
   # Behind a profile so it never runs on `docker compose up`. Invoke it:
   #   docker compose --profile seed run --rm control-plane-seed
   control-plane-seed:
-    image: konohalabs/insight-console-api:1.3.0
+    image: konohalabs/insight-console-api:1.4.0
     profiles: ["seed"]
     restart: "no"
     logging: *default-logging
@@ -168,7 +168,7 @@ services:
   # surfaces. Never exposed to the host: the browser reaches it only
   # through the Next server, which is what keeps identity server-derived.
   insight-console-api:
-    image: konohalabs/insight-console-api:1.3.0
+    image: konohalabs/insight-console-api:1.4.0
     container_name: insight-console-api
     restart: unless-stopped
     logging: *default-logging
@@ -182,6 +182,10 @@ services:
       CONTROL_PLANE_DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
       SESSION_TTL_HOURS: ${CONSOLE_SESSION_TTL_HOURS:-8}
       ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+      # Salto serviço-a-serviço. O Node Agent não revalida identidade:
+      # o Control Plane já autenticou a pessoa, e repassar a sessão dele
+      # ao gateway público devolvia 401 em toda chamada.
+      NODE_AGENT_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
       EXPLORER_API_BASE_URL: ${EXPLORER_API_BASE_URL:-http://insight-explorer:8090}
       EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
       ATLAS_API_BASE_URL: ${ATLAS_API_BASE_URL:-http://atlas:8085}
@@ -222,7 +226,7 @@ services:
       - robozao-ops
 
   robozao-gateway:
-    image: konohalabs/insight-robozao-gateway:0.0.1
+    image: konohalabs/insight-robozao-gateway:0.1.0
     container_name: insight-robozao-gateway
     restart: unless-stopped
     logging: *default-logging
@@ -231,6 +235,9 @@ services:
       INSIGHT_GATEWAY_URL: ${INSIGHT_GATEWAY_URL:?INSIGHT_GATEWAY_URL is required}
       OPERATIONS_DATABASE_URL: ${OPERATIONS_DATABASE_URL:?OPERATIONS_DATABASE_URL is required}
       OPS_INGEST_TOKEN: ${OPS_INGEST_TOKEN:?OPS_INGEST_TOKEN is required}
+      # Mesmo valor do NODE_AGENT_TOKEN do Control Plane. Preenchido,
+      # o Node Agent para de validar operador contra o gateway público.
+      CONTROL_PLANE_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
       EXPLORER_URL: ${EXPLORER_URL:?EXPLORER_URL is required}
       EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
       GATEWAY_OPS_URL: ${GATEWAY_OPS_URL:?GATEWAY_OPS_URL is required}

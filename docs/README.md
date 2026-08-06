@@ -42,7 +42,7 @@ esta camada produz.
 |---|---|---|
 | [6](06-insight-control-plane.md) | `insight-console-api` | **É o Control Plane.** Autentica operadores, autoriza, audita, encaminha |
 | [7](07-insight-console.md) | `insight-console` | A interface administrativa (Next.js) |
-| [8](08-node-agent-robozao.md) | `insight-robozao-gateway` | Representa a máquina física perante o Control Plane |
+| [8](08-node-agent.md) | `insight-robozao-gateway` | Representa a máquina física perante o Control Plane |
 
 ### Plano de Produto — o que o usuário final vê
 
@@ -57,7 +57,7 @@ esta camada produz.
 | Parte | Assunto |
 |---|---|
 | [12](12-infraestrutura-robozao.md) | O servidor Robozão: Docker, nginx, Swarm, acesso |
-| [13](13-deploy-e-migrations.md) | Como subir, migrar e verificar |
+| [13](13-deploy-e-migrations.md) | Como subir, migrar, criar o primeiro operador e verificar |
 | [14](14-decisoes-e-armadilhas.md) | Decisões arquiteturais e armadilhas já pagas |
 
 ---
@@ -75,8 +75,13 @@ esta camada produz.
 
 ## Estado desta apostila
 
-Escrita em 2026-08-06. As partes marcadas com **(pendente)** no índice
-ainda não foram escritas; as demais refletem o código na data acima.
+Escrita em 2026-08-06. **As 15 partes estão completas** e refletem o
+código e a stack em execução nessa data — estado verificado chamando os
+serviços no Robozão, não apenas lendo o repositório.
+
+Onde algo está incompleto ou errado hoje, isso está dito na parte do
+serviço e consolidado em [Decisões e armadilhas](14-decisoes-e-armadilhas.md),
+Parte C.
 
 Se você encontrar divergência entre a apostila e o código, **o código
 está certo** — abra correção aqui.

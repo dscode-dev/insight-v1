@@ -34,7 +34,9 @@ interface OpsService {
 export class NodeAgentService {
   private readonly logger = new Logger(NodeAgentService.name);
 
-  async status(operatorToken: string): Promise<NodeAgentStatus> {
+  async status(
+    operator: { id?: string; username?: string; role?: string } = {},
+  ): Promise<NodeAgentStatus> {
     const config = getConfig();
     const url = `${config.ROBOZAO_GATEWAY_URL.replace(/\/+$/, '')}/operations/status`;
 
@@ -43,7 +45,15 @@ export class NodeAgentService {
       const response = await fetch(url, {
         headers: {
           Accept: 'application/json',
-          Authorization: `Bearer ${operatorToken}`,
+          // Token de SERVIÇO, não a sessão do operador. O Node Agent
+          // não revalida identidade — o Control Plane já fez isso, e
+          // repassar a sessão dele ao gateway público era o que
+          // devolvia 401 em toda chamada.
+          'X-Control-Plane-Token': config.NODE_AGENT_TOKEN,
+          // Atribuição, para a auditoria do Node Agent nomear a pessoa.
+          ...(operator.id ? { 'X-Operator-Id': operator.id } : {}),
+          ...(operator.username ? { 'X-Operator': operator.username } : {}),
+          ...(operator.role ? { 'X-Operator-Role': operator.role } : {}),
         },
         signal: AbortSignal.timeout(config.UPSTREAM_TIMEOUT_MS),
       });
