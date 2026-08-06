@@ -1,0 +1,569 @@
+# Robozão operations stack.
+# Image-only deployment: the host pulls images from Docker Hub and never builds
+# from source. No source mounts, no git checkout, no local repository on host.
+name: insight-explorer
+
+# Log rotation applied to every service. Without it json-file logs grow
+# unbounded — on this WSL host that eventually fills the VHDX and takes
+# the whole stack down, and the failure looks like random service death
+# rather than a full disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    # pgvector/pgvector:pg16, NOT postgres:16-alpine. Atlas's similarity
+    # layer (vector memory, HNSW indexes, the v1/v2 embedding columns)
+    # is built on the `vector` extension, which the stock image does not
+    # ship — migration 0013 fails with "extension vector is not
+    # available" and Atlas cannot start at all. Same PostgreSQL major
+    # version, so the existing data directory is used as-is.
+    image: pgvector/pgvector:pg16
+    container_name: insight-postgres
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    volumes:
+      - /home/insight/data/postgres:/var/lib/postgresql/data
+      - /home/insight/configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    expose:
+      - "5432"
+    # pg_isready does NOT authenticate — it only asks whether the server
+    # accepts connections. This cluster reported healthy for days while
+    # the role in POSTGRES_USER did not exist and every client failed to
+    # connect. A real query as the real user is what "healthy" has to
+    # mean for the services that depend on it.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - PGPASSWORD="$$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc "SELECT 1" > /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: insight-redis
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - /home/insight/data/redis:/data
+      - /home/insight/configs/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - robozao-ops
+
+  insight-console:
+    image: konohalabs/insight-console:1.3.0
+    container_name: insight-console
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:?NEXT_PUBLIC_BASE_PATH is required}
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+      # NO service URLs or tokens. The console reaches every other
+      # service through the Control Plane (insight-context.md v2.0), so
+      # holding a credential for one would be a route it must not have.
+      COOKIE_SECURE: ${COOKIE_SECURE:?COOKIE_SECURE is required}
+      # The Insight Control Plane. The console authenticates operators
+      # HERE, not against the Gateway — insight-context.md v2.0 excludes
+      # the Gateway from administration and operators, and says the
+      # console reaches every other service through the Control Plane.
+      CONSOLE_API_BASE_URL: ${CONSOLE_API_BASE_URL:-http://insight-console-api:3002}
+    expose:
+      - "3001"
+    ports:
+      # Bind address configuravel. O default 0.0.0.0 e o que torna o
+      # console alcancavel a partir do Windows: preso a 127.0.0.1 ele so
+      # responde DENTRO do WSL, e do host a conexao nem abre.
+      #
+      # Em WSL2 isso NAO expoe o console na LAN — a rede e NAT-ada e so
+      # o host enxerga, salvo se alguem configurar portproxy no Windows.
+      # Num servidor de verdade, com IP roteavel, volte para
+      # CONSOLE_BIND_ADDR=127.0.0.1 e ponha um proxy na frente.
+      - "${CONSOLE_BIND_ADDR:-0.0.0.0}:3001:3001"
+    depends_on:
+      robozao-gateway:
+        condition: service_healthy
+      insight-console-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3001/console/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - robozao-ops
+
+  # Control Plane schema. Separate one-shot service, same shape as
+  # atlas-migrate: applying schema from inside the serving process
+  # means N replicas racing on the same DDL.
+  control-plane-migrate:
+    image: konohalabs/insight-console-api:1.3.0
+    restart: "no"
+    logging: *default-logging
+    environment:
+      CONTROL_PLANE_DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+    entrypoint: ["node", "dist/cli.js", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  # First console operator. Its own service so the CONSOLE_SEED_* values
+  # reach it from .env — `compose run` on the serving container would
+  # not, and adding those variables to the serving container would put
+  # a plaintext admin password in the environment of a long-lived
+  # process for no reason.
+  #
+  # Behind a profile so it never runs on `docker compose up`. Invoke it:
+  #   docker compose --profile seed run --rm control-plane-seed
+  control-plane-seed:
+    image: konohalabs/insight-console-api:1.3.0
+    profiles: ["seed"]
+    restart: "no"
+    logging: *default-logging
+    environment:
+      CONTROL_PLANE_DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+      CONSOLE_SEED_USERNAME: ${CONSOLE_SEED_USERNAME:?CONSOLE_SEED_USERNAME is required}
+      CONSOLE_SEED_EMAIL: ${CONSOLE_SEED_EMAIL:?CONSOLE_SEED_EMAIL is required}
+      CONSOLE_SEED_PASSWORD: ${CONSOLE_SEED_PASSWORD:?CONSOLE_SEED_PASSWORD is required}
+      CONSOLE_SEED_DISPLAY_NAME: ${CONSOLE_SEED_DISPLAY_NAME:-}
+      CONSOLE_SEED_ROLE: ${CONSOLE_SEED_ROLE:-SuperAdmin}
+      CONSOLE_SEED_RESET_PASSWORD: ${CONSOLE_SEED_RESET_PASSWORD:-false}
+    entrypoint: ["node", "dist/cli.js", "seed"]
+    depends_on:
+      control-plane-migrate:
+        condition: service_completed_successfully
+    networks:
+      - robozao-ops
+
+  # Console backend (NestJS + Fastify). Owns session caching, realtime SSE
+  # fan-out, the Atlas Quality Gate approval path and the Explorer ops
+  # surfaces. Never exposed to the host: the browser reaches it only
+  # through the Next server, which is what keeps identity server-derived.
+  insight-console-api:
+    image: konohalabs/insight-console-api:1.3.0
+    container_name: insight-console-api
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOST: "0.0.0.0"
+      # The Control Plane is authority over administrative identity, so
+      # it owns a schema of its own (control_plane) in the same Postgres
+      # that already hosts atlas and nexus.
+      CONTROL_PLANE_DATABASE_URL: ${CONTROL_PLANE_DATABASE_URL:?CONTROL_PLANE_DATABASE_URL is required}
+      SESSION_TTL_HOURS: ${CONSOLE_SESSION_TTL_HOURS:-8}
+      ROBOZAO_GATEWAY_URL: ${ROBOZAO_GATEWAY_URL:?ROBOZAO_GATEWAY_URL is required}
+      EXPLORER_API_BASE_URL: ${EXPLORER_API_BASE_URL:-http://insight-explorer:8090}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      ATLAS_API_BASE_URL: ${ATLAS_API_BASE_URL:-http://atlas:8085}
+      ATLAS_INTERNAL_TOKEN: ${ATLAS_INTERNAL_TOKEN:?ATLAS_INTERNAL_TOKEN is required}
+      # Probed by the Control Plane so the console does not have to hold
+      # a route to them. Empty = no probe configured, reported as
+      # honestly unknown rather than down.
+      NEXUS_API_BASE_URL: ${CONTROL_PLANE_NEXUS_URL:-http://insight-nexus:8090}
+      ANVIL_API_BASE_URL: ${CONTROL_PLANE_ANVIL_URL:-http://anvil:8081}
+      # Cloud Gateway (Product plane). The Control Plane is the only
+      # thing that reaches it on an operator's behalf now, so the token
+      # lives here and no longer in the console.
+      ADMIN_API_BASE_URL: ${ADMIN_API_BASE_URL:?ADMIN_API_BASE_URL is required}
+      ADMIN_API_INTERNAL_TOKEN: ${ADMIN_API_INTERNAL_TOKEN:?ADMIN_API_INTERNAL_TOKEN is required}
+      SESSION_CACHE_TTL_SECONDS: ${CONSOLE_API_SESSION_TTL_SECONDS:-30}
+      REALTIME_POLL_INTERVAL_MS: ${CONSOLE_API_REALTIME_INTERVAL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "3002"
+    depends_on:
+      control-plane-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      atlas:
+        condition: service_healthy
+      insight-explorer:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - robozao-ops
+
+  robozao-gateway:
+    image: konohalabs/insight-robozao-gateway:0.0.1
+    container_name: insight-robozao-gateway
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      HTTP_ADDR: ":8095"
+      INSIGHT_GATEWAY_URL: ${INSIGHT_GATEWAY_URL:?INSIGHT_GATEWAY_URL is required}
+      OPERATIONS_DATABASE_URL: ${OPERATIONS_DATABASE_URL:?OPERATIONS_DATABASE_URL is required}
+      OPS_INGEST_TOKEN: ${OPS_INGEST_TOKEN:?OPS_INGEST_TOKEN is required}
+      EXPLORER_URL: ${EXPLORER_URL:?EXPLORER_URL is required}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      GATEWAY_OPS_URL: ${GATEWAY_OPS_URL:?GATEWAY_OPS_URL is required}
+      GATEWAY_OPS_TOKEN: ${GATEWAY_OPS_TOKEN:?GATEWAY_OPS_TOKEN is required}
+      ROBOZAO_ALLOWED_CIDRS: ${ROBOZAO_ALLOWED_CIDRS:?ROBOZAO_ALLOWED_CIDRS is required}
+      ATLAS_OPERATIONS_GRPC_ADDR: ${ATLAS_OPERATIONS_GRPC_ADDR:?ATLAS_OPERATIONS_GRPC_ADDR is required}
+      EXPLORER_OPERATIONS_GRPC_ADDR: ${EXPLORER_OPERATIONS_GRPC_ADDR:?EXPLORER_OPERATIONS_GRPC_ADDR is required}
+      SPORT_HUB_OPERATIONS_GRPC_ADDR: ${SPORT_HUB_OPERATIONS_GRPC_ADDR:?SPORT_HUB_OPERATIONS_GRPC_ADDR is required}
+      NEXUS_OPERATIONS_GRPC_ADDR: ${NEXUS_OPERATIONS_GRPC_ADDR:?NEXUS_OPERATIONS_GRPC_ADDR is required}
+      QWEN_OPERATIONS_GRPC_ADDR: ${QWEN_OPERATIONS_GRPC_ADDR:?QWEN_OPERATIONS_GRPC_ADDR is required}
+      QWEN_OPERATIONS_ENABLED: ${QWEN_OPERATIONS_ENABLED:?QWEN_OPERATIONS_ENABLED is required}
+    expose:
+      - "8095"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      atlas:
+        condition: service_started
+      insight-explorer:
+        condition: service_started
+      sport-hub:
+        condition: service_started
+      insight-nexus:
+        condition: service_started
+      qwen-runtime:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8095/healthz | grep -q ok"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - robozao-ops
+
+  atlas-migrate:
+    image: konohalabs/insight-atlas:1.0.4
+    restart: "no"
+    logging: *default-logging
+    user: "999:987"
+    environment:
+      DATABASE_URL: ${ATLAS_DATABASE_URL:?ATLAS_DATABASE_URL is required}
+    entrypoint: ["python", "scripts/migrate.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  atlas:
+    image: konohalabs/insight-atlas:1.0.4
+    container_name: insight-atlas
+    restart: unless-stopped
+    logging: *default-logging
+    user: "999:987"
+    environment:
+      INTERNAL_TOKEN: ${ATLAS_INTERNAL_TOKEN:?ATLAS_INTERNAL_TOKEN is required}
+      DATABASE_URL: ${ATLAS_DATABASE_URL:?ATLAS_DATABASE_URL is required}
+      REDIS_URL: ${ATLAS_REDIS_URL:?ATLAS_REDIS_URL is required}
+      ATLAS_ANVIL_API_BASE_URL: ${ATLAS_ANVIL_API_BASE_URL:?ATLAS_ANVIL_API_BASE_URL is required}
+      ATLAS_ANVIL_API_KEY: ${ATLAS_ANVIL_API_KEY:?ATLAS_ANVIL_API_KEY is required}
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "8085"
+      HEALTH_HOST: "0.0.0.0"
+      HEALTH_PORT: "8085"
+      OPERATIONS_GRPC_ADDR: "[::]:9081"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # ATLAS-SIM-A: the StrengthSyncWatcher reads Explorer's VALIDATED
+      # lake from here. Without the mount below this path is empty and
+      # the team-strength engine silently never warms up.
+      ATLAS_EXPLORER_DATA_ROOT: ${ATLAS_EXPLORER_DATA_ROOT:-/var/atlas/explorer}
+      # Quality Gate frozen baseline. Empty = no regression section
+      # (Atlas logs and degrades, never blocks boot). Point this at a
+      # recorded baseline to make the regression half able to fire.
+      ATLAS_REGRESSION_BASELINE_PATH: ${ATLAS_REGRESSION_BASELINE_PATH:-}
+      # Anvil roda AQUI, ao lado do Atlas — nao ha gateway no meio para
+      # reescrever /internal/anvil/features/* -> /internal/features/*,
+      # entao o Atlas precisa pedir direto o path que o Anvil serve.
+      # Com o default (rota do gateway) toda leitura de feature da 404.
+      ATLAS_ANVIL_FEATURES_PATH_PREFIX: ${ATLAS_ANVIL_FEATURES_PATH_PREFIX:-/internal/features}
+      # Par obrigatorio do prefixo acima: o Anvil confere `x-anvil-api-key`.
+      # Mandar o header do gateway da 401 com a chave CERTA — falha que
+      # parece chave errada e custa tempo para diagnosticar.
+      ATLAS_ANVIL_API_KEY_HEADER: ${ATLAS_ANVIL_API_KEY_HEADER:-x-anvil-api-key}
+    expose:
+      - "8085"
+      - "9081"
+    volumes:
+      - /home/insight/data/atlas:/var/atlas
+      - /home/insight/data/atlas/artifacts:/var/atlas/artifacts
+      - /home/insight/data/atlas/datasets:/var/atlas/datasets
+      # Read-only: Atlas consumes Explorer's history, never writes it.
+      - /home/insight/data/explorer:/var/atlas/explorer:ro
+    depends_on:
+      atlas-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      anvil:
+        condition: service_healthy
+    # /health, not /ready: /ready also asserts the canonical consumer is
+    # alive, and gating dependents on that would keep the console down
+    # for a Redis-stream problem that does not affect the HTTP surface.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8085/health', timeout=4).status==200 else 1)"
+      interval: 20s
+      timeout: 6s
+      retries: 5
+      start_period: 40s
+    networks:
+      - robozao-ops
+
+  insight-explorer:
+    image: konohalabs/insight-explorer:1.0.1
+    container_name: insight-explorer
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      EXPLORER_RUN_SCHEDULER: ${EXPLORER_RUN_SCHEDULER:?EXPLORER_RUN_SCHEDULER is required}
+      EXPLORER_USE_AI: ${EXPLORER_USE_AI:?EXPLORER_USE_AI is required}
+      EXPLORER_OLLAMA_HOST: ${EXPLORER_OLLAMA_HOST:?EXPLORER_OLLAMA_HOST is required}
+      EXPLORER_QWEN_MODEL: ${EXPLORER_QWEN_MODEL:?EXPLORER_QWEN_MODEL is required}
+      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      OPERATIONS_GRPC_ADDR: "[::]:9082"
+    expose:
+      - "8090"
+      - "9082"
+    volumes:
+      - /home/insight/data/explorer:/home/insight/data/explorer
+      - /home/insight/reports:/home/insight/reports
+      - /home/insight/logs:/home/insight/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8090/health > /dev/null"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+  sport-hub:
+    image: konohalabs/insight-sport-hub:0.0.3
+    container_name: insight-sport-hub
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      INSIGHT_SERVICE: insight-sport-hub
+      INSIGHT_VERSION: "0.0.3"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      HTTP_ADDR: ":8080"
+      OPERATIONS_GRPC_ADDR: ":9080"
+      DATABASE_URL: ${SPORT_HUB_DATABASE_URL:?SPORT_HUB_DATABASE_URL is required}
+      REDIS_URL: ${SPORT_HUB_REDIS_URL:?SPORT_HUB_REDIS_URL is required}
+      QUEUE_BACKEND: ${SPORT_HUB_QUEUE_BACKEND:?SPORT_HUB_QUEUE_BACKEND is required}
+      PUBLISHER_BACKEND: ${SPORT_HUB_PUBLISHER_BACKEND:?SPORT_HUB_PUBLISHER_BACKEND is required}
+      SPORT_HUB_OPS_TOKEN: ${SPORT_HUB_OPS_TOKEN:?SPORT_HUB_OPS_TOKEN is required}
+      API_FOOTBALL_KEY: ${API_FOOTBALL_KEY:-}
+      FOOTBALL_DATA_KEY: ${FOOTBALL_DATA_KEY:-}
+      THE_ODDS_API_KEY: ${THE_ODDS_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "8080"
+      - "9080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  nexus-migrate:
+    image: konohalabs/insight-nexus:0.0.2
+    restart: "no"
+    logging: *default-logging
+    environment:
+      DATABASE_URL: ${NEXUS_DATABASE_URL:?NEXUS_DATABASE_URL is required}
+    entrypoint: ["/usr/local/bin/nexus-migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - robozao-ops
+
+  insight-nexus:
+    image: konohalabs/insight-nexus:0.0.2
+    container_name: insight-nexus
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      INSIGHT_SERVICE: insight-nexus
+      INSIGHT_VERSION: "0.0.1"
+      INSIGHT_ENVIRONMENT: ${INSIGHT_ENVIRONMENT:?INSIGHT_ENVIRONMENT is required}
+      HTTP_ADDR: ":8090"
+      OPERATIONS_GRPC_ADDR: ":9090"
+      DATABASE_URL: ${NEXUS_DATABASE_URL:?NEXUS_DATABASE_URL is required}
+      REDIS_ADDR: ${NEXUS_REDIS_ADDR:?NEXUS_REDIS_ADDR is required}
+      REDIS_PASSWORD: ${NEXUS_REDIS_PASSWORD:-}
+      REDIS_DB: ${NEXUS_REDIS_DB:?NEXUS_REDIS_DB is required}
+      OLLAMA_BASE_URL: ${NEXUS_OLLAMA_BASE_URL:?NEXUS_OLLAMA_BASE_URL is required}
+      NEXUS_QWEN_MODEL: ${NEXUS_QWEN_MODEL:?NEXUS_QWEN_MODEL is required}
+      NEXUS_LLAMA_MODEL: ${NEXUS_LLAMA_MODEL:?NEXUS_LLAMA_MODEL is required}
+      NEXUS_PUBLISHER_ENABLED: ${NEXUS_PUBLISHER_ENABLED:?NEXUS_PUBLISHER_ENABLED is required}
+      SOCIAL_GRPC_ADDR: ${NEXUS_SOCIAL_GRPC_ADDR:?NEXUS_SOCIAL_GRPC_ADDR is required}
+      NEXUS_SCHEMA_VERSION: "0005"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "8090"
+      - "9090"
+    depends_on:
+      nexus-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qwen-runtime:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz | grep -q healthy"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+  qwen-runtime:
+    image: ollama/ollama:latest@sha256:bfc9c6d53cc6989aa5131a6fde6b162b2802d4d337657f3253b5f69579bddeee
+    container_name: insight-qwen-runtime
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_KEEP_ALIVE: "30m"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    gpus: all
+    expose:
+      - "11434"
+    volumes:
+      - /home/insight/models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - robozao-ops
+
+  # Camada analitica historica do Anvil. Roda AQUI (e nao na nuvem)
+  # porque o Anvil consome `insight:stream:derived:p*` do Redis local
+  # que o Atlas alimenta — mante-lo perto do Atlas tira um salto de rede
+  # de cada evento derivado, e a API de features passa a ser uma chamada
+  # dentro da propria rede do compose.
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: insight-clickhouse
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-insight}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:?CLICKHOUSE_USER is required}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      # Sem isso o usuario criado nao consegue rodar o DDL das migrations.
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - /home/insight/data/clickhouse:/var/lib/clickhouse
+    expose:
+      - "8123"
+      - "9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping | grep -q Ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - robozao-ops
+
+  anvil:
+    image: konohalabs/insight-anvil:0.0.4
+    container_name: insight-anvil
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Mesmo Redis que o Atlas usa: e de onde vem o stream derivado.
+      REDIS_URL: ${ATLAS_REDIS_URL:?ATLAS_REDIS_URL is required}
+      DERIVED_STREAM_BASE_KEY: ${DERIVED_STREAM_BASE_KEY:-insight:stream:derived}
+      # Precisa casar com o STREAM_PARTITIONS do Atlas (8 nos dois), senao
+      # o Anvil consome so parte das particoes e perde eventos em silencio.
+      STREAM_PARTITIONS: ${STREAM_PARTITIONS:-8}
+      CONSUMER_NAME: anvil-robozao-1
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:?CLICKHOUSE_USER is required}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-insight}
+      # O Anvil aplica seu proprio DDL no boot (todo CREATE ... IF NOT
+      # EXISTS), entao nao existe servico de migrate separado.
+      AUTO_APPLY_MIGRATIONS: "true"
+      HEALTH_HOST: "0.0.0.0"
+      HEALTH_PORT: "8081"
+      # Mesmo segredo que o Atlas envia em X-Atlas-Anvil-Key. Sem gateway
+      # no meio, este par vira a autenticacao da leitura de features.
+      ANVIL_FEATURE_API_KEY: ${ATLAS_ANVIL_API_KEY:?ATLAS_ANVIL_API_KEY is required}
+    expose:
+      - "8081"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8081/live', timeout=4).status==200 else 1)\""]
+      interval: 20s
+      timeout: 6s
+      retries: 5
+      start_period: 25s
+    networks:
+      - robozao-ops
+
+networks:
+  robozao-ops:
+    name: robozao-ops

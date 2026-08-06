@@ -1,0 +1,66 @@
+# Portainer — gerenciamento de containers do Robozão.
+#
+# Deploy:  docker stack deploy -c portainer-stack.yml portainer
+#
+# Duas coisas que quebram um Portainer em Swarm e estão resolvidas aqui:
+#
+# 1. O container do Portainer PRECISA do socket do Docker montado. Sem
+#    ele o log mostra "Cannot connect to the Docker daemon at
+#    unix:///var/run/docker.sock" e a interface fica vazia mesmo com o
+#    agent respondendo — o agent serve para nós remotos, não substitui
+#    o acesso local do próprio Portainer.
+#
+# 2. O socket só existe nos MANAGERS. Sem a constraint de placement, o
+#    scheduler pode colocar o Portainer num worker, onde o mount falha.
+#    Hoje o cluster tem um nó só, mas a constraint é o que impede isso
+#    de virar um mistério no dia em que crescer.
+
+version: "3.8"
+
+services:
+  agent:
+    image: portainer/agent:2.21.5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      - agent_network
+    deploy:
+      # global: um agent por nó, que é como ele descobre o cluster.
+      mode: global
+      placement:
+        constraints: [node.platform.os == linux]
+
+  portainer:
+    image: portainer/portainer-ce:2.21.5
+    command: -H unix:///var/run/docker.sock
+    ports:
+      # ATENÇÃO: o Swarm IGNORA o endereço de bind aqui e publica em
+      # 0.0.0.0 ("ignoring IP-address ... service will listen on
+      # 0.0.0.0"). Diferente do compose, a routing mesh não sabe
+      # restringir a porta publicada a uma interface.
+      #
+      # O acesso pretendido é pelo nginx, em /portainer/. Quem impede a
+      # LAN de bater direto na 9000 é o portproxy do Windows, que
+      # encaminha SOMENTE a porta 80 — não estas linhas.
+      - "9000:9000"
+      - "9443:9443"
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - agent_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  agent_network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  portainer_data:
