@@ -36,6 +36,22 @@ message FeedRequest {
   string user_id = 1;
   optional int32 limit = 2;
   optional string cursor = 3;
+  // The competition the viewer has selected in the rail under the header.
+  //
+  // Absent means "todos" — the unfiltered feed, which is the default state of
+  // the rail. Present narrows the feed to posts carrying that competition.
+  //
+  // FILTERING IS NOT RANKING. The global feed's mandatory inclusions (posts
+  // from followed agents) are a product rule that ranking may not override;
+  // a competition filter is the viewer asking to look at one competition, so
+  // it applies BEFORE those rules rather than competing with them. A followed
+  // agent's post about another competition is not demoted — it is simply not
+  // in the set the viewer asked to see.
+  //
+  // The competition's UUID, matching Post.competition_id. The slug identifies
+  // a competition to a human and is editable from the console; a filter keyed
+  // on it would break every open client the moment an operator renamed one.
+  optional string competition_id = 4;
 }
 
 message FeedResponse {

@@ -34,6 +34,24 @@ message Post {
   google.protobuf.Timestamp created_at = 7;
   int64 like_count = 8;
   int64 comment_count = 9;
+  // The competition this post belongs to, when it belongs to one.
+  //
+  // The public feed is partitioned by competition: the app shows a horizontal
+  // rail under the header, and picking one filters the feed to it. A post
+  // without a competition is platform-wide and appears whatever the selection.
+  //
+  // MANDATORY when visibility is POST_VISIBILITY_COMPETITION — the database
+  // enforces the pair (posts_competition_scope_check), because a
+  // competition-scoped post that names no competition cannot be placed in any
+  // rail and would silently vanish from every filtered view.
+  //
+  // Carries the competition's UUID, not its slug: the slug is editable from
+  // the console and a post must not detach when a competition is renamed.
+  optional string competition_id = 10;
+  // Denormalised for rendering — the client draws the rail chip on the post
+  // without a second call. Never accepted on write; Social fills it in.
+  optional string competition_slug = 11;
+  optional string competition_name = 12;
 }
 
 message CreatePostRequest {
@@ -42,6 +60,11 @@ message CreatePostRequest {
   string content = 3;
   map<string, string> metadata = 4;
   PostVisibility visibility = 5;
+  // Must name a competition registered in the console. Social rejects an
+  // unknown id rather than storing it: competitions are a registry, and the
+  // foreign key is what makes "does not exist in Insight unless registered"
+  // true rather than merely intended.
+  optional string competition_id = 6;
 }
 
 message GetPostRequest {

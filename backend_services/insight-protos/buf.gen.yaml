@@ -11,13 +11,22 @@
 
 version: v2
 
+# PLUGIN VERSIONS ARE PINNED. Unpinned, `remote: buf.build/protocolbuffers/go`
+# resolves to whatever is latest on the day it runs — a regeneration to add one
+# field rewrote all 100+ generated files and moved protoc-gen-go from v1.34.2 to
+# v1.36.11, which changes the emitted struct layout and can force a
+# google.golang.org/protobuf bump in every service that imports these stubs.
+#
+# The versions below are the ones the committed output was produced with, so a
+# regeneration now touches only the files whose .proto actually changed.
+# Upgrading is a deliberate change to this file, reviewed on its own.
 plugins:
   # --- Go ---
-  - remote: buf.build/protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go:v1.34.2
     out: gen/go
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go
+  - remote: buf.build/grpc/go:v1.5.1
     out: gen/go
     opt:
       - paths=source_relative

@@ -318,6 +318,20 @@ func main() {
 	httpMux.HandleFunc("POST /console/social/agents/{id}/reactivate",
 		consoleWrite(httpapi.ConsoleSocialAgentState(agentRepo, true, settings.OpsToken)))
 
+	// Competition registry. Social is the source of truth for competitions
+	// platform-wide: the app's rail, the feed's partition and — via the
+	// Control Plane — what the Explorer is allowed to collect. Writes require
+	// a named operator (consoleWrite) because a registry change alters what
+	// every user sees, and `updated_by` has to be able to answer who.
+	httpMux.HandleFunc("GET /console/social/competitions",
+		consoleRead(httpapi.ConsoleCompetitionsList(pgPool)))
+	httpMux.HandleFunc("POST /console/social/competitions",
+		consoleWrite(httpapi.ConsoleCompetitionCreate(pgPool)))
+	httpMux.HandleFunc("PATCH /console/social/competitions/{id}",
+		consoleWrite(httpapi.ConsoleCompetitionUpdate(pgPool)))
+	httpMux.HandleFunc("DELETE /console/social/competitions/{id}",
+		consoleWrite(httpapi.ConsoleCompetitionDelete(pgPool)))
+
 	httpServer := &http.Server{
 		Addr:              settings.HTTPAddr,
 		Handler:           withContextLogger(httpMux, logger),
