@@ -250,8 +250,15 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
         )
         enriched_report = report.model_copy(
             update={
-                "vector_contexts": vector.contexts,
-                "vector_neighbors": vector.neighbor_count,
+                # `matches`, not `contexts`; and neighbour_count lives on
+                # `confidence`. SimilarityContext (ATLAS-SIMILARITY-A) kept the
+                # SimilaritySearchResult surface — matches/confidence/filters —
+                # and these two call sites were never updated to it. Both
+                # raised AttributeError on the first real search, which nothing
+                # noticed because atlas_vector_memory was empty until the
+                # historical backfill populated it.
+                "vector_contexts": vector.matches,
+                "vector_neighbors": vector.confidence.neighbor_count,
                 "vector_confidence": vector.confidence,
                 "explorer_memory": memory["payload"] if memory else None,
                 "explorer_behaviors": [

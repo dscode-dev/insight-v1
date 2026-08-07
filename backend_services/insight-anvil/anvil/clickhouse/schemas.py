@@ -111,3 +111,79 @@ HUMAN_SIGNALS_COLUMNS: Final[tuple[str, ...]] = (
     "abuse_decision",
     "weight_multiplier",
 )
+
+
+# --- historical tables (the Explorer's five-year backfill) -----------------
+#
+# Separate from the three above because they describe a different thing: one
+# row per fixture, no state_version, and no TTL. See the migrations for why
+# writing history into the live-match tables would key it wrongly and delete
+# it after ninety days.
+
+HISTORICAL_FIXTURES_TABLE: Final[str] = "historical_fixtures"
+HISTORICAL_FIXTURES_COLUMNS: Final[tuple[str, ...]] = (
+    "external_fixture_id",
+    "source",
+    "competition_key",
+    "season",
+    "match_id",
+    "scheduled_at",
+    "home_team_name",
+    "away_team_name",
+    "home_club_id",
+    "away_club_id",
+    "status",
+    "home_score",
+    "away_score",
+    "halftime_home_score",
+    "halftime_away_score",
+    "trust_level",
+    "confidence",
+    "captured_at",
+)
+
+HISTORICAL_ODDS_TABLE: Final[str] = "historical_odds"
+HISTORICAL_ODDS_COLUMNS: Final[tuple[str, ...]] = (
+    "external_fixture_id",
+    "source",
+    "competition_key",
+    "season",
+    "bookmaker",
+    "market",
+    "captured_at",
+    "home_price",
+    "draw_price",
+    "away_price",
+    "extra_selections",
+    "trust_level",
+    "confidence",
+)
+
+HISTORICAL_STATS_TABLE: Final[str] = "historical_stats"
+HISTORICAL_STATS_COLUMNS: Final[tuple[str, ...]] = (
+    "external_fixture_id",
+    "source",
+    "competition_key",
+    "season",
+    "home_shots",
+    "home_shots_on_target",
+    "home_corners",
+    "home_fouls",
+    "home_offsides",
+    "home_yellow_cards",
+    "home_red_cards",
+    "home_possession",
+    "home_expected_goals",
+    "away_shots",
+    "away_shots_on_target",
+    "away_corners",
+    "away_fouls",
+    "away_offsides",
+    "away_yellow_cards",
+    "away_red_cards",
+    "away_possession",
+    "away_expected_goals",
+    "trust_level",
+    "confidence",
+    "captured_at",
+)

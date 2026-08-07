@@ -43,14 +43,27 @@ from atlas.memory import HierarchicalMemoryRetrievalEngine
 # TeamStrengthFeatures are therefore TYPE_CHECKING-only (they're already
 # used as forward-ref string annotations below, never at runtime).
 from atlas.strength.formulas import line_movement as _line_movement_delta
-from atlas.vector_memory import (
-    DeterministicEmbeddingEncoder,
-    DeterministicVectorIndex,
-    VectorConfidence,
-)
 
 if TYPE_CHECKING:
     from atlas.strength import MarketFeatures, TeamStrengthFeatures
+    from atlas.vector_memory import DeterministicVectorIndex
+
+# `atlas.vector_memory` IS NOT IMPORTED AT MODULE LEVEL, and the runtime uses
+# below take it locally instead — `_empty_vector` already did, which is the
+# footprint of someone meeting this before.
+#
+# The cycle: atlas.vector_memory/__init__ imports .contracts, which imports
+# atlas.intelligence.contracts — and importing any submodule runs the parent
+# package's __init__, which reaches this module, which asked for
+# atlas.vector_memory while it was still on line one of its own __init__:
+#
+#     ImportError: cannot import name 'DeterministicEmbeddingEncoder' from
+#     partially initialized module 'atlas.vector_memory'
+#
+# It stayed hidden because whoever imports atlas.intelligence FIRST resolves
+# the cycle harmlessly, and every entry point happened to. `python -c "import
+# atlas.vector_memory"` did not, and neither does a test module that imports
+# only the half it is testing.
 
 ENGINE_ORDER = [
     "evidence_engine",
@@ -91,6 +104,8 @@ class AtlasIntelligenceOrchestrator:
         self._behaviors = BehavioralPatternEngine(self._evidence)
         self._reasoning = DeterministicReasoningEngine()
         self._vector_index = vector_index
+        from atlas.vector_memory import DeterministicEmbeddingEncoder
+
         self._embedding = DeterministicEmbeddingEncoder()
 
     def execute(
@@ -360,6 +375,9 @@ class AtlasIntelligenceOrchestrator:
         )
         return preliminary.model_copy(
             update={
+                # VectorMemoryInsight here — NOT the SimilarityContext the
+                # route builds. It genuinely has `contexts` and a top-level
+                # `neighbor_count`, so this call site was always correct.
                 "vector_contexts": vector.contexts,
                 "vector_neighbors": vector.neighbor_count,
                 "vector_confidence": vector.confidence,
@@ -529,7 +547,7 @@ def _unique(evidence: list[Evidence]) -> list[Evidence]:
 
 
 def _empty_vector():
-    from atlas.vector_memory import VectorMemoryInsight
+    from atlas.vector_memory import VectorConfidence, VectorMemoryInsight
 
     return VectorMemoryInsight(
         contexts=[],

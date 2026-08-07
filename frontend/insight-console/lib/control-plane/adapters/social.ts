@@ -1,12 +1,22 @@
-// Social Control Plane adapter (CONSOLE-SOCIAL-A1). SERVER-ONLY.
+// Social Control Plane adapter. SERVER-ONLY.
 //
-// Read-only, capability-oriented readers over the Gateway's operator-authed
-// Social read plane (/v1/console/social/*). The browser NEVER reaches Social;
-// this runs in the BFF, forwards the verified operator session (via adminFetch),
-// normalizes errors into the canonical control-plane distinctions, and caps
-// payloads. Not a god adapter — small readers grouped by resource.
+// Read-only, capability-oriented readers over Social's own administrative
+// surface, reached THROUGH the Insight Control Plane. The browser never
+// touches Social; this runs in the BFF, normalizes errors into the canonical
+// control-plane distinctions, and caps payloads. Not a god adapter — small
+// readers grouped by resource.
+//
+// THE PATH CHANGED. These used to call the Gateway at /v1/console/social/*,
+// which was a pure proxy in front of the same Social endpoints. Per
+// insight-context.md v2.0 the Gateway is not responsible for administration or
+// the console, so the Control Plane now reaches Social directly and those 15
+// Gateway routes are gone. One base path moved; every reader below is
+// unchanged, which is the point of having had a single seam.
+//
+// See docs/adr/0001-social-administration-path.md.
 
-import { adminFetch, ConsoleApiError } from "@/lib/admin-api";
+import { ConsoleApiError } from "@/lib/admin-api";
+import { consoleApiCall } from "@/lib/control-plane/adapters/console-api";
 import { ControlPlaneError } from "@/lib/control-plane/errors";
 import { observe } from "@/lib/control-plane/observability";
 
@@ -15,7 +25,11 @@ export interface SocialReadContext {
   readonly correlationId?: string | null;
 }
 
-const TIMEOUT_MS = 6000;
+// The 6s per-read timeout that lived here is gone with the direct fetch:
+// consoleApiCall bounds the hop to the Control Plane, and the Control Plane
+// bounds its own hop to Social with UPSTREAM_TIMEOUT_MS. Two budgets for one
+// request is how a caller ends up timing out a request that was about to
+// succeed.
 
 function codeFor(status: number): ControlPlaneError["code"] {
   if (status === 401) return "UNAUTHORIZED";
@@ -32,13 +46,9 @@ async function socialGet<T>(path: string, operation: string, ctx: SocialReadCont
   observe("adapter_request_started", { service: "social", operation, correlationId: ctx.correlationId ?? undefined });
   let res: Response;
   try {
-    res = await adminFetch(`/v1/console/social/${path}`, {
-      operatorToken: ctx.operatorToken ?? undefined,
-      correlationId: ctx.correlationId ?? undefined,
-      timeoutMs: TIMEOUT_MS,
-    });
+    res = await consoleApiCall(`social/${path}`, "GET");
   } catch (err) {
-    // adminFetch throws ConsoleApiError(502/504) on transport failure.
+    // consoleApiCall surfaces transport failures as ConsoleApiError(502/504).
     const status = err instanceof ConsoleApiError ? err.status : 502;
     observe("adapter_request_failed", { service: "social", operation, code: String(status), correlationId: ctx.correlationId ?? undefined });
     throw new ControlPlaneError(codeFor(status), "social read plane unreachable", {

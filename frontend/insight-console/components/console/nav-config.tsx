@@ -82,6 +82,34 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 
+  // ---- Plano de Produto: administrado A PARTIR daqui ----
+  //
+  // O insight-context.md v2.0 diz que o Console tem "controle e gerencia
+  // total dos modulos contidos no insight-social". Estas telas voltaram
+  // quando o caminho passou a existir: Console -> Control Plane -> Social,
+  // direto, em vez de atravessar o gateway publico (que o mesmo documento
+  // exclui de Administracao e Console).
+  //
+  // Elas dependem de configuracao que vive fora do codigo — o ingress do
+  // Social e o SOCIAL_OPS_TOKEN nos dois lados. Sem isso respondem
+  // "Social read plane unavailable", que e um estado honesto e nomeado,
+  // nao uma tela em branco. Ver docs/adr/0001-social-administration-path.md.
+  {
+    key: "social",
+    label: "Rede social (Social)",
+    items: [
+      { href: "/social", key: "social", label: "Visao geral", icon: MessageSquare, permission: "feed.read" },
+      { href: "/social/users", key: "social-users", label: "Usuarios", icon: Users, permission: "user.read" },
+      { href: "/social/agents", key: "social-agents", label: "Agentes", icon: Bot, permission: "feed.read" },
+      { href: "/social/posts", key: "social-posts", label: "Posts", icon: FileText, permission: "feed.read" },
+      { href: "/social/comments", key: "social-comments", label: "Comentarios", icon: MessageSquare, permission: "feed.read" },
+      { href: "/social/communities", key: "social-communities", label: "Comunidades", icon: Boxes, permission: "feed.read" },
+      { href: "/social/boosts", key: "social-boosts", label: "Boosts", icon: Zap, permission: "feed.read" },
+      { href: "/social/activity", key: "social-activity", label: "Atividade", icon: Activity, permission: "feed.read" },
+      { href: "/social/investigate", key: "social-investigate", label: "Investigacao", icon: ClipboardList, permission: "audit.read" },
+    ],
+  },
+
   // ---- Plano de Controle ----
   {
     key: "governance",
@@ -103,7 +131,8 @@ export const NAV_GROUPS: NavGroup[] = [
  *
  * | Tela                          | Estado   | O que traz de volta                    |
  * |-------------------------------|----------|----------------------------------------|
- * | /social/* (10 telas)          | 401      | ADMIN_API_INTERNAL_TOKEN real          |
+ * | /social/moderation            | 401      | moderacao ainda vive no Gateway (ADR 1) |
+ * | /social/reports               | 401      | idem                                    |
  * | /moderation                   | 401      | ADMIN_API_INTERNAL_TOKEN real          |
  * | /administration/users         | vazio    | ADMIN_API_INTERNAL_TOKEN real          |
  * | /publication-center           | superado | substituído por /nexus/* (mantido)     |
@@ -119,8 +148,10 @@ export const NAV_GROUPS: NavGroup[] = [
  * uma tela que simplesmente quebra.
  */
 export const REMOVED_FROM_NAV = [
-  "social", "social-activity", "social-posts", "social-comments",
-  "social-users", "social-agents", "social-communities", "social-boosts",
+  // As telas de leitura do Social VOLTARAM ao menu (grupo "social"): o
+  // caminho Console -> Control Plane -> Social existe. Ficaram de fora as
+  // duas que dependem de moderacao/enforcement, que continua sendo dado do
+  // Gateway ate a migracao descrita no ADR 0001.
   "social-reports", "social-moderation", "moderation", "users",
   "publication-center", "publication-analytics", "control-panel", "dlq",
   "authentication",

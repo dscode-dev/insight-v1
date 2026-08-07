@@ -69,6 +69,37 @@ def _index() -> dict[str, str]:
     return idx
 
 
+@lru_cache(maxsize=1)
+def _subset_index() -> tuple[tuple[frozenset[str], str], ...]:
+    """The keys the token-subset fallback is allowed to match, longest first.
+
+    SHORT NAMES ARE EXCLUDED. They are three-letter codes — ATH, BAR, MIL —
+    and 194 of the registry's 219 entries have one. As a subset rule, a
+    three-letter token matches any name that happens to contain it, which is
+    how `Ath Madrid` (Atlético Madrid, in football-data.co.uk's abbreviated
+    style) resolved to `athletic_bilbao` via ATH: 76 real matches filed under
+    a club in a different city. A code identifies a club only when it IS the
+    whole name, so it stays in `_index` — reachable by exact match, never by
+    containment.
+    """
+    data = json.loads(_registry_path().read_text("utf-8"))
+    keys: dict[str, str] = {}
+    for club in data["clubs"]:
+        cid = club["club_id"]
+        for n in [club.get("name"), cid.replace("_", " "), *club.get("aliases", [])]:
+            if not n:
+                continue
+            key = _normalize(n)
+            if key:
+                keys.setdefault(key, cid)
+    # Longest first so the most specific key wins: "real betis" beats "betis"
+    # for `Real Betis Balompié`, rather than whichever dict order reached first.
+    return tuple(
+        (frozenset(key.split()), cid)
+        for key, cid in sorted(keys.items(), key=lambda kv: -len(kv[0].split()))
+    )
+
+
 def resolve_club(name: str) -> str | None:
     """Return the canonical club_id, or None if the name cannot be resolved
     deterministically (the caller then opens an entity-resolution path)."""
@@ -78,12 +109,27 @@ def resolve_club(name: str) -> str | None:
     key = _normalize(name)
     if key in idx:
         return idx[key]
-    # token-subset fallback: every registry token present in the input.
-    for rkey, cid in idx.items():
-        rtokens = set(rkey.split())
-        if rtokens and rtokens.issubset(set(key.split())):
-            return cid
-    return None
+
+    tokens = set(key.split())
+    if not tokens:
+        return None
+
+    # Token-subset fallback, for source spellings that decorate a registry
+    # name rather than replace it ("Real Betis Balompié" → real_betis).
+    candidates = [(len(rtokens), cid) for rtokens, cid in _subset_index()
+                  if rtokens <= tokens]
+    if not candidates:
+        return None
+
+    # AMBIGUITY IS A REFUSAL, NOT A COIN FLIP. `RCD Espanyol de Barcelona`
+    # contains "barcelona", and before Espanyol was in the registry that is
+    # what it resolved to — 58 matches of Barcelona's city rival folded into
+    # Barcelona's history, silently, because the loop returned its first hit.
+    # When two clubs are equally good explanations of a name, neither is
+    # established: None sends it to the review queue, where a human decides.
+    best = candidates[0][0]
+    winners = {cid for size, cid in candidates if size == best}
+    return winners.pop() if len(winners) == 1 else None
 
 
 def registry_size() -> int:

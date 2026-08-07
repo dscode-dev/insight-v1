@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { DataIntelligenceModule } from './data-intelligence/data-intelligence.module';
 import { NexusModule } from './nexus/nexus.module';
+import { SocialModule } from './social/social.module';
 import { DbModule } from './db/db.module';
 import { ExplorerOpsModule } from './explorer-ops/explorer-ops.module';
 import { HealthController } from './health/health.controller';
@@ -29,6 +30,7 @@ import { UpstreamModule } from './upstream/upstream.module';
     DbModule,
     DataIntelligenceModule,
     NexusModule,
+    SocialModule,
     IdentityModule,
     ExplorerOpsModule,
     PlatformModule,

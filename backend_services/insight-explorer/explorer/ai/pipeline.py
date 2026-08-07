@@ -163,10 +163,29 @@ class QualityPipeline:
         return st
 
     def resolve_entities(self, st: dict) -> dict:
+        """Club-name resolution, for the records that name clubs.
+
+        Only FIXTURES carry `home_team`/`away_team`. A stats payload is
+        `{external_fixture_id, home, away}` where home/away are counter
+        objects, and an odds payload names a bookmaker and no club at all.
+
+        This used to index `p["home_team"]` unconditionally. It was correct
+        while fixtures were the only thing any adapter could produce, and it
+        raised KeyError the moment one produced anything else — killing the
+        worker thread mid-execution, after the raw layer had already been
+        written. See the note on `_run_worker` about why that looked like a
+        job running for eleven hours.
+        """
         state: RunState = st["state"]
         for env in state.normalized:
             p = env["payload"]
-            unresolved = [t["name"] for t in (p["home_team"], p["away_team"]) if not t.get("club_id")]
+            home, away = p.get("home_team"), p.get("away_team")
+            if not isinstance(home, dict) or not isinstance(away, dict):
+                # Not a club-bearing record. Nothing to resolve, and nothing
+                # is wrong: entity resolution simply does not apply.
+                continue
+            unresolved = [t.get("name") for t in (home, away)
+                          if isinstance(t, dict) and not t.get("club_id") and t.get("name")]
             if unresolved:
                 finding = self._ai(
                     "entity_resolver",
@@ -176,7 +195,8 @@ class QualityPipeline:
                 env["_needs_entity_review"] = True
                 self.tickets.open(
                     error_type="entity_unresolved", source=state.source,
-                    competition=state.competition, season=state.season, entity_type="fixture",
+                    competition=state.competition, season=state.season,
+                    entity_type=env.get("entity_type", "fixture"),
                     severity="medium", sample_payload={"unresolved": unresolved})
         return st
 
@@ -191,7 +211,8 @@ class QualityPipeline:
                                        "external_id": env.get("external_id")})
                 metrics.records_rejected_total.labels(
                     competition=state.competition, source=state.source,
-                    entity_type="fixture", reason="inconsistent").inc()
+                    entity_type=env.get("entity_type", "fixture"),
+                    reason="inconsistent").inc()
                 continue
             if violations:  # soft → ambiguous → Match Validator + human review
                 env["_ai_match_review"] = self._ai(

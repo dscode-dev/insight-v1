@@ -81,8 +81,15 @@ class Settings(BaseSettings):
         default="/var/atlas/datasets/historical.jsonl",
         alias="ATLAS_HISTORICAL_DATASET_PATH",
     )
+    # `current/` is what VectorMemoryRefresher publishes after each rebuild.
+    #
+    # The previous default named `outcome_v4-mld6-20260623/matches.jsonl`, a
+    # directory no script in this repository produces — so a fresh deployment
+    # answered /atlas/intelligence with a FileNotFoundError until someone
+    # pointed this somewhere real by hand. A default has to name a path the
+    # system itself creates.
     intelligence_dataset_path: str = Field(
-        default="/var/atlas/datasets/outcome_v4-mld6-20260623/matches.jsonl",
+        default="/var/atlas/datasets/current/matches.jsonl",
         alias="ATLAS_INTELLIGENCE_DATASET_PATH",
     )
     explorer_data_root: str = Field(
@@ -209,6 +216,19 @@ class Settings(BaseSettings):
     )
     strength_sync_min_interval_seconds: float = Field(
         default=1800.0, alias="ATLAS_STRENGTH_SYNC_MIN_INTERVAL_SECONDS", gt=0.0
+    )
+    # Rebuilds the similarity corpus from the lake and re-encodes it into
+    # pgvector. Self-throttles the same way StrengthSyncWatcher does, and
+    # additionally skips entirely when the lake fingerprint has not moved —
+    # the usual case, since collection is far less frequent than the tick.
+    vector_refresh_enabled: bool = Field(
+        default=True, alias="ATLAS_VECTOR_REFRESH_ENABLED"
+    )
+    vector_refresh_min_interval_seconds: float = Field(
+        default=1800.0, alias="ATLAS_VECTOR_REFRESH_MIN_INTERVAL_SECONDS", gt=0.0
+    )
+    vector_refresh_dataset_dir: str = Field(
+        default="/var/atlas/datasets", alias="ATLAS_VECTOR_REFRESH_DATASET_DIR",
     )
     # Frozen regression baseline (ATLAS_V1_FROZEN.md). Empty = no
     # baseline loaded, which is the historical behaviour: every replay

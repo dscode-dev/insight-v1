@@ -204,6 +204,17 @@ services:
       # Control Plane no mesmo salto. Vazio, as telas do Nexus reportam
       # indisponivel — nao derruba o resto do console.
       NEXUS_CONTROL_PLANE_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
+      # Insight Social, alcancado DIRETO — nao mais pelo gateway publico.
+      # O insight-context.md v2.0 exclui o Gateway de Administracao/Console,
+      # e o console-api e o unico service do Robozao que fala com o plano do
+      # Google Cloud.
+      #
+      # VAZIOS: as telas de Social reportam indisponivel e o resto do console
+      # segue funcionando. Preencher exige aplicar o ingress do Social
+      # (k8s/overlays/production/ingress-console.yaml) e publicar o mesmo
+      # token nos dois lados. Ver docs/adr/0001-social-administration-path.md.
+      SOCIAL_CONSOLE_BASE_URL: ${SOCIAL_CONSOLE_BASE_URL:-}
+      SOCIAL_OPS_TOKEN: ${SOCIAL_OPS_TOKEN:-}
       ANVIL_API_BASE_URL: ${CONTROL_PLANE_ANVIL_URL:-http://anvil:8081}
       # Cloud Gateway (Product plane). The Control Plane is the only
       # thing that reaches it on an operator's behalf now, so the token
@@ -292,7 +303,7 @@ services:
       - robozao-ops
 
   atlas-migrate:
-    image: konohalabs/insight-atlas:1.0.4
+    image: konohalabs/insight-atlas:1.1.2
     restart: "no"
     logging: *default-logging
     user: "999:987"
@@ -306,7 +317,7 @@ services:
       - robozao-ops
 
   atlas:
-    image: konohalabs/insight-atlas:1.0.4
+    image: konohalabs/insight-atlas:1.1.2
     container_name: insight-atlas
     restart: unless-stopped
     logging: *default-logging
@@ -328,6 +339,11 @@ services:
       # lake from here. Without the mount below this path is empty and
       # the team-strength engine silently never warms up.
       ATLAS_EXPLORER_DATA_ROOT: ${ATLAS_EXPLORER_DATA_ROOT:-/var/atlas/explorer}
+      # Corpus historico de similaridade, gerado do lake validado do Explorer
+      # por scripts.atlas_similarity_dataset_build. O default apontava para
+      # um diretorio que nenhum script deste repo produz, e /atlas/intelligence
+      # devolvia 500 com FileNotFoundError.
+      ATLAS_INTELLIGENCE_DATASET_PATH: ${ATLAS_INTELLIGENCE_DATASET_PATH:-/var/atlas/datasets/historical-v1/matches.jsonl}
       # Quality Gate frozen baseline. Empty = no regression section
       # (Atlas logs and degrades, never blocks boot). Point this at a
       # recorded baseline to make the regression half able to fire.
@@ -374,7 +390,7 @@ services:
       - robozao-ops
 
   insight-explorer:
-    image: konohalabs/insight-explorer:1.1.1
+    image: konohalabs/insight-explorer:1.2.1
     container_name: insight-explorer
     restart: unless-stopped
     logging: *default-logging
@@ -383,6 +399,11 @@ services:
       EXPLORER_USE_AI: ${EXPLORER_USE_AI:?EXPLORER_USE_AI is required}
       EXPLORER_OLLAMA_HOST: ${EXPLORER_OLLAMA_HOST:?EXPLORER_OLLAMA_HOST is required}
       EXPLORER_QWEN_MODEL: ${EXPLORER_QWEN_MODEL:?EXPLORER_QWEN_MODEL is required}
+      # Publicacao do historico validado para o Anvil persistir no ClickHouse.
+      # Sem isso o dado fica no lake e o ClickHouse segue vazio — foi o que
+      # aconteceu com os primeiros 34.796 registros.
+      EXPLORER_REDIS_URL: ${EXPLORER_REDIS_URL:-redis://redis:6379/0}
+      EXPLORER_HISTORICAL_STREAM_KEY: ${EXPLORER_HISTORICAL_STREAM_KEY:-insight:stream:historical}
       EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
       OPERATIONS_GRPC_ADDR: "[::]:9082"
     expose:
@@ -553,7 +574,7 @@ services:
       - robozao-ops
 
   anvil:
-    image: konohalabs/insight-anvil:0.0.4
+    image: konohalabs/insight-anvil:0.1.1
     container_name: insight-anvil
     restart: unless-stopped
     logging: *default-logging

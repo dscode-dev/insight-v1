@@ -28,6 +28,11 @@ from anvil.batch import BatchInserter
 from anvil.clickhouse.client import AsyncClickHouseClient, run_migrations
 from anvil.config import get_settings
 from anvil.handlers import DerivedEventHandler
+from anvil.handlers.historical_handler import (
+    HistoricalEventHandler,
+    parse_historical_fields,
+)
+from anvil.features.historical_service import HistoricalFeatureService
 from anvil.features import FeatureQueryService
 
 
@@ -112,6 +117,12 @@ async def main() -> None:
         readiness_check=readiness_check,
         feature_api_key=settings.feature_api_key,
         feature_snapshot=FeatureQueryService(ch).snapshot,
+        # Historical baselines. This is what makes the five-year backfill
+        # influence Atlas at runtime instead of sitting in ClickHouse: the
+        # engine asks "is this normal for these teams?" and these queries
+        # answer it, during a live match and before and after one.
+        historical_features=HistoricalFeatureService(
+            client=ch, database=settings.clickhouse_database),
     )
     health_task = asyncio.create_task(health_server.serve_forever())
 
@@ -159,11 +170,45 @@ async def main() -> None:
 
     age_task = asyncio.create_task(_age_flusher())
 
+    # ---------- Historical consumer ---------------------------------------
+    #
+    # A SECOND consumer, on its own stream and group, sharing the same
+    # BatchInserter. Sharing the inserter is what makes both paths honour one
+    # flush policy and one ClickHouse connection; sharing the CONSUMER would
+    # have meant one handler guessing which shape each entry is.
+    #
+    # It runs concurrently rather than after: a backfill is bounded but slow,
+    # and blocking live match ingestion behind five years of fixtures would
+    # trade the timely path for the patient one.
+    historical_consumer = None
+    historical_handler = None
+    if settings.historical_enabled:
+        historical_handler = HistoricalEventHandler(inserter=inserter)
+        historical_consumer = MultiStreamConsumer(
+            redis_client=r,
+            stream_keys=[settings.historical_stream_key],
+            group_name=settings.historical_group_name,
+            consumer_name=settings.consumer_name,
+            dlq_key=settings.dlq_historical_key,
+            retry_policy=retry_policy,
+            block_ms=settings.consumer_block_ms,
+            read_count=settings.consumer_count,
+            claim_idle_ms=settings.consumer_claim_idle_ms,
+            claim_count=settings.consumer_claim_count,
+            pending_quota=settings.consumer_pending_quota,
+            new_quota=settings.consumer_new_quota,
+            max_payload_bytes=settings.max_payload_bytes,
+            # The historical wire format is not the derived envelope. Without
+            # its own parser every entry fails on a missing event_id.
+            parser=parse_historical_fields,
+        )
+
     # ---------- Graceful shutdown ----------------------------------------
     loop = asyncio.get_running_loop()
     _install_signal_handlers(
         loop,
-        stop_callbacks=[consumer.stop, stop_age_flusher.set],
+        stop_callbacks=[consumer.stop, stop_age_flusher.set]
+        + ([historical_consumer.stop] if historical_consumer else []),
     )
 
     logger.info(
@@ -178,7 +223,17 @@ async def main() -> None:
     )
 
     try:
-        await consumer.start(handler.handle)
+        if historical_consumer is not None and historical_handler is not None:
+            # Both loops, concurrently. `gather` propagates the first
+            # exception, and the `finally` below drains the shared inserter
+            # either way — a crash in one path must not strand the other's
+            # buffered rows.
+            await asyncio.gather(
+                consumer.start(handler.handle),
+                historical_consumer.start(historical_handler.handle),
+            )
+        else:
+            await consumer.start(handler.handle)
     finally:
         # Drain the inserter so the in-flight buffer reaches ClickHouse.
         try:

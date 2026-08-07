@@ -45,7 +45,7 @@ describe("A2 capabilities + authorization", () => {
 
 describe("A2 adapter routing (browser never reaches Social)", () => {
   afterEach(() => vi.unstubAllGlobals());
-  it("targets the gateway social read plane for investigation reads", async () => {
+  it("targets Social through the Control Plane for investigation reads", async () => {
     process.env.CONSOLE_API_BASE_URL = "http://control-plane.test:3002";
       const calls: string[] = [];
     vi.stubGlobal("fetch", vi.fn((u: unknown) => { calls.push(String(u)); return Promise.resolve(new Response("{}", { status: 200 })); }));
@@ -55,11 +55,11 @@ describe("A2 adapter routing (browser never reaches Social)", () => {
     await SocialControlPlane.timeline(ctx, "post", "p");
     await SocialControlPlane.listBoosts(ctx, { status: "active" });
     await SocialControlPlane.listCommunities(ctx);
-    expect(calls.some((c) => c.includes("/console/social/comments"))).toBe(true);
-    expect(calls.some((c) => c.includes("/console/social/relationships"))).toBe(true);
-    expect(calls.some((c) => c.includes("/console/social/timeline"))).toBe(true);
-    expect(calls.some((c) => c.includes("/console/social/boosts"))).toBe(true);
-    expect(calls.some((c) => c.includes("/console/social/communities"))).toBe(true);
+    expect(calls.some((c) => c.includes("/social/comments"))).toBe(true);
+    expect(calls.some((c) => c.includes("/social/relationships"))).toBe(true);
+    expect(calls.some((c) => c.includes("/social/timeline"))).toBe(true);
+    expect(calls.some((c) => c.includes("/social/boosts"))).toBe(true);
+    expect(calls.some((c) => c.includes("/social/communities"))).toBe(true);
     delete process.env.ADMIN_API_BASE_URL; delete process.env.ADMIN_API_INTERNAL_TOKEN;
   });
 

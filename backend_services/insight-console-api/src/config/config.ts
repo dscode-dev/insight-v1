@@ -82,6 +82,19 @@ const schema = z.object({
    * the rest of the console must keep working.
    */
   NEXUS_CONTROL_PLANE_TOKEN: z.string().default(''),
+  /**
+   * Insight Social's administrative surface, reached DIRECTLY.
+   *
+   * Not through the Gateway: insight-context.md v2.0 excludes the Gateway
+   * from administration and the console, and routing Social's admin traffic
+   * through it made the Gateway hold this token too.
+   *
+   * Empty = the Social screens report unavailable. Not a boot failure — the
+   * rest of the console must keep working when the Google Cloud plane is
+   * unreachable.
+   */
+  SOCIAL_CONSOLE_BASE_URL: z.string().default(''),
+  SOCIAL_OPS_TOKEN: z.string().default(''),
   ANVIL_API_BASE_URL: z.string().default(''),
   /**
    * Cloud Gateway (Product plane). The Control Plane is the ONLY thing

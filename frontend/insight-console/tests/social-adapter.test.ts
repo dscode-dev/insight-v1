@@ -34,12 +34,20 @@ afterEach(() => {
 });
 
 describe("SocialControlPlane adapter", () => {
-  it("returns parsed data on success + hits the gateway social read plane", async () => {
+  // The path moved off the Gateway. It used to be
+  // /v1/console/social/overview on the public Gateway, which was a pure
+  // proxy in front of Social's own surface; insight-context.md v2.0 excludes
+  // the Gateway from administration and the console, so the Control Plane
+  // reaches Social directly now. See docs/adr/0001-social-administration-path.md.
+  it("returns parsed data on success + goes through the Control Plane", async () => {
     mockFetch(200, { totals: { users: 3 }, source: "insight-social" });
     const data = (await SocialControlPlane.overview(ctx, "7d")) as { source: string };
     expect(data.source).toBe("insight-social");
     const url = String(vi.mocked(fetch).mock.calls[0]?.[0]);
-    expect(url).toContain("/console/social/overview");
+    expect(url).toContain("/social/overview");
+    // The Gateway must NOT be in this path any more: routing Social's admin
+    // traffic through it is what made the Gateway hold SOCIAL_OPS_TOKEN.
+    expect(url).not.toContain("/v1/console/social/");
   });
 
   it("maps 503 → SERVICE_UNAVAILABLE (never an empty array)", async () => {

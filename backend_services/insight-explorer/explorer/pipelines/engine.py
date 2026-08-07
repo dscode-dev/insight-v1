@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import threading
 import time
+import traceback
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -119,16 +120,106 @@ class ExecutionSupervisor:
             raise ExecutionNotRunning(execution_id)
         return runtime
 
+    def recover_orphans(self) -> list[str]:
+        """Fail executions left `running` by a process that is no longer here.
+
+        Runtime state is in-process by design: `self._runtimes` is rebuilt
+        empty on every start, and the threads that were driving an execution
+        do not survive a restart. The execution ROW does survive, still
+        saying "running".
+
+        So after a restart — or a crash, or a redeploy — the console shows
+        jobs that no thread is executing, indefinitely. There is no timeout to
+        wait out and no worker left to notice: the only moment anyone can
+        tell is now, at boot, when the fact that this process has no runtimes
+        is exactly the evidence.
+
+        Same shape as the Node Agent's command recovery, and the same reason:
+        an interrupted job whose outcome is unknown is failed explicitly, not
+        resumed. Re-running it blind would repeat work whose partial effects
+        are already on disk.
+
+        Returns the ids it failed, so the caller can log a count.
+        """
+        recovered: list[str] = []
+        try:
+            executions = self.execution_store.list()
+        except Exception:  # noqa: BLE001 - boot must not die on a bad store read
+            _log.error("orphan_recovery_failed_to_list")
+            return recovered
+
+        for execution in executions:
+            if execution.state not in ("running", "paused"):
+                continue
+            execution.state = "failed"
+            execution.ended_at = _now()
+            execution.error = (
+                "interrupted: the process running this execution stopped "
+                "(restart or crash). Re-run the pipeline to continue."
+            )
+            for task in execution.tasks:
+                if task.get("status") == "pending":
+                    task["status"] = "interrupted"
+            try:
+                self.execution_store.save(execution)
+                recovered.append(execution.execution_id)
+            except Exception:  # noqa: BLE001
+                _log.error("orphan_recovery_failed_to_save",
+                           execution_id=execution.execution_id)
+        return recovered
+
     # --- worker --------------------------------------------------------
 
     def _run_bounded(self, execution_id: str, pipeline: Pipeline, runtime: ExecutionRuntime) -> None:
+        """Run one execution, and make sure it cannot end in silence.
+
+        WHY THE `except` IS THE IMPORTANT PART. There was none. An exception
+        raised anywhere inside `_run_worker` propagated out of the thread's
+        target: Python's default excepthook printed it to stderr, the thread
+        died, the `finally` here released the semaphore — and the execution
+        row on disk kept saying `state = "running"`, because the only code
+        that ever writes a terminal state is at the END of `_run_worker`.
+
+        That is exactly what happened. Two executions raised a KeyError in the
+        quality pipeline seconds after starting, and the console showed
+        "running, 0/5 jobs" for eleven hours. The raw layer had the first
+        season's data; nothing else moved. A stack trace scrolled past in the
+        logs among uvicorn access lines, and the screen an operator watches
+        said the job was fine.
+
+        A crashed job that reports "failed" is an incident someone can act on.
+        A crashed job that reports "running" is one nobody knows about.
+        """
         self._semaphore.acquire()
         try:
             self._run_worker(execution_id, pipeline, runtime)
+        except BaseException as exc:  # noqa: BLE001 - the whole point is to catch everything
+            self._fail_execution(execution_id, exc)
+            raise
         finally:
             self._semaphore.release()
             with self._registry_lock:
                 self._runtimes.pop(execution_id, None)
+
+    def _fail_execution(self, execution_id: str, exc: BaseException) -> None:
+        """Record the crash on the execution, so the console shows it.
+
+        Best-effort by necessity: this runs while the worker is already
+        failing, and the store may be the thing that failed. It must not
+        raise, or the original exception is replaced by this one and the
+        cause is lost.
+        """
+        detail = f"{type(exc).__name__}: {exc}"
+        _log.error("execution_crashed", execution_id=execution_id, error=detail,
+                   traceback=traceback.format_exc())
+        try:
+            execution = self.execution_store.get(execution_id)
+            execution.state = "failed"
+            execution.ended_at = _now()
+            execution.error = detail[:500]
+            self.execution_store.save(execution)
+        except Exception:  # noqa: BLE001 - never mask the original failure
+            _log.error("execution_crash_not_recorded", execution_id=execution_id)
 
     def _run_worker(self, execution_id: str, pipeline: Pipeline, runtime: ExecutionRuntime) -> None:
         execution = self.execution_store.get(execution_id)

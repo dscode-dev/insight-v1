@@ -87,9 +87,25 @@ class SimilarityRepository:
         return results
 
     async def _apply_ef_search(self, session: AsyncSession) -> None:
+        """Widen the HNSW search beam for this transaction.
+
+        `SET LOCAL` is utility SQL, not a query: PostgreSQL parses it before
+        binding and rejects a placeholder outright —
+
+            asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$1"
+            [SQL: SET LOCAL hnsw.ef_search = $1]
+
+        so the parameterised form here failed EVERY vector search. It went
+        unnoticed because `atlas.atlas_vector_memory` was empty until the
+        historical backfill: with no rows to search, nothing called this.
+
+        `set_config(name, value, is_local)` is the function form of SET and
+        DOES accept parameters — so the value still travels as a bind and is
+        never concatenated into SQL. It takes text, hence the str().
+        """
         await session.execute(
-            text("SET LOCAL hnsw.ef_search = :ef_search"),
-            {"ef_search": self._hnsw_ef_search},
+            text("SELECT set_config('hnsw.ef_search', :ef_search, true)"),
+            {"ef_search": str(int(self._hnsw_ef_search))},
         )
 
     async def explain_nearest(self, request: SimilaritySearchRequest) -> list[str]:

@@ -117,7 +117,21 @@ class MultiStreamConsumer:
         pending_quota: int,
         new_quota: int,
         max_payload_bytes: int,
+        parser: Callable[[dict], dict] | None = None,
     ):
+        """`parser` turns raw Redis fields into the event the handler gets.
+
+        Defaults to the DERIVED-stream envelope (event_id, match_id,
+        region_code, event_type, match_version, ts_ingest, payload). That
+        shape was the only one this consumer had ever carried, so it was
+        hardcoded — and reusing the consumer for the historical stream failed
+        every message with `missing_required_field field=event_id`, because a
+        five-year-old fixture has no match version and no region.
+
+        Making it injectable, rather than adding optional fields to the
+        derived parser, keeps the live path strict: a derived event that
+        genuinely lost its event_id must still fail loudly.
+        """
         if not stream_keys:
             raise ValueError("stream_keys must not be empty")
         if max_payload_bytes <= 0:
@@ -127,6 +141,7 @@ class MultiStreamConsumer:
         self._streams = stream_keys
         self._group = group_name
         self._consumer = consumer_name
+        self._parser = parser
 
         self._block_ms = block_ms
         self._read_count = read_count
@@ -477,6 +492,8 @@ class MultiStreamConsumer:
                 )
 
     def _parse(self, raw_fields: dict) -> dict:
+        if self._parser is not None:
+            return self._parser(raw_fields)
         payload_raw = self._required_bytes(raw_fields, b"payload")
         payload_size = len(payload_raw)
         if payload_size > self._max_payload_bytes:

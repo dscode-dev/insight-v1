@@ -101,6 +101,7 @@ from atlas.trends.similarity_probe import OnlineSimilarityProbe
 from atlas.trends.timeline import TrendTimelineRepository
 from atlas.validation import quarantine_snapshot
 from atlas.vector_memory import PgVectorMemoryRepository
+from atlas.vector_memory.refresh import build_vector_refresher
 from atlas.watchers import (
     ClusterJanitor,
     CoherenceWatcher,
@@ -392,6 +393,14 @@ def build_app() -> FastAPI:
         meta_engine,
         crossmatch_engine,
     ))
+    # Rebuilds the similarity corpus from the same validated lake and
+    # re-encodes it into pgvector — the hot path the live flow reads.
+    # Registered next to StrengthSyncWatcher because they are the same kind
+    # of job on the same input; before this existed, both halves of the
+    # chain were scripts, neither ran, and the vector table stayed empty
+    # while ClickHouse filled. Nothing reported that: an empty vector search
+    # returns zero neighbours and low confidence, not an error.
+    watcher_registry.register(build_vector_refresher(settings, session_factory))
     watcher_scheduler = WatcherScheduler(
         watcher_registry,
         ObservationSink(trends_pipeline),

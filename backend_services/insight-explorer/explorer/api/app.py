@@ -120,6 +120,16 @@ def create_app(service: ExplorerReadService | None = None, run_scheduler: bool |
         supervisor = ExecutionSupervisor(lake, pipeline_store, execution_store, use_ai=use_ai,
                                          max_concurrent=max_concurrent)
         app.state.supervisor = supervisor
+        # Executions left "running" by a process that is gone. Their threads
+        # did not survive whatever ended that process; the rows did. Without
+        # this the console reports jobs nobody is executing, forever.
+        orphans = supervisor.recover_orphans()
+        if orphans:
+            from explorer.observability.logging import get_logger
+
+            get_logger("explorer.api").warning(
+                "orphan_executions_failed", count=len(orphans),
+                execution_ids=orphans[:10])
 
         publisher = None
         if os.environ.get("EXPLORER_REDIS_URL"):
