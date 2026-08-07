@@ -6,7 +6,7 @@
 >
 > **Linguagem:** Go · **Arquitetura:** hexagonal (ports & adapters)
 > **Portas:** 8090 (HTTP) · 9090 (gRPC Operations)
-> **Tamanho:** ~12.450 linhas · **Persistência:** PostgreSQL (schema `nexus`) + Redis
+> **Tamanho:** ~12.800 linhas · **Persistência:** PostgreSQL (schema `nexus`) + Redis
 
 ---
 
@@ -22,12 +22,19 @@ escrito no topo do `main.go`:
 ```go
 // Nexus converts intelligence into communication: it consumes Atlas's
 // evaluated trends off insight:stream:trends (its ONLY input), ...
-// No intelligence logic, no LLMs, no social output.
+//
+// What it still does NOT do: any intelligence of its own. It never computes
+// similarity, never collects data, never serves a public API. Atlas decided;
+// Nexus only chooses whether and how to say it.
 ```
 
-Esse comentário descreve o Sprint 3. Hoje o Nexus **tem** LLM e **tem**
-saída social (Sprint 4) — mas a primeira metade continua valendo, e é a
-que importa:
+> Esse comentário terminava com *"no intelligence logic, no LLMs, no
+> social output"*. Descrevia o Sprint 3 e deixou de ser verdade no
+> Sprint 4 — o Nexus tem LLM e tem saída social. Ficou lá tempo
+> suficiente para enganar, e por isso a correção diz isso
+> explicitamente em vez de só apagar.
+
+A metade que continua valendo é a que importa:
 
 > **`insight:stream:trends` é a ÚNICA entrada.** O Nexus não consulta o
 > Atlas, não lê o lake do Explorer, não chama o Anvil. Se não veio pelo
@@ -263,41 +270,140 @@ sem publicar nada.
 
 ---
 
-## 6. O que está pendente — sem maquiagem
+## 6. Os dois laços — e por que são separados
 
-### 6.1 A API administrativa está trancada
+Esta é a correção mais estrutural que o serviço recebeu.
 
-Verificado agora, contra o container em execução:
+### Como era
+
+`HandleTrend` chamava o motor de publicação **inline**, logo depois de
+enfileirar o rascunho. Duas consequências:
+
+1. **Nada nunca lia as filas.** O port `DraftQueue` tinha `Enqueue` e
+   `Depth` — e nenhum `Dequeue`. As filas cresciam até o `MaxLen` cortar
+   as entradas **mais antigas**, que numa fila de publicação são
+   exatamente os rascunhos que esperavam há mais tempo. E o `ActiveJobs`
+   do gRPC Operations reportava a profundidade como "jobs ativos": um
+   número que só subia e nunca completava.
+2. **Uma chamada de LLM lenta travava o stream inteiro.** O pior caso é
+   um timeout por provedor, por agente, por tendência — com a próxima
+   tendência esperando atrás de tudo isso.
+
+### Como é
 
 ```
-$ curl http://insight-nexus:8090/v1/agents
-{"error":"admin api locked: Gateway identity endpoint not configured"}
-code: 503
+consumer de trends → pipeline → fila por agente        (rápido)
+publish worker     ← fila     → LLM → valida → Social  (lento)
 ```
 
-O motivo está em `internal/adapters/httpapi/auth.go`:
+O handler de tendência retorna assim que o rascunho está durável e
+enfileirado. Cada agente drena a própria fila em uma goroutine — um
+agente cuja persona sempre estoura o timeout atrasa só o próprio
+backlog.
+
+**O que a entrega garante:** a tendência só é confirmada depois que a
+linha do rascunho, a linha do candidato e a entrada da fila estão todas
+duráveis. Uma queda entre o enfileiramento e a publicação não perde
+nada: a entrada fica não-confirmada e é reentregue.
+
+E a fila **deixou de ser limitada**. Backlog é coisa para alarmar
+(`nexus_queue_depth`), não para esconder apagando a cabeça.
+
+---
+
+## 6.1 A identidade migrou para o Control Plane
+
+O Nexus autenticava operadores contra o **gateway público** — que, pelo
+`insight-context.md` v2.0, não responde por operadores. Com
+`NEXUS_GATEWAY_IDENTITY_URL` vazio, **toda a API administrativa
+respondia 503** e o console não tinha tela nenhuma do Nexus.
+
+Hoje ele fala o mesmo salto que o Node Agent
+([Parte 8](08-node-agent.md), seção 3): token de serviço com
+`subtle.ConstantTimeCompare`, mais os headers do operador que o Control
+Plane repassa.
+
+```
+{"authority":"control-plane","event":"admin_api_unlocked"}
+```
+
+### A divisão de autoridade
+
+> **O Control Plane decide quem você é e o que você tem. O Nexus decide
+> o que as rotas dele exigem.**
+
+Nenhum dos dois reimplementa a metade do outro. Resolver papel →
+permissão dentro do Nexus bifurcaria a tabela de RBAC; colocar os
+requisitos das rotas no Control Plane faria de cada endpoint novo do
+Nexus uma mudança em dois serviços.
+
+E o header de permissões ausente **nega**:
 
 ```go
-// Nexus does not mint or verify operator credentials, own sessions, or
-// define roles. It forwards the opaque operator session to Insight
-// Gateway's /v1/operator/auth/me endpoint ...
+if len(permissions) == 0 {
+	authError(w, http.StatusForbidden,
+		"control plane sent no "+headerOperatorPerms)
+	return Claims{}, false
+}
 ```
 
-**O Nexus é o último serviço ainda no modelo antigo de identidade.** Ele
-espera que o *Gateway da nuvem* valide operadores — exatamente a
-inversão que o Control Plane corrigiu (ver [Parte 6](06-insight-control-plane.md),
-seção 3). Como `NEXUS_GATEWAY_IDENTITY_URL` está vazio, toda a API
-administrativa responde 503.
+Um header esquecido não pode virar autoridade ilimitada.
 
-O comportamento em si está **certo**: sem autoridade de identidade
-configurada, ele tranca em vez de liberar. Fail-closed é a direção
-segura. Mas a autoridade que ele procura é a errada — migrar essa
-validação para o Control Plane é trabalho pendente.
+O caminho antigo pelo Gateway continua existindo, escolhido por
+configuração — a migração é uma variável, não um deploy coordenado.
 
-Consequência visível: as telas de publicação foram removidas do menu do
-console (`publication-center`), porque não havia como chamá-las.
+---
 
-### 6.2 O stream nunca recebeu nada
+## 6.2 O que passou a falhar no boot
+
+Três configurações subiam bem e falhavam uma requisição por vez:
+
+| Configuração | Antes | Agora |
+|---|---|---|
+| Publisher ligado, zero provedores | Um ticket por rascunho, para sempre | Recusa no boot |
+| Publisher ligado, sem endereço do Social | Publicação falhava sem explicar | Recusa no boot |
+| `MIN_IDLE` < duração máxima do handler | Duas réplicas publicariam o mesmo post | Derivado, ou recusado se explícito |
+
+O terceiro merece detalhe. O claimer entrega uma entrada pendente a um
+**segundo** consumer depois de N segundos ociosa. Se isso puder
+acontecer enquanto o primeiro ainda está dentro de uma chamada de LLM,
+**os dois publicam**. O piso é `NEXUS_LLM_TIMEOUT × nº de provedores` —
+e é **derivado**, não uma constante, porque aumentar o timeout sem
+perceber que invalidou um MinIdle escolhido à mão é exatamente como
+isso vira incidente.
+
+Não configurado, ele é elevado ao piso (e o boot diz que elevou).
+Configurado abaixo, o serviço recusa subir: alguém digitou aquele
+número e precisa saber por que ele não pode valer.
+
+---
+
+## 6.3 Escrituração pós-publicação
+
+Duas escritas rodam **depois** que o post já está no Social: o log do
+anti-spam e a memória de publicação. A primeira descartava o erro
+direto (`_ =`); a segunda só logava.
+
+As duas alimentam guardrails — a memória é contra o que o validador de
+repetição compara, e o log do anti-spam é o que faz valer os cooldowns.
+Perder qualquer uma em silêncio faz o agente se repetir ou postar de
+novo imediatamente.
+
+Elas também **não podem propagar erro**: a entrada da fila ficaria
+não-confirmada, o worker reentregaria, e o agente postaria uma
+**segunda vez**.
+
+O tratamento: retentar poucas vezes (são inserts simples), e então
+registrar a perda num contador
+(`nexus_post_publish_bookkeeping_failures_total`) e na própria linha do
+candidato — que passa a ser salva **por último**, para carregar o
+desfecho. A tela de Publicações mostra isso explicitamente.
+
+---
+
+## 6.4 O que ainda está pendente
+
+**O stream nunca recebeu nada.**
 
 ```
 $ redis-cli XLEN insight:stream:trends
@@ -306,37 +412,13 @@ $ redis-cli XINFO GROUPS insight:stream:trends
 name: insight-nexus   consumers: 1   pending: 0   lag: 0
 ```
 
-O consumer group está registrado e saudável. Simplesmente **nenhuma
-tendência foi publicada ainda** — o caminho depende de o Atlas estar
-processando partidas ao vivo.
+`lag: 0` com `XLEN 0` significa *"em dia com um stream vazio"*, não
+*"consumindo e descartando"*. O Nexus está pronto e ocioso — depende de
+o Atlas estar processando partidas ao vivo.
 
-Distinção que importa: `lag: 0` com `XLEN 0` significa *"em dia com um
-stream vazio"*, não *"consumindo e descartando"*. O Nexus está pronto e
-ocioso.
-
-### 6.3 Variáveis do compose que o código não lê mais
-
-O `docker-compose.yml` exige três variáveis como obrigatórias:
-
-```yaml
-OLLAMA_BASE_URL:   ${NEXUS_OLLAMA_BASE_URL:?...}
-NEXUS_QWEN_MODEL:  ${NEXUS_QWEN_MODEL:?...}
-NEXUS_LLAMA_MODEL: ${NEXUS_LLAMA_MODEL:?...}
-```
-
-Nenhuma das três é lida pelo código — `grep -rn "OLLAMA\|QWEN\|LLAMA"`
-no repositório do Nexus não retorna nada. São restos de quando o Nexus
-usava modelos locais, antes da política de "provedores privados apenas".
-
-O `:?` as torna **obrigatórias para subir**: hoje elas bloqueiam o
-deploy sem afetar comportamento nenhum. O container `insight-qwen-runtime`
-continua no ar pelo mesmo motivo histórico.
-
-> Limpeza pendente, de baixo risco — mas fazê-la exige remover as
-> variáveis do compose **e** do `.env` juntas, senão o `:?` derruba o
-> serviço.
-
----
+**A publicação continua desligada.** Os três provedores e o publisher
+estão `false`. O worker não sobe, e o log diz isso:
+`publish_worker_not_started_publisher_disabled`.
 
 ## 7. Configuração
 
@@ -349,14 +431,23 @@ continua no ar pelo mesmo motivo histórico.
 | `NEXUS_PUBLISHER_ENABLED` | — | `false` | **desligado hoje** |
 | `NEXUS_SOCIAL_GRPC_ADDR` | — | vazio | Social na nuvem |
 | `NEXUS_ENABLE_ANTHROPIC/OPENAI/GEMINI` | — | `false` | **os três desligados** |
-| `NEXUS_GATEWAY_IDENTITY_URL` | — | vazio | **vazio ⇒ API admin em 503** |
+| `NEXUS_CONTROL_PLANE_TOKEN` | — | vazio | **Preenchido ⇒ API admin destrancada** |
+| `NEXUS_GATEWAY_IDENTITY_URL` | — | vazio | Legado; só vale se o token acima estiver vazio |
+| `NEXUS_PUBLISH_CONSUMER_GROUP` | — | `insight-nexus-publish` | Grupo próprio das filas |
 | `NEXUS_CLUSTER_EXPIRE_MINUTES` | — | `90` | |
 | `NEXUS_SPAM_*` | — | 5/15/30/10 min, 6/h, 30/dia | |
-| `NEXUS_CLAIMER_*` | — | on, 30s, 15s, 8 | reentrega de pendentes |
+| `NEXUS_CLAIMER_MIN_IDLE` | — | **derivado** | `LLM_TIMEOUT × provedores` quando o publisher está ligado |
 | `NEXUS_DLQ_STREAM` | — | `insight:dlq:nexus` | |
 
 > A configuração é lida **uma vez, no start**. Não há hot-reload — nem
 > de provedores, nem de política de spam. Mudança exige restart.
+>
+> As variáveis `OLLAMA_BASE_URL`, `NEXUS_QWEN_MODEL` e `NEXUS_LLAMA_MODEL`
+> **foram removidas**: eram obrigatórias no compose e lidas por ninguém,
+> restos de quando havia modelos locais. E o compose passava
+> `SOCIAL_GRPC_ADDR` enquanto o código lê `NEXUS_SOCIAL_GRPC_ADDR`, então
+> o endereço do Social nunca chegava — invisível com o publisher
+> desligado.
 
 ---
 
@@ -390,18 +481,20 @@ sonda a saúde. **Nenhuma tela do console fala com ele hoje** — ver 6.1.
 
 | Item | Estado |
 |---|---|
-| Processo | No ar, `healthy`, há 7 horas |
+| Imagem | `konohalabs/insight-nexus:0.1.0`, `healthy` |
 | Consumer group | Registrado, 0 pending, 0 lag |
 | Tendências processadas | **0** — o stream nunca recebeu nada |
-| API administrativa | **503** — identidade apontando para o Gateway |
+| API administrativa | **Destrancada** via Control Plane, verificado no ar |
 | Provedores de LLM | Os três desligados por configuração |
-| Publisher | Desligado por configuração |
-| Telas no console | Nenhuma |
+| Publisher / publish worker | Desligados por configuração |
+| Telas no console | **2** — Agentes e Publicações, ambas em 200 |
+| Agentes / personas | 5 e 5, populados, com restrições próprias |
 
-O Nexus é, hoje, o serviço mais completo em código e o menos exercitado
-em produção. Isso não é problema por si — mas nada nele foi validado
-ponta a ponta contra tráfego real, e a documentação não deve sugerir o
-contrário.
+O Nexus continua sendo o serviço mais completo em código e o menos
+exercitado em produção. O caminho administrativo agora está validado
+ponta a ponta (console → Control Plane → Nexus); o caminho de
+publicação **não** — ele depende de tendências do Atlas e de provedores
+de LLM que ainda não foram ligados.
 
 ---
 

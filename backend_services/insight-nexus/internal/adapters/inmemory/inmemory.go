@@ -196,16 +196,48 @@ func (r *PublicationRepo) All() []ports.PublicationCandidate {
 
 type Queue struct {
 	mu     sync.RWMutex
-	queues map[string][]draft.Draft
+	queues map[string][]ports.QueuedDraft
 }
 
-func NewQueue() *Queue { return &Queue{queues: map[string][]draft.Draft{}} }
+func NewQueue() *Queue { return &Queue{queues: map[string][]ports.QueuedDraft{}} }
 
-func (q *Queue) Enqueue(_ context.Context, queueName string, d draft.Draft, _ bool) error {
+func (q *Queue) Enqueue(_ context.Context, queueName string, item ports.QueuedDraft) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.queues[queueName] = append(q.queues[queueName], d)
+	q.queues[queueName] = append(q.queues[queueName], item)
 	return nil
+}
+
+// Consume drains what is queued and then blocks, so a test can assert on
+// the handler's effects without racing a background loop.
+func (q *Queue) Consume(
+	ctx context.Context, queueNames []string, handler ports.QueuedDraftHandler,
+) error {
+	for _, name := range queueNames {
+		q.mu.Lock()
+		pending := q.queues[name]
+		q.queues[name] = nil
+		q.mu.Unlock()
+		for _, item := range pending {
+			if err := handler(ctx, item); err != nil {
+				// Unacked: put it back at the head, mirroring the stream
+				// adapter's redelivery rather than dropping the work.
+				q.mu.Lock()
+				q.queues[name] = append([]ports.QueuedDraft{item}, q.queues[name]...)
+				q.mu.Unlock()
+				return err
+			}
+		}
+	}
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// Items exposes what is queued, for assertions.
+func (q *Queue) Items(queueName string) []ports.QueuedDraft {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return append([]ports.QueuedDraft(nil), q.queues[queueName]...)
 }
 
 func (q *Queue) Depth(_ context.Context, queueName string) (int64, error) {
@@ -220,6 +252,7 @@ var (
 	_ ports.DraftRepository       = (*DraftRepo)(nil)
 	_ ports.PublicationRepository = (*PublicationRepo)(nil)
 	_ ports.DraftQueue            = (*Queue)(nil)
+	_ ports.DraftQueueConsumer    = (*Queue)(nil)
 )
 
 // ---- Sprint 3: Related memories ------------------------------------------------

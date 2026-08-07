@@ -71,7 +71,7 @@ services:
       - robozao-ops
 
   insight-console:
-    image: konohalabs/insight-console:1.6.0
+    image: konohalabs/insight-console:1.8.0
     container_name: insight-console
     restart: unless-stopped
     logging: *default-logging
@@ -121,7 +121,7 @@ services:
   # atlas-migrate: applying schema from inside the serving process
   # means N replicas racing on the same DDL.
   control-plane-migrate:
-    image: konohalabs/insight-console-api:1.4.0
+    image: konohalabs/insight-console-api:1.7.1
     restart: "no"
     logging: *default-logging
     environment:
@@ -143,7 +143,7 @@ services:
   # Behind a profile so it never runs on `docker compose up`. Invoke it:
   #   docker compose --profile seed run --rm control-plane-seed
   control-plane-seed:
-    image: konohalabs/insight-console-api:1.4.0
+    image: konohalabs/insight-console-api:1.7.1
     profiles: ["seed"]
     restart: "no"
     logging: *default-logging
@@ -168,7 +168,7 @@ services:
   # surfaces. Never exposed to the host: the browser reaches it only
   # through the Next server, which is what keeps identity server-derived.
   insight-console-api:
-    image: konohalabs/insight-console-api:1.4.0
+    image: konohalabs/insight-console-api:1.7.1
     container_name: insight-console-api
     restart: unless-stopped
     logging: *default-logging
@@ -194,6 +194,10 @@ services:
       # a route to them. Empty = no probe configured, reported as
       # honestly unknown rather than down.
       NEXUS_API_BASE_URL: ${CONTROL_PLANE_NEXUS_URL:-http://insight-nexus:8090}
+      # Mesmo segredo do Node Agent: os dois services internos aceitam o
+      # Control Plane no mesmo salto. Vazio, as telas do Nexus reportam
+      # indisponivel — nao derruba o resto do console.
+      NEXUS_CONTROL_PLANE_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
       ANVIL_API_BASE_URL: ${CONTROL_PLANE_ANVIL_URL:-http://anvil:8081}
       # Cloud Gateway (Product plane). The Control Plane is the only
       # thing that reaches it on an operator's behalf now, so the token
@@ -226,7 +230,7 @@ services:
       - robozao-ops
 
   robozao-gateway:
-    image: konohalabs/insight-robozao-gateway:0.1.0
+    image: konohalabs/insight-robozao-gateway:0.2.2
     container_name: insight-robozao-gateway
     restart: unless-stopped
     logging: *default-logging
@@ -238,10 +242,18 @@ services:
       # Mesmo valor do NODE_AGENT_TOKEN do Control Plane. Preenchido,
       # o Node Agent para de validar operador contra o gateway público.
       CONTROL_PLANE_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
-      EXPLORER_URL: ${EXPLORER_URL:?EXPLORER_URL is required}
-      EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
-      GATEWAY_OPS_URL: ${GATEWAY_OPS_URL:?GATEWAY_OPS_URL is required}
-      GATEWAY_OPS_TOKEN: ${GATEWAY_OPS_TOKEN:?GATEWAY_OPS_TOKEN is required}
+      # Fase C: EXPLORER_URL, EXPLORER_OPS_TOKEN, GATEWAY_OPS_URL e
+      # GATEWAY_OPS_TOKEN foram REMOVIDAS junto com o HTTPExecutor.
+      #
+      # Elas existiam para o Node Agent chamar o Explorer e o gateway da
+      # nuvem em nome de um operador — proxy HTTP, que o insight-context.md
+      # v2.0 proibe explicitamente para este service. As nove acoes que as
+      # usavam passaram para o Control Plane, que ja detem os tokens, as
+      # allow-lists de path e a espinha de auditoria.
+      #
+      # O Node Agent continua falando gRPC de saida para agregar saude dos
+      # services registrados: contrato tipado, registry declarado, e sem
+      # autoridade de operador junto.
       ROBOZAO_ALLOWED_CIDRS: ${ROBOZAO_ALLOWED_CIDRS:?ROBOZAO_ALLOWED_CIDRS is required}
       ATLAS_OPERATIONS_GRPC_ADDR: ${ATLAS_OPERATIONS_GRPC_ADDR:?ATLAS_OPERATIONS_GRPC_ADDR is required}
       EXPLORER_OPERATIONS_GRPC_ADDR: ${EXPLORER_OPERATIONS_GRPC_ADDR:?EXPLORER_OPERATIONS_GRPC_ADDR is required}
@@ -415,7 +427,7 @@ services:
       - robozao-ops
 
   nexus-migrate:
-    image: konohalabs/insight-nexus:0.0.2
+    image: konohalabs/insight-nexus:0.1.0
     restart: "no"
     logging: *default-logging
     environment:
@@ -428,7 +440,7 @@ services:
       - robozao-ops
 
   insight-nexus:
-    image: konohalabs/insight-nexus:0.0.2
+    image: konohalabs/insight-nexus:0.1.0
     container_name: insight-nexus
     restart: unless-stopped
     logging: *default-logging
@@ -442,11 +454,17 @@ services:
       REDIS_ADDR: ${NEXUS_REDIS_ADDR:?NEXUS_REDIS_ADDR is required}
       REDIS_PASSWORD: ${NEXUS_REDIS_PASSWORD:-}
       REDIS_DB: ${NEXUS_REDIS_DB:?NEXUS_REDIS_DB is required}
-      OLLAMA_BASE_URL: ${NEXUS_OLLAMA_BASE_URL:?NEXUS_OLLAMA_BASE_URL is required}
-      NEXUS_QWEN_MODEL: ${NEXUS_QWEN_MODEL:?NEXUS_QWEN_MODEL is required}
-      NEXUS_LLAMA_MODEL: ${NEXUS_LLAMA_MODEL:?NEXUS_LLAMA_MODEL is required}
+      # Salto serviço-a-serviço, mesmo valor do Node Agent. Preenchido, o
+      # Nexus aceita a identidade que o Control Plane repassa e para de
+      # procurar o gateway público — que, pelo insight-context.md v2.0,
+      # não responde por operadores.
+      NEXUS_CONTROL_PLANE_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
       NEXUS_PUBLISHER_ENABLED: ${NEXUS_PUBLISHER_ENABLED:?NEXUS_PUBLISHER_ENABLED is required}
-      SOCIAL_GRPC_ADDR: ${NEXUS_SOCIAL_GRPC_ADDR:?NEXUS_SOCIAL_GRPC_ADDR is required}
+      # NEXUS_SOCIAL_GRPC_ADDR, e não SOCIAL_GRPC_ADDR: o serviço lê o nome
+      # com prefixo. Com o nome errado o endereço nunca chegava, e como o
+      # publisher está desligado ninguém percebeu. Hoje a validação de
+      # config recusa o boot se o publisher for ligado sem ele.
+      NEXUS_SOCIAL_GRPC_ADDR: ${NEXUS_SOCIAL_GRPC_ADDR:-}
       NEXUS_SCHEMA_VERSION: "0005"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     expose:

@@ -8,6 +8,7 @@
 //	nexus_fallbacks_total{provider}
 //	nexus_tickets_created_total{agent}
 //	nexus_spam_prevented_total{rule}
+//	nexus_post_publish_bookkeeping_failures_total{agent,step}
 package observability
 
 import (
@@ -26,6 +27,7 @@ type PublicationMetrics struct {
 	fallbacks     *prometheus.CounterVec
 	tickets       *prometheus.CounterVec
 	spamPrevented *prometheus.CounterVec
+	bookkeeping   *prometheus.CounterVec
 }
 
 func NewPublicationMetrics() *PublicationMetrics {
@@ -63,6 +65,15 @@ func NewPublicationMetrics() *PublicationMetrics {
 			Name: "nexus_spam_prevented_total",
 			Help: "Publications suppressed by anti-spam budgets, by rule.",
 		}, []string{"rule"}),
+		// Bookkeeping that runs AFTER the post is already on Social, so it
+		// cannot fail the publication and cannot be retried by redelivery
+		// (that would post twice). A non-zero value means the anti-spam
+		// budget or the repetition memory is missing an entry — the agent
+		// may post again sooner, or repeat itself.
+		bookkeeping: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "nexus_post_publish_bookkeeping_failures_total",
+			Help: "Writes that failed after a post already reached Social, by agent and step (antispam_log/publication_memory).",
+		}, []string{"agent", "step"}),
 	}
 }
 
@@ -85,6 +96,10 @@ func (m *PublicationMetrics) TicketCreated(agent string) {
 }
 
 // ---- antispam.Metrics ----
+
+func (m *PublicationMetrics) PostPublishBookkeepingFailed(agent, step string) {
+	m.bookkeeping.WithLabelValues(agent, step).Inc()
+}
 
 func (m *PublicationMetrics) SpamPrevented(rule string) {
 	m.spamPrevented.WithLabelValues(rule).Inc()

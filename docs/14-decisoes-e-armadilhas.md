@@ -51,7 +51,7 @@ Não é um lugar só — é o mesmo padrão repetido em cinco camadas:
 | nginx | Três `location`; o resto é 404 |
 | Control Plane | Allow-list de path por primeiro segmento |
 | Console | Classificadores `governed \| ordinary \| refuse` |
-| Node Agent | Ação precisa estar no catálogo **e** no switch |
+| Node Agent | Ação precisa estar no catálogo **e** no executor |
 | Sport Hub | Oito regras de quarentena antes de canonicalizar |
 
 Uma allow-list curta é auditável de relance. Uma deny-list nunca está
@@ -60,7 +60,7 @@ completa.
 ### A.4 Falhar fechado, e dizer por quê
 
 - Auditoria não durável ⇒ **a mutação não acontece** (503)
-- Sem autoridade de identidade ⇒ **API trancada** (503, o Nexus hoje)
+- Sem autoridade de identidade ⇒ **API trancada** (503, nomeando a variável)
 - Cadeia de LLM esgotada ⇒ **ticket**, nunca texto genérico
 - Path não classificado ⇒ **recusa**, não encaminhamento
 
@@ -349,8 +349,7 @@ O `Dockerfile` referenciava `robozao-gateway/` enquanto o diretório é
 
 | Pendência | Impacto |
 |---|---|
-| `HTTPExecutor` no Node Agent | Proxy HTTP que o doc proíbe ([Parte 8](08-node-agent.md), §6) |
-| Nexus autenticando pelo Gateway | API administrativa em 503 ([Parte 5](05-insight-nexus.md), §6.1) |
+| Adapter direto do console ao Gateway da nuvem | Código morto, mas ainda uma rota ([Parte 7](07-insight-console.md)) |
 | `ADMIN_API_INTERNAL_TOKEN`, `GATEWAY_OPS_TOKEN` | 12 telas fora do menu |
 | Stack de aplicação fora do Swarm | Sem resiliência declarativa |
 | TLS | `COOKIE_SECURE=false` |
@@ -358,6 +357,35 @@ O `Dockerfile` referenciava `robozao-gateway/` enquanto o diretório é
 | `match_minute` ausente do schema | Lacuna de modelo de dados |
 | Testes do console só cobrem `lib/` | Regressão de UI passa despercebida |
 | Baseline congelado do Quality Gate | Precisa de dataset real |
+
+---
+
+### Fechadas desde a primeira edição
+
+| Era | Virou |
+|---|---|
+| `HTTPExecutor` no Node Agent | Removido, com teste de fronteira ([Parte 8](08-node-agent.md), §6) |
+| Nexus autenticando pelo Gateway | Identidade pelo Control Plane ([Parte 5](05-insight-nexus.md), §6.1) |
+| Fila de publicação sem leitor | `publishworker` drena de verdade ([Parte 5](05-insight-nexus.md), §6) |
+| Console falando direto com o Node Agent | Passa pelo Control Plane ([Parte 8](08-node-agent.md), §6.1) |
+
+E três armadilhas novas, da mesma família das de cima:
+
+**B.21 — Autoridade sem autorização.** O Node Agent recebia id, nome e
+papel do operador, mas **não as permissões**. Todo comando devolvia 403.
+A identidade passava e a autorização não, e a recusa lia-se como "este
+operador não pode" quando ninguém tinha perguntado.
+
+**B.22 — Coerção silenciosa que escala.** `severity: "warning"` virava
+`ERROR`, porque a constante é maiúscula e a validação caía num
+`if !valid { = SevError }`. Escalar o aviso de alguém para erro aciona
+plantão por um problema que ninguém reportou. Recusar é visível;
+coagir, não.
+
+**B.23 — Um default compilado é uma rota.** `lib/robozao.ts` guardava
+`?? "http://robozao-gateway:8095"`. O container do console não tinha a
+variável, o que fazia parecer que ele não alcançava nada — e alcançava.
+Procure endereços, não só credenciais.
 
 ---
 

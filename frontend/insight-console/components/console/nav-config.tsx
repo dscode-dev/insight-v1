@@ -71,6 +71,17 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 
+  {
+    key: "communication",
+    label: "Comunicação (Nexus)",
+    items: [
+      // Agentes vem primeiro: e onde estao as RESTRICOES de cada persona,
+      // o contrato negativo equivalente aos guardrails do Atlas.
+      { href: "/nexus/agents", key: "nexus-agents", label: "Agentes", icon: Bot, permission: "console.access" },
+      { href: "/nexus/publications", key: "nexus-publications", label: "Publicações", icon: Newspaper, permission: "console.access" },
+    ],
+  },
+
   // ---- Plano de Controle ----
   {
     key: "governance",
@@ -95,7 +106,7 @@ export const NAV_GROUPS: NavGroup[] = [
  * | /social/* (10 telas)          | 401      | ADMIN_API_INTERNAL_TOKEN real          |
  * | /moderation                   | 401      | ADMIN_API_INTERNAL_TOKEN real          |
  * | /administration/users         | vazio    | ADMIN_API_INTERNAL_TOKEN real          |
- * | /publication-center           | —        | integração com o Nexus                 |
+ * | /publication-center           | superado | substituído por /nexus/* (mantido)     |
  * | /analytics/publications       | 404      | a rota de API nem existe               |
  * | /operations/history           | 500      | Node Agent aceitar o Control Plane     |
  * | /dlq                          | —        | superfície de DLQ no Atlas             |

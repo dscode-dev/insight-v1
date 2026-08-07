@@ -29,6 +29,25 @@ export interface UpstreamCall {
    * the rest of the body is discarded.
    */
   readonly surfaceRefusal?: boolean;
+  /**
+   * Full operator, for upstreams that authorize per request rather than
+   * merely attributing.
+   *
+   * Explorer and Atlas take `actor` as attribution only — they trust the
+   * shared token for authorization. Nexus does not: it checks what its own
+   * route requires against what the operator holds, so it needs the
+   * permissions too. That split is deliberate (see the Nexus auth package):
+   * the Control Plane owns role → permission, each service owns route →
+   * requirement.
+   */
+  readonly operator?: UpstreamOperator;
+}
+
+export interface UpstreamOperator {
+  readonly id: string;
+  readonly username: string;
+  readonly role: string;
+  readonly permissions: readonly string[];
 }
 
 /** The whitelisted shape of an upstream refusal. Nothing else crosses. */
@@ -79,6 +98,44 @@ export class UpstreamService {
       {
         'X-Internal-Token': config.ATLAS_INTERNAL_TOKEN,
         ...(call.actor ? { 'X-Operator': call.actor } : {}),
+      },
+    );
+  }
+
+  /**
+   * Insight Nexus — agents, publication candidates, tickets, personas.
+   *
+   * Unlike Explorer and Atlas, the hop carries the OPERATOR, not just a
+   * name: Nexus authorizes each route against the permissions sent here.
+   * The token proves the caller is the Control Plane; the headers say who
+   * the Control Plane already authenticated.
+   *
+   * Nexus denies a request whose permissions header is absent, so an
+   * operator resolved without permissions fails closed rather than
+   * arriving as an unbounded one.
+   */
+  async nexus<T = unknown>(call: UpstreamCall): Promise<T> {
+    const config = getConfig();
+    if (!config.NEXUS_CONTROL_PLANE_TOKEN) {
+      throw new Error('nexus_control_plane_token_missing');
+    }
+    if (!config.NEXUS_API_BASE_URL) {
+      throw new Error('nexus_api_base_url_missing');
+    }
+    const operator = call.operator;
+    return this.json<T>(
+      `${trimSlash(config.NEXUS_API_BASE_URL)}/${stripLeading(call.path)}`,
+      call,
+      {
+        'X-Control-Plane-Token': config.NEXUS_CONTROL_PLANE_TOKEN,
+        ...(operator
+          ? {
+              'X-Operator-Id': operator.id,
+              'X-Operator': operator.username,
+              'X-Operator-Role': operator.role,
+              'X-Operator-Permissions': operator.permissions.join(','),
+            }
+          : {}),
       },
     );
   }

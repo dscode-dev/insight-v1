@@ -1,11 +1,27 @@
 // insight-nexus — composition root.
 //
 // Nexus converts intelligence into communication: it consumes Atlas's
-// evaluated trends off insight:stream:trends (its ONLY input), routes
-// them to persisted agents, builds memory-aware contexts, generates
-// structured drafts, and enqueues them onto per-agent publishing
-// queues for the future content sprints. No intelligence logic, no
-// LLMs, no social output.
+// evaluated trends off insight:stream:trends (its ONLY input), routes them
+// to persisted agents, builds memory-aware contexts, generates structured
+// drafts, enqueues them onto per-agent publishing queues, and — in a
+// SEPARATE worker — composes and publishes them to Social.
+//
+// What it still does NOT do: any intelligence of its own. It never computes
+// similarity, never collects data, never serves a public API. Atlas decided;
+// Nexus only chooses whether and how to say it.
+//
+// (The trailing "no LLMs, no social output" that used to close this comment
+// described Sprint 3 and stopped being true in Sprint 4. It is called out
+// because the sentence stayed there long enough to mislead.)
+//
+// Two long-running loops:
+//
+//	trend consumer  → pipeline  → per-agent publishing queue   (fast path)
+//	publish worker  ← queue     → LLM → validate → Social      (slow path)
+//
+// They are separate because the slow path takes up to one LLM timeout per
+// provider. Running it inside the consumer stalled every other agent and
+// every later trend.
 package main
 
 import (
@@ -40,6 +56,7 @@ import (
 	"github.com/konoha-labs/insight-nexus/internal/application/pipeline"
 	"github.com/konoha-labs/insight-nexus/internal/application/publication"
 	"github.com/konoha-labs/insight-nexus/internal/application/publisher"
+	"github.com/konoha-labs/insight-nexus/internal/application/publishworker"
 	"github.com/konoha-labs/insight-nexus/internal/application/router"
 	"github.com/konoha-labs/insight-nexus/internal/config"
 	"github.com/konoha-labs/insight-nexus/internal/domain/trend"
@@ -62,6 +79,14 @@ func main() {
 		Level:   settings.LogLevel,
 		Pretty:  settings.LogPretty,
 	})
+
+	if settings.ClaimerMinIdleDerived {
+		logger.Info().
+			Int("min_idle_sec", settings.ClaimerMinIdleSec).
+			Int("llm_timeout_sec", settings.LLMTimeoutSec).
+			Int("providers", len(settings.ProviderOrder)).
+			Msg("claimer_min_idle_raised_to_handler_worst_case")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -107,9 +132,14 @@ func main() {
 	}
 	defer func() { _ = consumer.Close() }()
 
-	queue, err := redisstream.NewQueue(ctx,
-		settings.RedisAddr, settings.RedisPassword, settings.RedisDB,
-		settings.QueueMaxLen)
+	queue, err := redisstream.NewQueue(ctx, redisstream.QueueConfig{
+		Addr:     settings.RedisAddr,
+		Password: settings.RedisPassword,
+		DB:       settings.RedisDB,
+		MaxLen:   settings.QueueMaxLen,
+		Group:    settings.PublishConsumerGroup,
+		Consumer: settings.PublishConsumerName,
+	}, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("draft_queue_init_failed")
 	}
@@ -201,7 +231,6 @@ func main() {
 		Publications: pubRepo,
 		DecisionRepo: decisionRepo,
 		Queue:        queue,
-		Publisher:    pubEngine,
 		Metrics:      metrics,
 		Logger:       logger,
 	})
@@ -216,6 +245,21 @@ func main() {
 			logger.Error().Err(err).Msg("trend_consumer_stopped")
 		}
 	}()
+
+	// ---- publish worker ----
+	//
+	// The READ side of the publishing queues. Without it the queues grow
+	// and nothing is ever published; with the publisher disabled there is
+	// nothing to run, and the drafts accumulate on purpose (they are the
+	// backlog the console shows).
+	if pubEngine != nil {
+		worker := publishworker.New(agentRepo, queue, pubEngine,
+			time.Duration(settings.QueueDepthPollSeconds)*time.Second, logger)
+		go worker.Run(ctx)
+		logger.Info().Msg("publish_worker_started")
+	} else {
+		logger.Info().Msg("publish_worker_not_started_publisher_disabled")
+	}
 
 	// ---- queue depth gauge poller ----
 	go func() {
@@ -296,8 +340,21 @@ func main() {
 		PublisherUnavailableReason: pubUnavailableReason,
 		DLQ:                        redisstream.DLQOpsFromConsumer(consumer),
 	}, httpapi.AuthConfig{
-		IdentityURL: settings.GatewayIdentityURL,
+		ControlPlaneToken: settings.ControlPlaneToken,
+		IdentityURL:       settings.GatewayIdentityURL,
 	}, observability.Handler(), logger)
+	// Say which authority guards the admin API, at boot. The previous
+	// behaviour — a 503 body naming an unset variable — was only visible
+	// to whoever happened to call an endpoint.
+	switch {
+	case settings.ControlPlaneToken != "":
+		logger.Info().Str("authority", "control-plane").Msg("admin_api_unlocked")
+	case settings.GatewayIdentityURL != "":
+		logger.Warn().Str("authority", "gateway").
+			Msg("admin_api_unlocked_via_legacy_gateway_identity")
+	default:
+		logger.Warn().Msg("admin_api_locked_no_identity_authority_configured")
+	}
 	handler := http.NewServeMux()
 	handler.Handle("/", apiHandler)
 	handler.Handle("GET /healthz", opsServer.Routes())

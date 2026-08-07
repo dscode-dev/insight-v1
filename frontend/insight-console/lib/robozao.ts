@@ -1,7 +1,30 @@
-import { readSessionCookie } from "@/lib/session";
+// Node Agent (Robozão) access — THROUGH the Control Plane.
+//
+// WHAT CHANGED. This module used to hold the Node Agent's address:
+//
+//     const ROBOZAO_GATEWAY_URL =
+//       process.env.ROBOZAO_GATEWAY_URL ?? "http://robozao-gateway:8095";
+//
+// and call it directly, forwarding the operator's session as a Bearer token.
+// Seven API routes used it. insight-context.md v2.0 says "O Console nunca
+// acessa diretamente os demais serviços"; this was the last route that did,
+// after Fase B moved the other twelve.
+//
+// The compiled-in default is the part worth remembering. The console container
+// holds no service credential, which reads as "it cannot reach anything else" —
+// and for the Node Agent that was not true, because the address did not come
+// from configuration. Removing the variable from the deployment changed
+// nothing at all.
+//
+// The signatures below are unchanged so the routes that call them did not have
+// to move at the same time.
+//
+// AUTHORITY. The Control Plane authenticates the operator, then presents its
+// own service token to the Node Agent along with the operator's name for that
+// service's audit log. The console no longer proves anything to anyone.
 
-const ROBOZAO_GATEWAY_URL =
-  process.env.ROBOZAO_GATEWAY_URL ?? "http://robozao-gateway:8095";
+import { controlPlaneFetch } from "@/lib/control-plane/adapters/console-api";
+import { readSessionCookie } from "@/lib/session-cookie";
 
 export interface RobozaoServiceStatus {
   service: string;
@@ -28,7 +51,13 @@ export interface RobozaoOperationService {
   enabled: boolean;
   reachable: boolean;
   latency_ms: number;
-  status: "healthy" | "degraded" | "unavailable" | "unknown" | "disabled" | "registered";
+  status:
+    | "healthy"
+    | "degraded"
+    | "unavailable"
+    | "unknown"
+    | "disabled"
+    | "registered";
   reason?: string;
   identity?: {
     service_id: string;
@@ -48,10 +77,7 @@ export interface RobozaoOperationService {
     cpu_percent: number;
     memory_mb: number;
     active_jobs: number;
-    uptime_seconds: number;
-    counters?: Record<string, number>;
   };
-  error?: string;
   checked_at: string;
 }
 
@@ -61,29 +87,59 @@ export interface RobozaoOperationsAggregate {
   checked_at: string;
 }
 
-export async function robozaoStatus(): Promise<RobozaoStatus> {
+/**
+ * One call to the Node Agent, through the Control Plane.
+ *
+ * `path` is the Node Agent's own path (`/operations/status`). The Control
+ * Plane classifies it against a closed allow-list before forwarding, so an
+ * unrecognised path is refused there rather than reaching the agent.
+ */
+async function nodeAgent(
+  path: string,
+  init: {
+    method?: string;
+    body?: unknown;
+    idempotencyKey?: string;
+    errorPrefix?: string;
+  } = {},
+): Promise<{ status: number; payload: unknown; replay: boolean }> {
   const token = readSessionCookie();
   if (!token) {
     throw new Error("missing_operator_session");
   }
-  const res = await fetch(`${ROBOZAO_GATEWAY_URL}/vpn/status`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(4000),
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
+  const response = await controlPlaneFetch(
+    `/node-agent${path.startsWith("/") ? path : `/${path}`}`,
+    {
+      method: init.method ?? "GET",
+      body: init.body,
+      token,
+      idempotencyKey: init.idempotencyKey,
     },
-  });
-  if (!res.ok) {
-    throw new Error(`robozao_gateway_${res.status}`);
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`${init.errorPrefix ?? "robozao_gateway"}_${response.status}`);
   }
-  return (await res.json()) as RobozaoStatus;
+  return {
+    status: response.status,
+    payload,
+    replay: response.headers.get("idempotent-replay") === "true",
+  };
 }
 
-// ML-C.5e — generic operations-history reader. Forwards the operator session
-// token to the Robozão Gateway (operator-authed). `resource` is one of
-// events|tickets|runs|datasets|training|history|incidents; `query` is an optional
-// URLSearchParams string. Console consumes ONLY the gateway (no direct service).
+export async function robozaoStatus(): Promise<RobozaoStatus> {
+  const { payload } = await nodeAgent("/vpn/status");
+  return payload as RobozaoStatus;
+}
+
+/**
+ * Operations history reader.
+ *
+ * The resource allow-list stays here as well as in the Control Plane. It is
+ * cheap, it fails before a round trip, and the two lists answer different
+ * questions: this one is "does the console have a screen for it", the Control
+ * Plane's is "may an operator reach it at all".
+ */
 const OPS_RESOURCES = new Set([
   "events",
   "tickets",
@@ -103,67 +159,38 @@ export async function robozaoOps(
   if (!OPS_RESOURCES.has(resource)) {
     throw new Error("unknown_ops_resource");
   }
-  const token = readSessionCookie();
-  if (!token) {
-    throw new Error("missing_operator_session");
-  }
   const qs = query ? `?${query}` : "";
-  const res = await fetch(`${ROBOZAO_GATEWAY_URL}/operations/${resource}${qs}`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000),
-    headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    throw new Error(`robozao_gateway_${res.status}`);
-  }
-  return res.json();
+  const { payload } = await nodeAgent(`/operations/${resource}${qs}`);
+  return payload;
 }
 
 export async function robozaoOperationCommand(
   body: unknown,
   idempotencyKey: string,
-  correlationId = "",
+  _correlationId = "",
 ): Promise<{ status: number; payload: unknown; replay: boolean }> {
-  const token = readSessionCookie();
-  if (!token) throw new Error("missing_operator_session");
   if (!idempotencyKey.trim()) throw new Error("idempotency_key_required");
-  const res = await fetch(`${ROBOZAO_GATEWAY_URL}/operations/commands`, {
+  return nodeAgent("/operations/commands", {
     method: "POST",
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000),
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      "Idempotency-Key": idempotencyKey,
-      ...(correlationId ? { "X-Correlation-ID": correlationId } : {}),
-    },
-    body: JSON.stringify(body),
+    body,
+    idempotencyKey,
+    errorPrefix: "robozao_operation",
   });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`robozao_operation_${res.status}`);
-  return {
-    status: res.status,
-    payload,
-    replay: res.headers.get("idempotent-replay") === "true",
-  };
 }
 
-export async function robozaoOperationApprove(operationId: string): Promise<unknown> {
-  if (!/^[a-zA-Z0-9-]+$/.test(operationId)) throw new Error("invalid_operation_id");
-  const token = readSessionCookie();
-  if (!token) throw new Error("missing_operator_session");
-  const res = await fetch(
-    `${ROBOZAO_GATEWAY_URL}/operations/commands/${operationId}/approve`,
-    {
-      method: "POST",
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
-    },
+export async function robozaoOperationApprove(
+  operationId: string,
+): Promise<unknown> {
+  // Validated here because it goes into a path. The Control Plane's
+  // classifier treats it as an opaque segment, which is the right level
+  // there — it must not have to know what a valid operation id looks like.
+  if (!/^[a-zA-Z0-9-]+$/.test(operationId)) {
+    throw new Error("invalid_operation_id");
+  }
+  const { payload } = await nodeAgent(
+    `/operations/commands/${operationId}/approve`,
+    { method: "POST", errorPrefix: "robozao_operation_approve" },
   );
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`robozao_operation_approve_${res.status}`);
   return payload;
 }
 
@@ -171,44 +198,22 @@ export async function robozaoIncidentCommand(
   path: string,
   body: unknown,
 ): Promise<unknown> {
-  if (!/^\/operations\/incidents(?:\/[a-zA-Z0-9-]+\/(?:acknowledge|assign|resolve))?$/.test(path)) {
+  if (
+    !/^\/operations\/incidents(?:\/[a-zA-Z0-9-]+\/(?:acknowledge|assign|resolve))?$/.test(
+      path,
+    )
+  ) {
     throw new Error("invalid_incident_path");
   }
-  const token = readSessionCookie();
-  if (!token) throw new Error("missing_operator_session");
-  const res = await fetch(`${ROBOZAO_GATEWAY_URL}${path}`, {
+  const { payload } = await nodeAgent(path, {
     method: "POST",
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000),
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+    body,
+    errorPrefix: "robozao_incident",
   });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`robozao_incident_${res.status}`);
-  }
   return payload;
 }
 
 export async function robozaoOperationsStatus(): Promise<RobozaoOperationsAggregate> {
-  const token = readSessionCookie();
-  if (!token) {
-    throw new Error("missing_operator_session");
-  }
-  const res = await fetch(`${ROBOZAO_GATEWAY_URL}/operations/status`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000),
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`robozao_gateway_${res.status}`);
-  }
-  return (await res.json()) as RobozaoOperationsAggregate;
+  const { payload } = await nodeAgent("/operations/status");
+  return payload as RobozaoOperationsAggregate;
 }

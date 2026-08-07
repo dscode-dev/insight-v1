@@ -51,6 +51,14 @@ export async function controlPlaneFetch(
     body?: unknown;
     token?: string | null;
     timeoutMs?: number;
+    /**
+     * Forwarded to the upstream service that enforces idempotency.
+     *
+     * The Node Agent keys command creation on it: a retry without the key
+     * creates a second command instead of returning the first, which for an
+     * approved operation means running it twice.
+     */
+    idempotencyKey?: string;
   } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -59,6 +67,9 @@ export async function controlPlaneFetch(
   }
   if (init.token) {
     headers.Authorization = `Bearer ${init.token}`;
+  }
+  if (init.idempotencyKey) {
+    headers["Idempotency-Key"] = init.idempotencyKey;
   }
   return fetch(url(path), {
     method: init.method ?? "GET",

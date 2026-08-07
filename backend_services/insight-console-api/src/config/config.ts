@@ -70,6 +70,18 @@ const schema = z.object({
   ATLAS_INTERNAL_TOKEN: z.string().default(''),
   /** Empty = the Control Plane has no route to it, not a crash. */
   NEXUS_API_BASE_URL: z.string().default(''),
+  /**
+   * Service-to-service secret for the Nexus admin API.
+   *
+   * Same value as NODE_AGENT_TOKEN in the deployment: both internal
+   * services accept the Control Plane on the same hop, and giving them
+   * separate secrets to rotate independently buys nothing while the
+   * Control Plane is the only caller of either.
+   *
+   * Empty = Nexus screens report unavailable. It is NOT a boot failure:
+   * the rest of the console must keep working.
+   */
+  NEXUS_CONTROL_PLANE_TOKEN: z.string().default(''),
   ANVIL_API_BASE_URL: z.string().default(''),
   /**
    * Cloud Gateway (Product plane). The Control Plane is the ONLY thing

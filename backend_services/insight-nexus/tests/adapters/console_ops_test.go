@@ -28,14 +28,15 @@ import (
 
 type nopMetrics struct{}
 
-func (nopMetrics) DraftComposed(string)                    {}
-func (nopMetrics) Published(string)                        {}
-func (nopMetrics) PublicationFailed(string, string)        {}
-func (nopMetrics) TicketCreated(string)                    {}
-func (nopMetrics) SpamPrevented(string)                    {}
-func (nopMetrics) ProviderHealth(string, llmrouter.Status) {}
-func (nopMetrics) LLMLatency(string, float64)              {}
-func (nopMetrics) Fallback(string, string)                 {}
+func (nopMetrics) DraftComposed(string)                        {}
+func (nopMetrics) Published(string)                            {}
+func (nopMetrics) PublicationFailed(string, string)            {}
+func (nopMetrics) TicketCreated(string)                        {}
+func (nopMetrics) PostPublishBookkeepingFailed(string, string) {}
+func (nopMetrics) SpamPrevented(string)                        {}
+func (nopMetrics) ProviderHealth(string, llmrouter.Status)     {}
+func (nopMetrics) LLMLatency(string, float64)                  {}
+func (nopMetrics) Fallback(string, string)                     {}
 
 // ---- fakes ------------------------------------------------------------------------
 

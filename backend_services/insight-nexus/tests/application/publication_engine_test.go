@@ -83,14 +83,15 @@ func (f *fakeSocial) PublishAgentPost(_ context.Context, req ports.AgentPostRequ
 
 type nopPubMetrics struct{}
 
-func (nopPubMetrics) DraftComposed(string)                    {}
-func (nopPubMetrics) Published(string)                        {}
-func (nopPubMetrics) PublicationFailed(string, string)        {}
-func (nopPubMetrics) TicketCreated(string)                    {}
-func (nopPubMetrics) SpamPrevented(string)                    {}
-func (nopPubMetrics) ProviderHealth(string, llmrouter.Status) {}
-func (nopPubMetrics) LLMLatency(string, float64)              {}
-func (nopPubMetrics) Fallback(string, string)                 {}
+func (nopPubMetrics) DraftComposed(string)                        {}
+func (nopPubMetrics) Published(string)                            {}
+func (nopPubMetrics) PublicationFailed(string, string)            {}
+func (nopPubMetrics) TicketCreated(string)                        {}
+func (nopPubMetrics) PostPublishBookkeepingFailed(string, string) {}
+func (nopPubMetrics) SpamPrevented(string)                        {}
+func (nopPubMetrics) ProviderHealth(string, llmrouter.Status)     {}
+func (nopPubMetrics) LLMLatency(string, float64)                  {}
+func (nopPubMetrics) Fallback(string, string)                     {}
 
 func healthyManager(t *testing.T, providers ...portllm.Provider) *llmrouter.HealthManager {
 	t.Helper()

@@ -24,6 +24,24 @@ const ALLOWED_PREFIXES = [
   '/v1/console/platform/health',
   // Legacy moderation action surface.
   '/v1/admin/moderation/',
+  // Internal operations, arrived from the Node Agent (Fase C).
+  //
+  // These four surfaces were reached by the Node Agent's HTTPExecutor, which
+  // held GATEWAY_OPS_TOKEN and called the Gateway on an operator's behalf —
+  // an HTTP proxy, which insight-context.md v2.0 forbids it outright. The
+  // executor was deleted; the capability lands here, where the token, the
+  // allow-list and the audit spine already live.
+  //
+  //   /v1/internal/operations/dlq/{id}/replay
+  //   /v1/internal/operations/users/{id}/sessions/revoke
+  //   /v1/internal/operations/social/agents/{id}/{action}
+  //   /v1/internal/operations/social/content/{type}/{id}/{action}
+  //
+  // Blocked in the deployment by ADMIN_API_INTERNAL_TOKEN being the literal
+  // `__required__`, the same placeholder that keeps the Social screens out of
+  // the console's menu. The route exists so the capability has a home; it
+  // starts working when the token is filled, with no code change.
+  '/v1/internal/operations/',
 ] as const;
 
 export type GatewayDecision =

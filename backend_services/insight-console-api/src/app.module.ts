@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { DataIntelligenceModule } from './data-intelligence/data-intelligence.module';
+import { NexusModule } from './nexus/nexus.module';
 import { DbModule } from './db/db.module';
 import { ExplorerOpsModule } from './explorer-ops/explorer-ops.module';
 import { HealthController } from './health/health.controller';
@@ -27,6 +28,7 @@ import { UpstreamModule } from './upstream/upstream.module';
   imports: [
     DbModule,
     DataIntelligenceModule,
+    NexusModule,
     IdentityModule,
     ExplorerOpsModule,
     PlatformModule,

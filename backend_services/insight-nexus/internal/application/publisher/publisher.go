@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +43,10 @@ type Metrics interface {
 	Published(agent string)
 	PublicationFailed(agent string, stage string)
 	TicketCreated(agent string)
+	// PostPublishBookkeepingFailed — a write that runs after the post is
+	// already live on Social failed. It cannot be retried by redelivery
+	// (that would post twice), so it is surfaced as a counter instead.
+	PostPublishBookkeepingFailed(agent, step string)
 }
 
 // Input — everything one publication attempt needs (assembled by the
@@ -186,26 +191,67 @@ func (e *Engine) Publish(ctx context.Context, in Input) (publication.Candidate, 
 	base.Status = publication.CandidatePublished
 	base.SocialPostID = postID
 	base.PublishedAt = &now
-	if err := e.candidates.Save(ctx, base); err != nil {
-		return base, err
+
+	// ---- post-publish bookkeeping -------------------------------------
+	//
+	// Everything below runs AFTER the post is live on Social, which fixes
+	// the error handling: returning an error here would leave the queue
+	// entry unacked, the worker would redeliver it, and the agent would
+	// post a SECOND time. So these failures can never propagate.
+	//
+	// They also cannot be ignored, which is what used to happen — the
+	// memory write discarded its error outright and the anti-spam write
+	// only logged. Both feed guardrails: the memory is what the repetition
+	// validator compares against, and the anti-spam log is what enforces
+	// the cooldowns. Losing either silently makes an agent repeat itself
+	// or post again immediately.
+	//
+	// The treatment is: retry a few times (these are single inserts, so a
+	// blip is the likely cause), then record the loss on a metric and on
+	// the candidate row so it is visible rather than merely logged.
+	var lost []string
+	if err := e.retry(ctx, func(ctx context.Context) error {
+		return e.spam.RecordPublication(ctx, in.Draft.AgentID,
+			in.Context.ClusterID, in.Draft.TrendID, in.Draft.MatchID)
+	}); err != nil {
+		lost = append(lost, "antispam_log")
+		e.metrics.PostPublishBookkeepingFailed(in.Context.Agent.Name, "antispam_log")
+		e.logger.Error().Err(err).
+			Str("agent", in.Context.Agent.Name).
+			Str("social_post_id", postID).
+			Msg("antispam_record_failed_budget_understated")
 	}
 	// Publication memory (Part 8): "I already posted about this story."
-	_ = e.memories.Save(ctx, memory.Memory{
-		ID:          uuid.New(),
-		AgentID:     in.Draft.AgentID,
-		MatchID:     in.Draft.MatchID,
-		TrendID:     in.Draft.TrendID,
-		ClusterType: in.Context.ClusterType,
-		ClusterID:   in.Context.ClusterID,
-		Kind:        memory.KindPublication,
-		Summary:     "published: " + composed.Title,
-		Narrative:   composed.Title,
-		CreatedAt:   now,
-	})
-	// Anti-spam log (persisted budgets).
-	if err := e.spam.RecordPublication(ctx, in.Draft.AgentID,
-		in.Context.ClusterID, in.Draft.TrendID, in.Draft.MatchID); err != nil {
-		e.logger.Error().Err(err).Msg("antispam_record_failed")
+	if err := e.retry(ctx, func(ctx context.Context) error {
+		return e.memories.Save(ctx, memory.Memory{
+			ID:          uuid.New(),
+			AgentID:     in.Draft.AgentID,
+			MatchID:     in.Draft.MatchID,
+			TrendID:     in.Draft.TrendID,
+			ClusterType: in.Context.ClusterType,
+			ClusterID:   in.Context.ClusterID,
+			Kind:        memory.KindPublication,
+			Summary:     "published: " + composed.Title,
+			Narrative:   composed.Title,
+			CreatedAt:   now,
+		})
+	}); err != nil {
+		lost = append(lost, "publication_memory")
+		e.metrics.PostPublishBookkeepingFailed(in.Context.Agent.Name, "publication_memory")
+		e.logger.Error().Err(err).
+			Str("agent", in.Context.Agent.Name).
+			Str("social_post_id", postID).
+			Msg("publication_memory_save_failed_repetition_guard_weakened")
+	}
+	if len(lost) > 0 {
+		base.StatusReason = "published_with_bookkeeping_loss: " + strings.Join(lost, ",")
+	}
+
+	// The candidate row is saved LAST so it carries the bookkeeping
+	// outcome. Saving it before would have recorded a clean publication
+	// that later turned out to have lost its guardrail entries.
+	if err := e.candidates.Save(ctx, base); err != nil {
+		return base, err
 	}
 	e.metrics.Published(in.Context.Agent.Name)
 	e.logger.Info().
@@ -259,6 +305,33 @@ func (e *Engine) ticketFallback(
 		Strs("fallback_chain", base.FallbackChain).
 		Msg("publication_ticket_created")
 	return base, e.candidates.Save(ctx, base)
+}
+
+// retry runs a post-publish write a few times before giving up.
+//
+// Bounded and short on purpose: the caller is holding a queue entry that
+// must be acknowledged, and the post is already public — waiting longer
+// helps nobody. It stops immediately if the context is done, so a shutdown
+// does not spend three back-offs going nowhere.
+func (e *Engine) retry(ctx context.Context, fn func(context.Context) error) error {
+	const attempts = 3
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = fn(ctx); err == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return err
+		}
+		if i < attempts-1 {
+			select {
+			case <-ctx.Done():
+				return err
+			case <-time.After(time.Duration(1<<i) * 100 * time.Millisecond):
+			}
+		}
+	}
+	return err
 }
 
 func (e *Engine) baseCandidate(in Input) publication.Candidate {
