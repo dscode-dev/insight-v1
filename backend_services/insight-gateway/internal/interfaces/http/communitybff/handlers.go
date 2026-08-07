@@ -34,12 +34,12 @@ const (
 )
 
 type Handlers struct {
-	agg      *Aggregator
-	social   SocialGateway
-	cache    *StatsCache
-	metrics  *Metrics
-	limiter  *rateLimiter
-	timeout  time.Duration
+	agg     *Aggregator
+	social  SocialGateway
+	cache   *StatsCache
+	metrics *Metrics
+	limiter *rateLimiter
+	timeout time.Duration
 }
 
 func NewHandlers(social SocialGateway, agg *Aggregator, cache *StatsCache, m *Metrics) *Handlers {

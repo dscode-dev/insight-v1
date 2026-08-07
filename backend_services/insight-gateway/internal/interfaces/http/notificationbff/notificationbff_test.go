@@ -25,7 +25,9 @@ type fakeSocial struct {
 func (f *fakeSocial) List(context.Context, string, string, int32, bool) (*socialv1.ListNotificationsResponse, error) {
 	return f.page, f.listErr
 }
-func (f *fakeSocial) UnreadCount(context.Context, string) (int64, error) { return f.unread, f.unreadErr }
+func (f *fakeSocial) UnreadCount(context.Context, string) (int64, error) {
+	return f.unread, f.unreadErr
+}
 func (f *fakeSocial) MarkRead(context.Context, string, string) (*socialv1.MarkReadResponse, error) {
 	return &socialv1.MarkReadResponse{Changed: true, UnreadCount: f.unread}, nil
 }
@@ -33,7 +35,9 @@ func (f *fakeSocial) MarkAllRead(context.Context, string) (*socialv1.MarkAllRead
 	return &socialv1.MarkAllReadResponse{Marked: 3, UnreadCount: 0}, nil
 }
 
-func testAgg(f SocialGateway) *Aggregator { return NewAggregator(f, NewMetrics(prometheus.NewRegistry())) }
+func testAgg(f SocialGateway) *Aggregator {
+	return NewAggregator(f, NewMetrics(prometheus.NewRegistry()))
+}
 
 func notif(id string, typ socialv1.NotificationType, deeplink string, read bool) *socialv1.Notification {
 	st := socialv1.NotificationStatus_NOTIFICATION_STATUS_UNREAD

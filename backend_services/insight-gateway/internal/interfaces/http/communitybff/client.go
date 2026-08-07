@@ -28,7 +28,7 @@ type SocialGateway interface {
 
 // grpcGateway adapts the shared social gRPC clients to SocialGateway.
 type grpcGateway struct {
-	community socialv1.CommunityServiceClient
+	community  socialv1.CommunityServiceClient
 	discussion socialv1.DiscussionServiceClient
 }
 
@@ -137,20 +137,20 @@ func roleFromWire(s string) *socialv1.CommunityRole {
 // (documented, never fabricated). description = the community topic.
 func communityCore(c *socialv1.Community) Detail {
 	return Detail{
-		ID:            c.Id,
-		Slug:          c.Slug,
-		Name:          c.Name,
-		Description:   c.Topic,
-		AvatarURL:     "",
-		BannerURL:     "",
-		AccentColor:   c.AccentColor,
-		Kind:          kindToWire(c.Kind),
-		Privacy:       "public", // only value in V1 — honest, not fabricated
-		DeepLink:      communityDeepLink(c.Id),
-		MemberCount:   c.MemberCount,
-		OnlineCount:   c.ActiveNow,
-		OwnerAssigned: c.OwnerUserId != nil && *c.OwnerUserId != "",
-		ViewerRole:    roleNone,
+		ID:               c.Id,
+		Slug:             c.Slug,
+		Name:             c.Name,
+		Description:      c.Topic,
+		AvatarURL:        "",
+		BannerURL:        "",
+		AccentColor:      c.AccentColor,
+		Kind:             kindToWire(c.Kind),
+		Privacy:          "public", // only value in V1 — honest, not fabricated
+		DeepLink:         communityDeepLink(c.Id),
+		MemberCount:      c.MemberCount,
+		OnlineCount:      c.ActiveNow,
+		OwnerAssigned:    c.OwnerUserId != nil && *c.OwnerUserId != "",
+		ViewerRole:       roleNone,
 		MembershipStatus: statusNotMember,
 	}
 }

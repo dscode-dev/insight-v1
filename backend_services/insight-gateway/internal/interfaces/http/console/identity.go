@@ -319,7 +319,7 @@ SELECT id::text, subject_type, subject_id, mode, reason, public_actor, issued_at
 		items = append(items, map[string]any{
 			"delegation_id": id, "subject_type": subjectType, "subject_id": subjectID, "mode": mode,
 			"reason": reason, "public_actor": derefPtr(publicActor), "active": active,
-			"issued_at": issuedAt.UTC().Format(time.RFC3339Nano),
+			"issued_at":  issuedAt.UTC().Format(time.RFC3339Nano),
 			"expires_at": tsPtr(expiresAt), "revoked_at": tsPtr(revokedAt),
 		})
 	}

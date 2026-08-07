@@ -9,29 +9,29 @@ package notificationbff
 
 // Notification is one public notification row.
 type Notification struct {
-	ID           string                 `json:"id"`
-	Type         string                 `json:"type"`     // community_join|discussion_reply|mention|reaction|system
-	Priority     string                 `json:"priority"` // low|normal|high
-	Title        string                 `json:"title"`
-	Body         string                 `json:"body"`
-	Icon         string                 `json:"icon"`     // presentation hint (Gateway-owned)
-	Color        string                 `json:"color"`    // presentation hint (hex, Gateway-owned)
-	DeepLink     string                 `json:"deep_link"` // "" when absent/invalid — action removed, notif kept
-	CreatedAt    string                 `json:"created_at"`
-	Read         bool                   `json:"read"`
-	Payload      map[string]any         `json:"payload,omitempty"`
-	Capabilities NotificationCaps       `json:"capabilities"`
+	ID           string           `json:"id"`
+	Type         string           `json:"type"`     // community_join|discussion_reply|mention|reaction|system
+	Priority     string           `json:"priority"` // low|normal|high
+	Title        string           `json:"title"`
+	Body         string           `json:"body"`
+	Icon         string           `json:"icon"`      // presentation hint (Gateway-owned)
+	Color        string           `json:"color"`     // presentation hint (hex, Gateway-owned)
+	DeepLink     string           `json:"deep_link"` // "" when absent/invalid — action removed, notif kept
+	CreatedAt    string           `json:"created_at"`
+	Read         bool             `json:"read"`
+	Payload      map[string]any   `json:"payload,omitempty"`
+	Capabilities NotificationCaps `json:"capabilities"`
 }
 
 // NotificationCaps are per-notification capabilities. The client renders
 // actions ONLY from these — never inferred. Several are constant-false in V1
 // but present so future evolution never breaks the client.
 type NotificationCaps struct {
-	CanOpen     bool `json:"can_open"`     // deeplink valid
+	CanOpen     bool `json:"can_open"`      // deeplink valid
 	CanMarkRead bool `json:"can_mark_read"` // currently unread
-	CanDelete   bool `json:"can_delete"`   // false in V1
-	CanArchive  bool `json:"can_archive"`  // false in V1
-	CanShare    bool `json:"can_share"`    // false in V1
+	CanDelete   bool `json:"can_delete"`    // false in V1
+	CanArchive  bool `json:"can_archive"`   // false in V1
+	CanShare    bool `json:"can_share"`     // false in V1
 }
 
 // ListResponse is the Notification Center page. It carries next_cursor +

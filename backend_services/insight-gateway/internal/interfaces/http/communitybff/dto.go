@@ -21,8 +21,8 @@ type Detail struct {
 	AvatarURL   string `json:"avatar_url"`
 	BannerURL   string `json:"banner_url"`
 	AccentColor string `json:"accent_color"`
-	Kind        string `json:"kind"`     // topic | competition
-	Privacy     string `json:"privacy"`  // public (only value in V1 — honest, not fabricated)
+	Kind        string `json:"kind"`    // topic | competition
+	Privacy     string `json:"privacy"` // public (only value in V1 — honest, not fabricated)
 	DeepLink    string `json:"deep_link"`
 
 	// Counters (never arrays).
@@ -103,5 +103,5 @@ type MembershipResult struct {
 // ---- deep links (Gateway builds; client only validates + navigates) ----
 
 func communityDeepLink(id string) string  { return "/hub/community/" + id }
-func userDeepLink(id string) string        { return "/users/" + id }
-func discussionDeepLink(id string) string  { return "/discussion/" + id }
+func userDeepLink(id string) string       { return "/users/" + id }
+func discussionDeepLink(id string) string { return "/discussion/" + id }

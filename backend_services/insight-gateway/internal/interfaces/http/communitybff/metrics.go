@@ -53,9 +53,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func (m *Metrics) request(ep string)      { m.requests.WithLabelValues(ep).Inc() }
-func (m *Metrics) cacheHit()              { m.cacheEvents.WithLabelValues("hit").Inc() }
-func (m *Metrics) cacheMiss()             { m.cacheEvents.WithLabelValues("miss").Inc() }
-func (m *Metrics) partialInc()            { m.partial.Inc() }
-func (m *Metrics) timeout(ep string)      { m.timeouts.WithLabelValues(ep).Inc() }
-func (m *Metrics) rateLimit()             { m.rateLimited.Inc() }
+func (m *Metrics) request(ep string) { m.requests.WithLabelValues(ep).Inc() }
+func (m *Metrics) cacheHit()         { m.cacheEvents.WithLabelValues("hit").Inc() }
+func (m *Metrics) cacheMiss()        { m.cacheEvents.WithLabelValues("miss").Inc() }
+func (m *Metrics) partialInc()       { m.partial.Inc() }
+func (m *Metrics) timeout(ep string) { m.timeouts.WithLabelValues(ep).Inc() }
+func (m *Metrics) rateLimit()        { m.rateLimited.Inc() }
