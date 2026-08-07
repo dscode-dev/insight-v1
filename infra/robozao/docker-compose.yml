@@ -188,6 +188,12 @@ services:
       NODE_AGENT_TOKEN: ${NODE_AGENT_TOKEN:?NODE_AGENT_TOKEN is required}
       EXPLORER_API_BASE_URL: ${EXPLORER_API_BASE_URL:-http://insight-explorer:8090}
       EXPLORER_OPS_TOKEN: ${EXPLORER_OPS_TOKEN:?EXPLORER_OPS_TOKEN is required}
+      # Fontes com chave. VAZIAS de proposito: sem chave, os adapters
+      # reportam health()=false e nao coletam, e o console mostra a fonte
+      # como registrada e offline. Preencher no .env liga a fonte sem
+      # rebuild — mesmo padrao dos provedores de LLM do Nexus.
+      EXPLORER_ODDS_API_KEY: ${EXPLORER_ODDS_API_KEY:-}
+      EXPLORER_API_FOOTBALL_KEY: ${EXPLORER_API_FOOTBALL_KEY:-}
       ATLAS_API_BASE_URL: ${ATLAS_API_BASE_URL:-http://atlas:8085}
       ATLAS_INTERNAL_TOKEN: ${ATLAS_INTERNAL_TOKEN:?ATLAS_INTERNAL_TOKEN is required}
       # Probed by the Control Plane so the console does not have to hold
@@ -368,7 +374,7 @@ services:
       - robozao-ops
 
   insight-explorer:
-    image: konohalabs/insight-explorer:1.0.1
+    image: konohalabs/insight-explorer:1.1.1
     container_name: insight-explorer
     restart: unless-stopped
     logging: *default-logging

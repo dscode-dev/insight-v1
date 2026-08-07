@@ -115,9 +115,16 @@ class JobRunner:
         for art in artifacts:
             metrics.records_collected_total.labels(
                 competition=competition, source=adapter.name, entity_type=art.entity_type).inc()
-        if artifacts:
-            self.lake.append("raw", competition, season, adapter.name, "fixture",
-                             ({"_checksum": _cs(a.raw), **_raw_record(a)} for a in artifacts))
+        # Grouped by the artifact's OWN entity_type, not a literal "fixture".
+        #
+        # Every artifact used to land under .../fixture/ regardless of what it
+        # was. An adapter fetching odds wrote them into the fixture partition,
+        # where the reconciler — which reads exactly that partition — would
+        # then compare odds rows against fixture rows. Fixtures were the only
+        # thing anything collected, so the bug had nothing to surface on.
+        for kind, group in _by_entity_type(artifacts).items():
+            self.lake.append("raw", competition, season, adapter.name, kind,
+                             ({"_checksum": _cs(a.raw), **_raw_record(a)} for a in group))
         log.info("collected", records=rec.records_collected)
 
         # 4. AI-orchestrated quality pipeline
@@ -134,7 +141,8 @@ class JobRunner:
 
         # 5. write validated + preserve rejected/review (never drop)
         if state.validated:
-            self.lake.append("validated", competition, season, adapter.name, "fixture", state.validated)
+            for kind, rows in _envelopes_by_entity_type(state.validated).items():
+                self.lake.append("validated", competition, season, adapter.name, kind, rows)
         if state.rejected:
             self.lake.append_report_lines(
                 "rejected", competition, season, adapter.name, f"{rec.job_id}.jsonl",
@@ -205,3 +213,19 @@ def _safe_health(adapter: SourceAdapter) -> bool:
 
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _by_entity_type(artifacts: list) -> dict[str, list]:
+    """Partition raw artifacts by what they actually are."""
+    out: dict[str, list] = {}
+    for art in artifacts:
+        out.setdefault(art.entity_type or "fixture", []).append(art)
+    return out
+
+
+def _envelopes_by_entity_type(envelopes: list[dict]) -> dict[str, list[dict]]:
+    """Same for validated envelopes, read off the envelope's own field."""
+    out: dict[str, list[dict]] = {}
+    for env in envelopes:
+        out.setdefault(env.get("entity_type") or "fixture", []).append(env)
+    return out

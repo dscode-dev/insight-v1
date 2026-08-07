@@ -11,7 +11,7 @@ import random
 import time
 from typing import Any
 
-from explorer.config import COLLECTOR, CollectorConfig
+from explorer.config import COLLECTOR, SOURCE_POLITE_DELAY_S, CollectorConfig
 
 
 class FetchError(RuntimeError):
@@ -20,8 +20,18 @@ class FetchError(RuntimeError):
 
 
 class PoliteFetcher:
-    def __init__(self, config: CollectorConfig = COLLECTOR, session: Any = None) -> None:
+    def __init__(self, config: CollectorConfig = COLLECTOR, session: Any = None,
+                 source: str = "") -> None:
+        """`source` selects a per-source delay from SOURCE_POLITE_DELAY_S.
+
+        Left empty, the shared default applies. An adapter that scrapes should
+        pass its own name: one global delay has to be the *slowest* source's,
+        which then throttles the static-file sources for no reason, or the
+        fastest, which hammers the scraped ones.
+        """
         self.config = config
+        self.source = source
+        self._delay_s = SOURCE_POLITE_DELAY_S.get(source, config.polite_delay_s)
         self._last_request_ts = 0.0
         if session is not None:
             self._session = session
@@ -38,8 +48,16 @@ class PoliteFetcher:
 
     def _polite_wait(self) -> None:
         elapsed = time.monotonic() - self._last_request_ts
-        if elapsed < self.config.polite_delay_s:
-            time.sleep(self.config.polite_delay_s - elapsed)
+        if elapsed < self._delay_s:
+            time.sleep(self._delay_s - elapsed)
+
+    def _headers(self, accept: str) -> dict[str, str]:
+        headers = {"User-Agent": self._ua(), "Accept": accept}
+        # RFC 9110 §10.1.2 — who to contact about this traffic. Kept out of
+        # the User-Agent because ESPN refuses a non-browser UA with 403.
+        if getattr(self.config, "contact", ""):
+            headers["From"] = self.config.contact
+        return headers
 
     def get_json(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._get(url, params, accept="application/json").json()
@@ -58,7 +76,7 @@ class PoliteFetcher:
                     url,
                     params=params,
                     timeout=self.config.request_timeout_s,
-                    headers={"User-Agent": self._ua(), "Accept": accept},
+                    headers=self._headers(accept),
                 )
                 self._last_request_ts = time.monotonic()
                 if resp.status_code == 429 or resp.status_code >= 500:

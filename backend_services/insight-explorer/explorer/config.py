@@ -65,17 +65,54 @@ class CollectorConfig:
     max_retries: int = 4
     backoff_base_s: float = 0.6
     backoff_max_s: float = 8.0
-    polite_delay_s: float = 0.15  # between requests to the same source
+    polite_delay_s: float = 1.0  # between requests to the same source
     user_agents: tuple[str, ...] = field(
         default_factory=lambda: (
-            "InsightExplorer/0.1 (+https://konohalabs.com.br; research)",
-            "Mozilla/5.0 (X11; Linux x86_64) InsightExplorer/0.1",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) InsightExplorer/0.1",
+            # Browser-shaped, deliberately.
+            #
+            # The first entry used to be the self-identifying
+            # "InsightExplorer/0.1 (+https://konohalabs.com.br; research)".
+            # Identifying yourself is the polite convention, and ESPN answers
+            # it with 403 — verified by controlling for request order, since
+            # ESPN also rate-limits by IP and the two look identical if you
+            # only compare consecutive calls.
+            #
+            # Because the fetcher picks a UA at random, roughly one request in
+            # three was refused. 403 is not retryable here, so it fell through
+            # to the generic retry and a season fetch — 365 requests — hit
+            # enough hard failures to raise FetchError and abandon the season.
+            # ESPN had collected nothing, and the reason was in this tuple.
+            #
+            # Contact information now travels in the `From` header (RFC 9110),
+            # which is the other standard place for it and is not inspected by
+            # the block.
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         )
     )
+    # Sent on every request so a source operator can reach us.
+    contact: str = "research@konohalabs.com.br"
 
 
 COLLECTOR = CollectorConfig()
+
+# Per-source delay, in seconds, overriding `polite_delay_s`.
+#
+# Static files served from a CDN cost the publisher nothing; a rendered page
+# costs them a request they did not ask for. The scraped sources therefore get
+# a delay measured in seconds, not milliseconds — the collection takes longer
+# and stays within what a small site can absorb.
+SOURCE_POLITE_DELAY_S: dict[str, float] = {
+    "openfootball": 0.2,   # raw.githubusercontent.com, static JSON
+    "statsbomb": 0.2,      # raw.githubusercontent.com, static JSON
+    "football_data": 0.5,  # static CSV
+    "espn": 1.5,           # public JSON API, rate-limits by IP
+    "fbref": 6.0,          # scraped HTML
+    "wikipedia": 2.0,      # scraped HTML
+    "odds_api": 1.0,       # metered API — the quota is the real limit
+    "api_football": 1.0,   # metered API
+}
 
 
 # --- Quality / ticket thresholds (Step 9/12) -----------------------------

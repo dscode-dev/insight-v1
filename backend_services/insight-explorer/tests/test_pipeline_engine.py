@@ -42,7 +42,9 @@ def _recurring_pipeline() -> Pipeline:
 
 
 def test_decompose_empty_for_non_collectible_theme():
-    pipeline = Pipeline(name="x", competitions=["brasileirao_serie_a"], themes=["odds"],
+    # See the note in test_catalog_estimate_seasons: odds is collectible now,
+    # so the "nothing to do" case needs a theme that still has no producer.
+    pipeline = Pipeline(name="x", competitions=["brasileirao_serie_a"], themes=["lineups"],
                         duration={"mode": "one-shot"})
     assert decompose(pipeline) == []
 

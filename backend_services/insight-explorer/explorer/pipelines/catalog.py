@@ -22,11 +22,29 @@ from explorer.sources import build_default_registry
 # tasks for them. Declaring the rest keeps the catalog honest about the
 # platform's target shape without fabricating collection capability.
 THEMES: tuple[str, ...] = ("fixtures", "odds", "lineups", "injuries", "stats")
-COLLECTIBLE_THEMES: frozenset[str] = frozenset({"fixtures"})
+
+# Themes an adapter+normalizer pair can actually produce today.
+#
+# Was {"fixtures"} alone, and correctly so: `build_envelope` hardcoded
+# entity_type="fixture", so an odds payload was validated against the fixture
+# schema and rejected. Opening that (see normalizers/_envelope.py) made the
+# odds and stats contracts reachable, and Football-Data.co.uk carries both in
+# the same CSV it was already fetching for fixtures.
+#
+# `lineups` and `injuries` stay out. Their contracts exist and nothing
+# produces them; listing them would have the scheduler plan tasks that can
+# only come back empty.
+COLLECTIBLE_THEMES: frozenset[str] = frozenset({"fixtures", "odds", "stats"})
 
 DURATIONS: tuple[str, ...] = ("one-shot", "recurring", "custom")
 
-_RECOMMENDED_SOURCE_ORDER = ("espn", "football_data", "fbref", "wikipedia")
+# Leads with what verifiably collects from the deployment host; ESPN and
+# FBRef are refused there today (403), so recommending them first would
+# pre-fill every new pipeline with sources that collect nothing.
+_RECOMMENDED_SOURCE_ORDER = (
+    "football_data", "openfootball", "statsbomb",
+    "api_football", "odds_api", "espn", "fbref", "wikipedia",
+)
 _DEFAULT_WEIGHT_PRIORITY = {
     "high": 1.0,
     "medium": 0.7,
@@ -70,7 +88,7 @@ def build_catalog() -> dict[str, Any]:
         "recommended": {
             "sources": recommended_sources,
             "competitions": recommended_competitions,
-            "themes": ["fixtures"],
+            "themes": ["fixtures", "odds", "stats"],
             "duration": {"mode": "one-shot"},
             "schedule": None,
         },
