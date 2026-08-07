@@ -83,10 +83,10 @@ func Reconstitute(id, userID uuid.UUID, typ Type, priority Priority, title, body
 }
 
 // ---- accessors ----
-func (n *Notification) ID() uuid.UUID           { return n.id }
+func (n *Notification) ID() uuid.UUID            { return n.id }
 func (n *Notification) UserID() uuid.UUID        { return n.userID }
 func (n *Notification) Type() Type               { return n.typ }
-func (n *Notification) Priority() Priority        { return n.priority }
+func (n *Notification) Priority() Priority       { return n.priority }
 func (n *Notification) Title() string            { return n.title }
 func (n *Notification) Body() string             { return n.body }
 func (n *Notification) Target() Target           { return n.target }

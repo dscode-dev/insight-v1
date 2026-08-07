@@ -273,29 +273,50 @@ func main() {
 	httpMux.HandleFunc("DELETE /search/history", httpapi.ClearSearchHistory(searchSvc))
 	httpMux.HandleFunc("GET /search/capabilities", httpapi.SearchCapabilities(searchSvc))
 
-	// CONSOLE-SOCIAL-A1: privileged operator READ plane (internal port only; the
-	// Gateway proxies these under /v1/console/social/* after operator auth +
-	// authorization). Read-only projections over the Social source of truth.
-	httpMux.HandleFunc("GET /console/social/overview", httpapi.ConsoleSocialOverview(pgPool))
-	httpMux.HandleFunc("GET /console/social/activity", httpapi.ConsoleSocialActivity(pgPool))
-	httpMux.HandleFunc("GET /console/social/users", httpapi.ConsoleSocialUsers(pgPool))
-	httpMux.HandleFunc("GET /console/social/users/{id}", httpapi.ConsoleSocialUser(pgPool))
-	httpMux.HandleFunc("GET /console/social/agents", httpapi.ConsoleSocialAgents(pgPool))
-	httpMux.HandleFunc("GET /console/social/agents/{id}", httpapi.ConsoleSocialAgent(pgPool))
-	httpMux.HandleFunc("GET /console/social/posts", httpapi.ConsoleSocialPosts(pgPool))
-	httpMux.HandleFunc("GET /console/social/posts/{id}", httpapi.ConsoleSocialPost(pgPool))
-	// CONSOLE-SOCIAL-A2: investigation plane (comments/communities/relationships/boosts/timeline).
-	httpMux.HandleFunc("GET /console/social/comments", httpapi.ConsoleSocialComments(pgPool))
-	httpMux.HandleFunc("GET /console/social/comments/{id}", httpapi.ConsoleSocialComment(pgPool))
-	httpMux.HandleFunc("GET /console/social/communities", httpapi.ConsoleSocialCommunities(pgPool))
-	httpMux.HandleFunc("GET /console/social/communities/{id}", httpapi.ConsoleSocialCommunity(pgPool))
-	httpMux.HandleFunc("GET /console/social/relationships", httpapi.ConsoleSocialRelationships(pgPool))
-	httpMux.HandleFunc("GET /console/social/boosts", httpapi.ConsoleSocialBoosts(pgPool))
-	httpMux.HandleFunc("GET /console/social/timeline", httpapi.ConsoleSocialTimeline(pgPool))
-	// CONSOLE-SOCIAL-B: agent operational-state mutation (gateway-only internal port;
-	// operator identity is gateway-derived and forwarded in the body).
-	httpMux.HandleFunc("POST /console/social/agents/{id}/deactivate", httpapi.ConsoleSocialAgentState(agentRepo, false, settings.OpsToken))
-	httpMux.HandleFunc("POST /console/social/agents/{id}/reactivate", httpapi.ConsoleSocialAgentState(agentRepo, true, settings.OpsToken))
+	// ---- administrative surface (insight-context.md v2.0) -----------------
+	//
+	// Social is administered from the Insight Console, through the Insight
+	// Control Plane — the only service allowed to reach the Google Cloud
+	// plane from the Robozão. These routes are that surface.
+	//
+	// EVERY route requires SOCIAL_OPS_TOKEN, reads included. The fifteen
+	// reads used to require nothing: they sat behind the Gateway inside the
+	// cluster, and the network was the whole protection. Exposing Social to
+	// the Control Plane removes that boundary, and fifteen unauthenticated
+	// reads on a public ingress would hand over every user, post, comment and
+	// community to whoever found the hostname.
+	//
+	// Mutations additionally require X-Operator-Id: a write with no named
+	// actor produces an audit row that cannot answer "who".
+	consoleRead := func(h http.HandlerFunc) http.HandlerFunc {
+		return httpapi.RequireConsoleToken(settings.OpsToken, false, h)
+	}
+	consoleWrite := func(h http.HandlerFunc) http.HandlerFunc {
+		return httpapi.RequireConsoleToken(settings.OpsToken, true, h)
+	}
+
+	// Read plane — projections over the Social source of truth.
+	httpMux.HandleFunc("GET /console/social/overview", consoleRead(httpapi.ConsoleSocialOverview(pgPool)))
+	httpMux.HandleFunc("GET /console/social/activity", consoleRead(httpapi.ConsoleSocialActivity(pgPool)))
+	httpMux.HandleFunc("GET /console/social/users", consoleRead(httpapi.ConsoleSocialUsers(pgPool)))
+	httpMux.HandleFunc("GET /console/social/users/{id}", consoleRead(httpapi.ConsoleSocialUser(pgPool)))
+	httpMux.HandleFunc("GET /console/social/agents", consoleRead(httpapi.ConsoleSocialAgents(pgPool)))
+	httpMux.HandleFunc("GET /console/social/agents/{id}", consoleRead(httpapi.ConsoleSocialAgent(pgPool)))
+	httpMux.HandleFunc("GET /console/social/posts", consoleRead(httpapi.ConsoleSocialPosts(pgPool)))
+	httpMux.HandleFunc("GET /console/social/posts/{id}", consoleRead(httpapi.ConsoleSocialPost(pgPool)))
+	// Investigation plane.
+	httpMux.HandleFunc("GET /console/social/comments", consoleRead(httpapi.ConsoleSocialComments(pgPool)))
+	httpMux.HandleFunc("GET /console/social/comments/{id}", consoleRead(httpapi.ConsoleSocialComment(pgPool)))
+	httpMux.HandleFunc("GET /console/social/communities", consoleRead(httpapi.ConsoleSocialCommunities(pgPool)))
+	httpMux.HandleFunc("GET /console/social/communities/{id}", consoleRead(httpapi.ConsoleSocialCommunity(pgPool)))
+	httpMux.HandleFunc("GET /console/social/relationships", consoleRead(httpapi.ConsoleSocialRelationships(pgPool)))
+	httpMux.HandleFunc("GET /console/social/boosts", consoleRead(httpapi.ConsoleSocialBoosts(pgPool)))
+	httpMux.HandleFunc("GET /console/social/timeline", consoleRead(httpapi.ConsoleSocialTimeline(pgPool)))
+	// Agent operational state.
+	httpMux.HandleFunc("POST /console/social/agents/{id}/deactivate",
+		consoleWrite(httpapi.ConsoleSocialAgentState(agentRepo, false, settings.OpsToken)))
+	httpMux.HandleFunc("POST /console/social/agents/{id}/reactivate",
+		consoleWrite(httpapi.ConsoleSocialAgentState(agentRepo, true, settings.OpsToken)))
 
 	httpServer := &http.Server{
 		Addr:              settings.HTTPAddr,

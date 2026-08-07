@@ -16,8 +16,39 @@ spec:
       ports:
         - protocol: TCP
           port: 50051
-    # HTTP port: probes (kubelet — uses node CIDR, ignored by NP) and
-    # Prometheus scrape from the monitoring namespace.
+
+    # HTTP port from insight-gateway.
+    #
+    # THIS RULE WAS MISSING. Port 8080 allowed only Prometheus, and the
+    # Gateway calls SOCIAL_HTTP_BASE_URL (http://insight-social:8080) for
+    # every one of these:
+    #
+    #   /search/*                 7 routes — the whole discovery feature
+    #   /posts/{id}/save|boost    saved posts and boosts
+    #   /posts/interaction-states
+    #   /me/saved-posts
+    #   /users/{id}/sports-profile
+    #   PATCH /users/me/profile
+    #   /competitions/highlights  the home screen's featured rail
+    #   /console/social/*         every console read of Social
+    #
+    # Applying the policy as written silently severed all of them: the
+    # Gateway would hang until its client timeout and return 5xx, with
+    # nothing in either service's logs pointing at the network layer.
+    #
+    # It went unnoticed because the policy lives in the production overlay
+    # only — local-lab has no NetworkPolicy, so every environment where
+    # anyone develops behaves differently from the one where it matters.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: insight-gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+
+    # HTTP port: Prometheus scrape from the monitoring namespace.
+    # (Kubelet probes use the node CIDR, which NetworkPolicy does not apply to.)
     - from:
         - namespaceSelector:
             matchLabels:
@@ -28,6 +59,27 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+
+    # HTTP port: the ingress controller, for the administrative surface the
+    # Insight Control Plane reaches from outside the cluster.
+    #
+    # Per insight-context.md v2.0 the Control Plane is the only thing that
+    # administers Social, and it runs on the Robozão — outside this cluster.
+    # It therefore needs a route in, and this is the only one: an ingress
+    # restricted to /console/social/, terminating TLS, allow-listing the
+    # Robozão's egress IP (see ingress-console.yaml).
+    #
+    # The pod-level guard is separate and is what actually protects the data:
+    # every /console/social/ route requires SOCIAL_OPS_TOKEN. The network
+    # rules narrow who may knock; the token decides who is answered.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+
   egress:
     # DNS (kube-dns).
     - to:

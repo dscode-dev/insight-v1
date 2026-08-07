@@ -4,7 +4,9 @@ kind: Kustomization
 # Production overlay:
 #   * 3 replicas behind the headless Service (gRPC round-robin)
 #   * migrations Job runs before each release (Argo PreSync hook)
-#   * NetworkPolicy locks ingress to insight-gateway + Prometheus
+#   * NetworkPolicy locks ingress to insight-gateway + Prometheus + the
+#     ingress controller (the Control Plane's administrative route)
+#   * Ingress exposes ONLY /console/social/, IP-allow-listed to the Robozão
 #   * Image tag pinned by the release pipeline (set by `argocd app set`).
 namespace: insight
 
@@ -12,6 +14,7 @@ resources:
   - ../../base
   - migrations-job.yaml
   - networkpolicy.yaml
+  - ingress-console.yaml
   - poddisruptionbudget.yaml
 
 patches:

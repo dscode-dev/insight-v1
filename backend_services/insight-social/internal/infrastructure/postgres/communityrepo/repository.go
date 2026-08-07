@@ -451,12 +451,13 @@ func scanCommunityWithJoinTs(r rowScanner) (*domcommunity.Community, time.Time, 
 // domcommunity.MembersCursor. The keyset predicate uses the same triple.
 //
 // Args:
-//   $1 community_id
-//   $2 limit (+1 fetched by caller for has-more)
-//   $3 role filter (text) or NULL for all roles
-//   $4 cursor role priority (int) or NULL for first page
-//   $5 cursor joined_at        (used only when $4 is not NULL)
-//   $6 cursor user_id          (used only when $4 is not NULL)
+//
+//	$1 community_id
+//	$2 limit (+1 fetched by caller for has-more)
+//	$3 role filter (text) or NULL for all roles
+//	$4 cursor role priority (int) or NULL for first page
+//	$5 cursor joined_at        (used only when $4 is not NULL)
+//	$6 cursor user_id          (used only when $4 is not NULL)
 //
 // role_priority mirrors domcommunity.Role.Priority().
 const listMembersSQL = `
@@ -514,9 +515,9 @@ func (r *Repository) ListMembers(ctx context.Context, f domcommunity.ListMembers
 	out := make([]domcommunity.MemberProfile, 0, limit+1)
 	for rows.Next() {
 		var (
-			m         domcommunity.MemberProfile
-			roleStr   string
-			priority  int
+			m        domcommunity.MemberProfile
+			roleStr  string
+			priority int
 		)
 		if err := rows.Scan(
 			&m.UserID, &m.Username, &m.DisplayName, &m.Initials, &m.AccentColor,
@@ -564,9 +565,10 @@ func (r *Repository) GetMembership(ctx context.Context, communityID, userID uuid
 }
 
 // GetStats computes the user-independent projection in TWO queries (no N+1):
-//   1. role distribution + total members (GROUP BY role over community_members)
-//   2. active_now (from the communities row) + discussion_count (COUNT over
-//      the Discussions domain — the OFFICIAL community content, never Posts).
+//  1. role distribution + total members (GROUP BY role over community_members)
+//  2. active_now (from the communities row) + discussion_count (COUNT over
+//     the Discussions domain — the OFFICIAL community content, never Posts).
+//
 // The community's existence is confirmed by query 2 (ErrNotFound otherwise).
 const statsRolesSQL = `
 SELECT role, count(*) FROM community_members WHERE community_id = $1 GROUP BY role

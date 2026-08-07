@@ -9,8 +9,8 @@ import (
 
 // fakeRepo records inserts and simulates dedup.
 type fakeRepo struct {
-	seen      map[string]bool // user|dedup
-	inserted  int
+	seen     map[string]bool // user|dedup
+	inserted int
 }
 
 func newFakeRepo() *fakeRepo { return &fakeRepo{seen: map[string]bool{}} }
@@ -24,10 +24,10 @@ func (f *fakeRepo) Insert(_ context.Context, n *Notification) (bool, error) {
 	f.inserted++
 	return true, nil
 }
-func (f *fakeRepo) List(context.Context, ListFilter) (Page, error)            { return Page{}, nil }
-func (f *fakeRepo) UnreadCount(context.Context, uuid.UUID) (int64, error)     { return 0, nil }
+func (f *fakeRepo) List(context.Context, ListFilter) (Page, error)               { return Page{}, nil }
+func (f *fakeRepo) UnreadCount(context.Context, uuid.UUID) (int64, error)        { return 0, nil }
 func (f *fakeRepo) MarkRead(context.Context, uuid.UUID, uuid.UUID) (bool, error) { return false, nil }
-func (f *fakeRepo) MarkAllRead(context.Context, uuid.UUID) (int64, error)     { return 0, nil }
+func (f *fakeRepo) MarkAllRead(context.Context, uuid.UUID) (int64, error)        { return 0, nil }
 
 func TestDirectPublisher_DedupNoCascade(t *testing.T) {
 	repo := newFakeRepo()

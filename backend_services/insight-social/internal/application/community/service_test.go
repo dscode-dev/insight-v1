@@ -13,13 +13,13 @@ import (
 // fakeRepo records calls and returns canned results. Implements the domain
 // Repository interface. Only the methods the service exercises are meaningful.
 type fakeRepo struct {
-	insertOwned     *domcommunity.Community
-	insertOwnedErr  error
-	membersFilter   domcommunity.ListMembersFilter
-	membersPage     domcommunity.MembersPage
-	removeErr       error
-	addErr          error
-	addMembership   *domcommunity.Membership
+	insertOwned    *domcommunity.Community
+	insertOwnedErr error
+	membersFilter  domcommunity.ListMembersFilter
+	membersPage    domcommunity.MembersPage
+	removeErr      error
+	addErr         error
+	addMembership  *domcommunity.Membership
 }
 
 func (f *fakeRepo) Insert(context.Context, *domcommunity.Community) error { return nil }
