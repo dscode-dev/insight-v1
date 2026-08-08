@@ -76,6 +76,14 @@ export class SocialController {
         Accept: 'application/json',
         ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
         'X-Ops-Token': config.SOCIAL_OPS_TOKEN,
+        // Sent only when configured, so a deployment with no tunnel in front
+        // does not send empty headers that Access would reject outright.
+        ...(config.CF_ACCESS_CLIENT_ID && config.CF_ACCESS_CLIENT_SECRET
+          ? {
+              'CF-Access-Client-Id': config.CF_ACCESS_CLIENT_ID,
+              'CF-Access-Client-Secret': config.CF_ACCESS_CLIENT_SECRET,
+            }
+          : {}),
         // Who is acting. Social refuses a mutation without it, and records it.
         'X-Operator-Id': operator.id,
         'X-Operator': operator.username,

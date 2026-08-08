@@ -95,6 +95,14 @@ const schema = z.object({
    */
   SOCIAL_CONSOLE_BASE_URL: z.string().default(''),
   SOCIAL_OPS_TOKEN: z.string().default(''),
+  // Cloudflare Access service token. Social sits behind a Zero Trust tunnel:
+  // Access authenticates the CALLER at the edge, SOCIAL_OPS_TOKEN authorises
+  // it at the service. Two credentials because they answer different
+  // questions — passing the tunnel must not by itself grant access to Social.
+  // Empty means no tunnel in front (a direct deployment), which is why these
+  // default to '' rather than being required.
+  CF_ACCESS_CLIENT_ID: z.string().default(''),
+  CF_ACCESS_CLIENT_SECRET: z.string().default(''),
   ANVIL_API_BASE_URL: z.string().default(''),
   /**
    * Cloud Gateway (Product plane). The Control Plane is the ONLY thing

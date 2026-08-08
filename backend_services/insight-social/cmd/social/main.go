@@ -37,6 +37,7 @@ import (
 	appnotification "github.com/konoha-labs/insight-social/internal/application/notification"
 	apppost "github.com/konoha-labs/insight-social/internal/application/post"
 	apppreferences "github.com/konoha-labs/insight-social/internal/application/preferences"
+	"github.com/konoha-labs/insight-social/internal/application/radar"
 	appreaction "github.com/konoha-labs/insight-social/internal/application/reaction"
 	apprelationship "github.com/konoha-labs/insight-social/internal/application/relationship"
 	appreputation "github.com/konoha-labs/insight-social/internal/application/reputation"
@@ -351,6 +352,12 @@ func main() {
 		consoleWrite(httpapi.ConsoleRadarSourceUpdate(pgPool)))
 	httpMux.HandleFunc("DELETE /console/social/radar/sources/{id}",
 		consoleWrite(httpapi.ConsoleRadarSourceDelete(pgPool)))
+
+	// Radar collector. In-process rather than a separate service: it needs the
+	// same database and the same registry, and a second deployable to run one
+	// ticker would be more moving parts than the job has. Cancelled by the
+	// same ctx as everything else, so shutdown drains it.
+	go radar.NewCollector(pgPool).Run(ctx)
 
 	httpServer := &http.Server{
 		Addr:              settings.HTTPAddr,
