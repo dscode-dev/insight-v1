@@ -677,6 +677,14 @@ func main() {
 			route(http.MethodPost, "/v1/posts/{postId}/boost", "boost", interactionsHandler.Boost)
 			route(http.MethodDelete, "/v1/posts/{postId}/boost", "unboost", interactionsHandler.Unboost)
 			route(http.MethodGet, "/v1/posts/interaction-states", "interaction_states", interactionsHandler.InteractionStates)
+			// Explorar. BOTH require a bearer token: `route()` wraps every
+			// endpoint it registers in the auth middleware, so there is no
+			// open read here even though the trending list is the same for
+			// every viewer. For the view batch that is what we want anyway —
+			// an unauthenticated write feeding a ranking is a way to promote
+			// a post from a script.
+			route(http.MethodGet, "/v1/explore/trending", "explore_trending", interactionsHandler.Trending)
+			route(http.MethodPost, "/v1/explore/views", "explore_views", interactionsHandler.RecordViews)
 			route(http.MethodGet, "/v1/me/saved-posts", "saved_posts", interactionsHandler.SavedPosts)
 			// AZTECA-IDENTITY-B — enriched Sports Profile (identity + grouped stats).
 			route(http.MethodGet, "/v1/users/{userId}/sports-profile", "sports_profile", interactionsHandler.SportsProfile)

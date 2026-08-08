@@ -35,6 +35,13 @@ type CandidateQuery struct {
 	AuthorIDs []uuid.UUID
 	Before    time.Time
 	Limit     int
+	// The competition the viewer picked in the rail, or nil for "todos".
+	//
+	// Applied as a FILTER, before the feed's composition rules — it narrows
+	// the candidate set rather than competing with ranking. A followed agent's
+	// post about another competition is not demoted; it is simply not in the
+	// set the viewer asked to see.
+	CompetitionID *uuid.UUID
 }
 
 // Repository is the read port the feed service composes over. The
@@ -45,7 +52,8 @@ type Repository interface {
 	PostsByAuthors(ctx context.Context, q CandidateQuery) ([]*Item, error)
 	// RecentPublic returns non-deleted PUBLIC posts from any author,
 	// newest first — the "relevant public posts" section.
-	RecentPublic(ctx context.Context, before time.Time, limit int) ([]*Item, error)
+	// `competitionID` nil means unfiltered.
+	RecentPublic(ctx context.Context, before time.Time, limit int, competitionID *uuid.UUID) ([]*Item, error)
 	// LikedPostIDs returns, of the given post ids, the subset the
 	// viewer has liked — used to populate Item.LikedByMe in one query.
 	LikedPostIDs(ctx context.Context, viewerID uuid.UUID, postIDs []uuid.UUID) (map[uuid.UUID]bool, error)

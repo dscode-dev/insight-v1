@@ -22,9 +22,11 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -59,8 +61,11 @@ type competitionRecord struct {
 	Priority     int     `json:"priority"`
 	DisplayOrder int     `json:"display_order"`
 	Active       bool    `json:"active"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	// time.Time, not string: created_at/updated_at are timestamptz, and pgx
+	// will not scan those into a string — it fails at runtime, on a path the
+	// validation tests never touch because they never open a connection.
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 	UpdatedBy    *string `json:"updated_by"`
 	PostCount    int     `json:"post_count"`
 }
@@ -81,6 +86,7 @@ func ConsoleCompetitionsList(pool *pgxpool.Pool) http.HandlerFunc {
 			  FROM competitions c
 			 ORDER BY featured DESC, priority ASC, display_order ASC, name ASC`)
 		if err != nil {
+			slog.Error("console_competitions_query_failed", "error", err.Error())
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "query_failed"})
 			return
 		}
@@ -179,11 +185,22 @@ func ConsoleCompetitionCreate(pool *pgxpool.Pool) http.HandlerFunc {
 			  (slug, name, short_name, sport, region, country, continent, type,
 			   icon, logo_url, accent_color, featured, priority, display_order,
 			   active, updated_by)
-			VALUES ($1, $2, COALESCE($3, LEFT($2, 32)), COALESCE($4, 'football'),
-			        COALESCE($5, ''), $6, $7, $8, $9, $10,
-			        COALESCE($11, '#5BA8FF'), COALESCE($12, FALSE),
-			        COALESCE($13, 100), COALESCE($14, 100),
-			        COALESCE($15, TRUE), $16)
+			-- Every parameter is cast explicitly. Postgres infers a
+			-- parameter's type from its first use, and $2 appears both as
+			-- the name column (varchar(120)) and inside LEFT() (text):
+			--   ERROR: inconsistent types deduced for parameter $2
+			--   DETAIL: text versus character varying
+			-- Casting removes the inference entirely rather than depending on
+			-- the order the planner happens to visit the uses in.
+			VALUES ($1::varchar, $2::varchar,
+			        COALESCE($3::varchar, LEFT($2::text, 32)::varchar),
+			        COALESCE($4::varchar, 'football'),
+			        COALESCE($5::varchar, ''),
+			        $6::text, $7::text, $8::text, $9::text, $10::text,
+			        COALESCE($11::varchar, '#5BA8FF'),
+			        COALESCE($12::boolean, FALSE),
+			        COALESCE($13::integer, 100), COALESCE($14::integer, 100),
+			        COALESCE($15::boolean, TRUE), $16::text)
 			RETURNING `+competitionColumns,
 			strings.TrimSpace(*in.Slug), strings.TrimSpace(*in.Name),
 			in.ShortName, in.Sport, in.Region, in.Country, in.Continent, in.Type,
@@ -205,6 +222,7 @@ func ConsoleCompetitionCreate(pool *pgxpool.Pool) http.HandlerFunc {
 					map[string]any{"detail": "slug_already_exists", "slug": *in.Slug})
 				return
 			}
+			slog.Error("console_competition_insert_failed", "error", err.Error())
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "insert_failed"})
 			return
 		}
@@ -238,23 +256,23 @@ func ConsoleCompetitionUpdate(pool *pgxpool.Pool) http.HandlerFunc {
 		var c competitionRecord
 		err := pool.QueryRow(r.Context(), `
 			UPDATE competitions SET
-			   slug          = COALESCE($2, slug),
-			   name          = COALESCE($3, name),
-			   short_name    = COALESCE($4, short_name),
-			   sport         = COALESCE($5, sport),
-			   region        = COALESCE($6, region),
-			   country       = COALESCE($7, country),
-			   continent     = COALESCE($8, continent),
-			   type          = COALESCE($9, type),
-			   icon          = COALESCE($10, icon),
-			   logo_url      = COALESCE($11, logo_url),
-			   accent_color  = COALESCE($12, accent_color),
-			   featured      = COALESCE($13, featured),
-			   priority      = COALESCE($14, priority),
-			   display_order = COALESCE($15, display_order),
-			   active        = COALESCE($16, active),
+			   slug          = COALESCE($2::varchar, slug),
+			   name          = COALESCE($3::varchar, name),
+			   short_name    = COALESCE($4::varchar, short_name),
+			   sport         = COALESCE($5::varchar, sport),
+			   region        = COALESCE($6::varchar, region),
+			   country       = COALESCE($7::text, country),
+			   continent     = COALESCE($8::text, continent),
+			   type          = COALESCE($9::text, type),
+			   icon          = COALESCE($10::text, icon),
+			   logo_url      = COALESCE($11::text, logo_url),
+			   accent_color  = COALESCE($12::varchar, accent_color),
+			   featured      = COALESCE($13::boolean, featured),
+			   priority      = COALESCE($14::integer, priority),
+			   display_order = COALESCE($15::integer, display_order),
+			   active        = COALESCE($16::boolean, active),
 			   updated_at    = NOW(),
-			   updated_by    = COALESCE($17, updated_by)
+			   updated_by    = COALESCE($17::text, updated_by)
 			 WHERE id = $1::uuid
 			RETURNING `+competitionColumns,
 			id, trimmedOrNil(in.Slug), trimmedOrNil(in.Name), in.ShortName,
@@ -277,6 +295,7 @@ func ConsoleCompetitionUpdate(pool *pgxpool.Pool) http.HandlerFunc {
 				writeJSON(w, http.StatusConflict, map[string]any{"detail": "slug_already_exists"})
 				return
 			}
+			slog.Error("console_competition_update_failed", "error", err.Error())
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "update_failed"})
 			return
 		}

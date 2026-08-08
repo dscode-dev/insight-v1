@@ -63,8 +63,13 @@ func New(posts domfeed.Repository, graph FollowGraph, agents AgentDirectory) *Se
 }
 
 // Global assembles the personalized global feed.
+// `competitionID` is the rail selection under the header, or nil for "todos".
+// It narrows the CANDIDATE SET — the mandatory-inclusion rule below still
+// holds within it. A followed agent posting about another competition is not
+// demoted; it is outside what the viewer asked to see.
 func (s *Service) Global(
 	ctx context.Context, userID uuid.UUID, limit int, cursor string,
+	competitionID *uuid.UUID,
 ) (domfeed.Page, error) {
 	observability.FeedReadsTotal.WithLabelValues("global").Inc()
 	limit = clampLimit(limit)
@@ -84,7 +89,7 @@ func (s *Service) Global(
 	var agentItems []*domfeed.Item
 	if len(followedAgents) > 0 {
 		agentItems, err = s.posts.PostsByAuthors(ctx, domfeed.CandidateQuery{
-			AuthorIDs: followedAgents, Before: before, Limit: limit,
+			AuthorIDs: followedAgents, Before: before, CompetitionID: competitionID, Limit: limit,
 		})
 		if err != nil {
 			return domfeed.Page{}, err
@@ -98,7 +103,7 @@ func (s *Service) Global(
 	var userItems []*domfeed.Item
 	if len(followedUsers) > 0 && len(agentItems) < limit {
 		userItems, err = s.posts.PostsByAuthors(ctx, domfeed.CandidateQuery{
-			AuthorIDs: followedUsers, Before: before,
+			AuthorIDs: followedUsers, Before: before, CompetitionID: competitionID,
 			Limit: limit - len(agentItems),
 		})
 		if err != nil {
@@ -109,7 +114,7 @@ func (s *Service) Global(
 	// 3. Relevant public posts fill the remainder.
 	items := append(append([]*domfeed.Item{}, agentItems...), userItems...)
 	if remaining := limit - len(items); remaining > 0 {
-		public, err := s.posts.RecentPublic(ctx, before, remaining+len(items))
+		public, err := s.posts.RecentPublic(ctx, before, remaining+len(items), competitionID)
 		if err != nil {
 			return domfeed.Page{}, err
 		}
@@ -152,8 +157,13 @@ func (s *Service) Global(
 
 // Following assembles the chronological following feed: followed
 // users + followed agents only. No public discovery.
+// Takes the same rail selection as Global. The rail sits above both tabs, so a
+// filter that applied to one and not the other would look like a bug to the
+// person who switched tabs — and the proto field is on FeedRequest, which
+// serves both RPCs.
 func (s *Service) Following(
 	ctx context.Context, userID uuid.UUID, limit int, cursor string,
+	competitionID *uuid.UUID,
 ) (domfeed.Page, error) {
 	observability.FeedReadsTotal.WithLabelValues("following").Inc()
 	limit = clampLimit(limit)
@@ -170,6 +180,7 @@ func (s *Service) Following(
 	agentSet := toSet(followedAgents)
 	items, err := s.posts.PostsByAuthors(ctx, domfeed.CandidateQuery{
 		AuthorIDs: authorIDs, Before: before, Limit: limit,
+		CompetitionID: competitionID,
 	})
 	if err != nil {
 		return domfeed.Page{}, err

@@ -30,12 +30,24 @@ func (s *PostServer) Create(ctx context.Context, req *socialv1.CreatePostRequest
 	if err != nil {
 		return nil, err
 	}
+	// Optional. Rejected when unparseable rather than dropped: a post silently
+	// published without the competition the author chose would be missing from
+	// the only rail they expect to find it in.
+	var competitionID *uuid.UUID
+	if raw := req.GetCompetitionId(); raw != "" {
+		parsed, perr := parseUUID(raw, "competition_id")
+		if perr != nil {
+			return nil, perr
+		}
+		competitionID = &parsed
+	}
 	p, err := s.svc.Create(ctx,
 		authorID,
 		authorTypeFromProto(req.GetAuthorType()),
 		req.GetContent(),
 		req.GetMetadata(),
 		visibilityFromProto(req.GetVisibility()),
+		competitionID,
 	)
 	if err != nil {
 		return nil, mapPostErr(err)
@@ -168,7 +180,7 @@ func mapPostErr(err error) error {
 }
 
 func postToProto(p *dompost.Post) *socialv1.Post {
-	return &socialv1.Post{
+	out := &socialv1.Post{
 		Id:           p.ID.String(),
 		AuthorId:     p.AuthorID.String(),
 		AuthorType:   authorTypeToProto(p.AuthorType),
@@ -179,6 +191,21 @@ func postToProto(p *dompost.Post) *socialv1.Post {
 		LikeCount:    p.LikeCount,
 		CommentCount: p.CommentCount,
 	}
+	if p.CompetitionID != nil {
+		id := p.CompetitionID.String()
+		out.CompetitionId = &id
+		// Only sent alongside the id — a slug or name without one would let a
+		// client render a chip that filters to nothing.
+		if p.CompetitionSlug != "" {
+			slug := p.CompetitionSlug
+			out.CompetitionSlug = &slug
+		}
+		if p.CompetitionName != "" {
+			name := p.CompetitionName
+			out.CompetitionName = &name
+		}
+	}
+	return out
 }
 
 func commentToProto(c *dompost.Comment) *socialv1.Comment {

@@ -32,6 +32,13 @@ const READ_ROOTS = new Set<string>([
   'relationships',
   'boosts',
   'timeline',
+  // Subscribed feed sources for Radar. Read returns the key HINT, never the
+  // key — the secrecy is enforced on Social's side, not by this list.
+  'radar',
+  // The competition registry. Social is the source of truth for it
+  // platform-wide — the app's rail, the feed's partition, and what the
+  // Explorer is permitted to collect all read from here.
+  'competitions',
 ]);
 
 /**
@@ -45,6 +52,20 @@ const READ_ROOTS = new Set<string>([
 const WRITES = new Set<string>([
   'POST /agents/*/deactivate',
   'POST /agents/*/reactivate',
+  // Radar sources. The API key is write-only on Social's side, so PATCH is
+  // how a credential is set or rotated and no method can read one back.
+  'POST /radar/sources',
+  'PATCH /radar/sources/*',
+  'DELETE /radar/sources/*',
+  // Competition registry. DELETE is allowed because Social refuses it while
+  // any post references the competition (the foreign key is ON DELETE
+  // RESTRICT) and answers 409 with the count — so the destructive case is
+  // already bounded on the far side, and the console can explain it. An
+  // operator retiring a competition that HAS history uses PATCH
+  // {"active": false}, which hides it without destroying the conversation.
+  'POST /competitions',
+  'PATCH /competitions/*',
+  'DELETE /competitions/*',
 ]);
 
 const READ_METHODS = new Set(['GET', 'HEAD']);
@@ -54,6 +75,7 @@ const PATH_LITERALS = new Set<string>([
   ...READ_ROOTS,
   'deactivate',
   'reactivate',
+  'sources',
 ]);
 
 export function classifySocialPath(

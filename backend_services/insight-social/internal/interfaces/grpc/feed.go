@@ -53,13 +53,24 @@ func (s *FeedServer) AuthorPosts(ctx context.Context, req *socialv1.AuthorPostsR
 func (s *FeedServer) serve(
 	ctx context.Context,
 	req *socialv1.FeedRequest,
-	call func(ctx context.Context, userID uuid.UUID, limit int, cursor string) (domfeed.Page, error),
+	call func(ctx context.Context, userID uuid.UUID, limit int, cursor string, competitionID *uuid.UUID) (domfeed.Page, error),
 ) (*socialv1.FeedResponse, error) {
 	userID, err := parseUUID(req.GetUserId(), "user_id")
 	if err != nil {
 		return nil, err
 	}
-	page, err := call(ctx, userID, int(req.GetLimit()), req.GetCursor())
+	// Absent = "todos", the rail's default. An unparseable value is rejected
+	// rather than ignored: silently returning the unfiltered feed would look
+	// to the viewer like the competition simply has no posts.
+	var competitionID *uuid.UUID
+	if raw := req.GetCompetitionId(); raw != "" {
+		parsed, perr := parseUUID(raw, "competition_id")
+		if perr != nil {
+			return nil, perr
+		}
+		competitionID = &parsed
+	}
+	page, err := call(ctx, userID, int(req.GetLimit()), req.GetCursor(), competitionID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "feed read failed")
 	}

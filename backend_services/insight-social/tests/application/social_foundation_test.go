@@ -146,7 +146,7 @@ func (f *fakePosts) PostsByAuthors(_ context.Context, q domfeed.CandidateQuery) 
 	return out, nil
 }
 
-func (f *fakePosts) RecentPublic(_ context.Context, before time.Time, limit int) ([]*domfeed.Item, error) {
+func (f *fakePosts) RecentPublic(_ context.Context, before time.Time, limit int, _ *uuid.UUID) ([]*domfeed.Item, error) {
 	var out []*domfeed.Item
 	for _, p := range f.posts {
 		if p.Visibility == dompost.VisibilityPublic && p.CreatedAt.Before(before) {
@@ -233,7 +233,7 @@ func TestFeedSetsLikedByMeForViewer(t *testing.T) {
 	notLiked := addPost(posts, ninja, t0.Add(time.Minute), dompost.AuthorAgent, "plain post")
 	posts.liked = map[string]bool{user.String() + "|" + liked.ID.String(): true}
 
-	page, err := svc.Global(context.Background(), user, 30, "")
+	page, err := svc.Global(context.Background(), user, 30, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,10 +289,10 @@ func TestMutedAccountsRemainFollowedButNeverFeed(t *testing.T) {
 		t.Fatalf("muted account must remain followed, following=%d", len(all))
 	}
 	// …but absent from BOTH feeds.
-	for _, feed := range []func(context.Context, uuid.UUID, int, string) (domfeed.Page, error){
+	for _, feed := range []func(context.Context, uuid.UUID, int, string, *uuid.UUID) (domfeed.Page, error){
 		svc.Global, svc.Following,
 	} {
-		page, err := feed(context.Background(), user, 50, "")
+		page, err := feed(context.Background(), user, 50, "", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -320,7 +320,7 @@ func TestFollowedAgentPostsAreMandatoryInGlobalFeed(t *testing.T) {
 			dompost.AuthorUser, "newer public post")
 	}
 
-	page, err := svc.Global(context.Background(), user, 10, "")
+	page, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +354,7 @@ func TestAgentPostsWinCloseTimestamps(t *testing.T) {
 	pulsePost := addPost(posts, pulse, t0.Add(2*time.Minute), dompost.AuthorAgent, "pulse")
 	userPost := addPost(posts, friend, t0.Add(3*time.Minute), dompost.AuthorUser, "user")
 
-	page, err := svc.Global(context.Background(), user, 10, "")
+	page, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +386,7 @@ func TestFollowingFeedContainsOnlyFollowedAuthors(t *testing.T) {
 	addPost(posts, friend, t0.Add(time.Minute), dompost.AuthorUser, "friend post")
 	addPost(posts, stranger, t0.Add(2*time.Minute), dompost.AuthorUser, "stranger post")
 
-	page, err := svc.Following(context.Background(), user, 10, "")
+	page, err := svc.Following(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,12 +417,12 @@ func TestOwnPublicPostAppearsInGlobalFeed(t *testing.T) {
 
 	postSvc := apppost.New(posts)
 	own, err := postSvc.Create(context.Background(), user, dompost.AuthorUser,
-		"my own take", nil, dompost.VisibilityPublic)
+		"my own take", nil, dompost.VisibilityPublic, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	page, err := svc.Global(context.Background(), user, 10, "")
+	page, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,11 +446,11 @@ func TestOwnPrivatePostStaysOutOfGlobalFeed(t *testing.T) {
 
 	postSvc := apppost.New(posts)
 	priv, err := postSvc.Create(context.Background(), user, dompost.AuthorUser,
-		"just for me", nil, dompost.VisibilityPrivate)
+		"just for me", nil, dompost.VisibilityPrivate, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := svc.Global(context.Background(), user, 10, "")
+	page, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +469,7 @@ func TestFeedIsGeneratedAtQueryTime(t *testing.T) {
 	ninja := agents.ids[0]
 	_ = graph.FollowIdempotent(context.Background(), user, ninja)
 
-	before, err := svc.Global(context.Background(), user, 10, "")
+	before, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,11 +481,11 @@ func TestFeedIsGeneratedAtQueryTime(t *testing.T) {
 	// materialization) is visible on the very next read.
 	postSvc := apppost.New(posts)
 	created, err := postSvc.Create(context.Background(), ninja,
-		dompost.AuthorAgent, "fresh intelligence", nil, dompost.VisibilityPublic)
+		dompost.AuthorAgent, "fresh intelligence", nil, dompost.VisibilityPublic, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := svc.Global(context.Background(), user, 10, "")
+	after, err := svc.Global(context.Background(), user, 10, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +500,7 @@ func TestCommentDepthLimitedToTwo(t *testing.T) {
 	posts := &fakePosts{}
 	svc := apppost.New(posts)
 	p, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorUser,
-		"a post", nil, dompost.VisibilityPublic)
+		"a post", nil, dompost.VisibilityPublic, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

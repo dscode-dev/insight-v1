@@ -46,6 +46,7 @@ func (s *Service) Create(
 	content string,
 	metadata map[string]string,
 	visibility dompost.Visibility,
+	competitionID *uuid.UUID,
 ) (*dompost.Post, error) {
 	// Publication enforcement (CONSOLE-SOCIAL-B): a deactivated agent may not
 	// publish. This is the single authoritative choke point every agent
@@ -60,7 +61,7 @@ func (s *Service) Create(
 			return nil, dompost.ErrAgentInactive
 		}
 	}
-	p, err := dompost.NewPost(authorID, authorType, content, metadata, visibility)
+	p, err := dompost.NewPost(authorID, authorType, content, metadata, visibility, competitionID)
 	if err != nil {
 		return nil, err
 	}

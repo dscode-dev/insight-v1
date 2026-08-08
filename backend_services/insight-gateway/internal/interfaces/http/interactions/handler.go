@@ -227,3 +227,72 @@ func writeError(w http.ResponseWriter, status int, detail string) {
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(`{"detail":"` + detail + `"}`))
 }
+
+// ---- Explorar -------------------------------------------------------------
+//
+// Both proxy to Social's HTTP plane, like Save/Boost above. The ranking lives
+// in the database (`trending_posts()`), so the Gateway forwards rather than
+// computes — a second implementation of "em alta" here would be a second
+// answer to the same question.
+
+// Trending — GET /v1/explore/trending. The rail's selection and the window
+// pass through untouched; Social validates them and names what it refuses,
+// so the Gateway does not hold a second opinion about a valid window.
+func (h *Handler) Trending(w http.ResponseWriter, r *http.Request) {
+	// AUTHENTICATED, though the list is identical for every viewer. Not a
+	// product decision — the Gateway's `route()` helper applies the bearer
+	// middleware to everything it registers, so this is authenticated whether
+	// the handler asks for it or not. Left that way deliberately: opening it
+	// means changing how a route is registered, and that is a change to the
+	// mechanism guarding every other route, not to this one.
+	//
+	// The consequence to know: Explorar is unavailable to a logged-out user.
+	// If the product wants a public "em alta", that is a separate change with
+	// its own review.
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if h.socialBase == "" {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"trending":[],"detail":"social_http_not_configured"}`))
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
+	defer cancel()
+
+	upstream := h.socialBase + "/explore/trending"
+	if raw := r.URL.RawQuery; raw != "" {
+		upstream += "?" + raw
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, upstream, nil)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "request_build_failed")
+		return
+	}
+	h.forward(w, req)
+}
+
+// RecordViews — POST /v1/explore/views. Requires a token: an unauthenticated
+// endpoint that increments a ranking input is a way to promote a post from a
+// script. The user id is NOT forwarded — Social records how many viewed, never
+// who, and sending an identity it does not store would be collecting more than
+// the feature needs.
+func (h *Handler) RecordViews(w http.ResponseWriter, r *http.Request) {
+	if _, ok := authmw.UserID(r.Context()); !ok {
+		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.socialBase == "" {
+		writeError(w, http.StatusServiceUnavailable, "social_http_not_configured")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		h.socialBase+"/explore/views", r.Body)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "request_build_failed")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	h.forward(w, req)
+}

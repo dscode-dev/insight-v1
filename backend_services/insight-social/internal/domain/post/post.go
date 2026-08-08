@@ -29,6 +29,13 @@ var (
 	ErrNotAuthor        = errors.New("not_the_author")
 	ErrMaxDepthExceeded = errors.New("max_comment_depth_exceeded")
 	ErrAgentInactive    = errors.New("agent_inactive") // CONSOLE-SOCIAL-B: deactivated agent may not publish
+	// A competition-scoped post that names no competition cannot appear in any
+	// rail — it would be published and then invisible in every filtered view.
+	ErrCompetitionRequired = errors.New("competition_required")
+	// The id does not match a registered competition. Competitions exist only
+	// once registered in the console; an unknown id is a rejection, not a value
+	// to store and reconcile later.
+	ErrCompetitionUnknown = errors.New("competition_unknown")
 )
 
 const (
@@ -71,6 +78,22 @@ type Post struct {
 	CreatedAt    time.Time
 	LikeCount    int64
 	CommentCount int64
+
+	// The competition this post belongs to, when it belongs to one.
+	//
+	// The public feed is partitioned by competition — the app's rail under the
+	// header picks one and the feed narrows to it. nil means the post is
+	// platform-wide and shows whatever the viewer has selected.
+	//
+	// A UUID rather than the slug: the slug is editable from the console, and
+	// a post keyed on it would detach from its competition the moment an
+	// operator renamed one.
+	CompetitionID *uuid.UUID
+
+	// Filled on read for rendering the competition chip without a second call.
+	// Never accepted on write — Social derives them from CompetitionID.
+	CompetitionSlug string
+	CompetitionName string
 }
 
 // NewPost validates and constructs a fresh Post.
@@ -80,6 +103,7 @@ func NewPost(
 	content string,
 	metadata map[string]string,
 	visibility Visibility,
+	competitionID *uuid.UUID,
 ) (*Post, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -100,14 +124,28 @@ func NewPost(
 	if metadata == nil {
 		metadata = map[string]string{}
 	}
+	// Refused here as well as in the database. The CHECK constraint
+	// (posts_competition_scope_check) is what makes the rule true, but a
+	// constraint violation surfaces as a driver error the caller has to parse;
+	// this returns the reason as a domain error the API can map to a 400.
+	if visibility == VisibilityCompetition && competitionID == nil {
+		return nil, ErrCompetitionRequired
+	}
+	if competitionID != nil && *competitionID == uuid.Nil {
+		// The zero UUID passes a nil check and fails the foreign key, which
+		// would read as "competition does not exist" rather than "you sent an
+		// empty id".
+		return nil, ErrCompetitionRequired
+	}
 	return &Post{
-		ID:         uuid.New(),
-		AuthorID:   authorID,
-		AuthorType: authorType,
-		Content:    content,
-		Metadata:   metadata,
-		Visibility: visibility,
-		CreatedAt:  time.Now().UTC(),
+		ID:            uuid.New(),
+		AuthorID:      authorID,
+		AuthorType:    authorType,
+		Content:       content,
+		Metadata:      metadata,
+		Visibility:    visibility,
+		CompetitionID: competitionID,
+		CreatedAt:     time.Now().UTC(),
 	}, nil
 }
 

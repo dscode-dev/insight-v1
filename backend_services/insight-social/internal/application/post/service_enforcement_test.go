@@ -54,7 +54,7 @@ func (g *stubGuard) IsActive(context.Context, uuid.UUID) (bool, error) {
 func TestCreate_AgentInactive_Blocked(t *testing.T) {
 	g := &stubGuard{active: false}
 	svc := New(newMemRepo()).WithAgentGuard(g)
-	_, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic)
+	_, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic, nil)
 	if !errors.Is(err, dompost.ErrAgentInactive) {
 		t.Fatalf("want ErrAgentInactive, got %v", err)
 	}
@@ -66,7 +66,7 @@ func TestCreate_AgentInactive_Blocked(t *testing.T) {
 func TestCreate_AgentActive_Allowed(t *testing.T) {
 	g := &stubGuard{active: true}
 	svc := New(newMemRepo()).WithAgentGuard(g)
-	p, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic)
+	p, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic, nil)
 	if err != nil || p == nil {
 		t.Fatalf("active agent should publish, got err=%v", err)
 	}
@@ -75,7 +75,7 @@ func TestCreate_AgentActive_Allowed(t *testing.T) {
 func TestCreate_User_NotGated(t *testing.T) {
 	g := &stubGuard{active: false} // would block an agent
 	svc := New(newMemRepo()).WithAgentGuard(g)
-	p, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorUser, "x", nil, dompost.VisibilityPublic)
+	p, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorUser, "x", nil, dompost.VisibilityPublic, nil)
 	if err != nil || p == nil {
 		t.Fatalf("user publish must not be agent-gated, got err=%v", err)
 	}
@@ -87,7 +87,7 @@ func TestCreate_User_NotGated(t *testing.T) {
 func TestCreate_AgentGuardError_FailsClosed(t *testing.T) {
 	g := &stubGuard{err: errors.New("db down")}
 	svc := New(newMemRepo()).WithAgentGuard(g)
-	_, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic)
+	_, err := svc.Create(context.Background(), uuid.New(), dompost.AuthorAgent, "x", nil, dompost.VisibilityPublic, nil)
 	if err == nil {
 		t.Fatal("guard error must fail closed (no publish)")
 	}

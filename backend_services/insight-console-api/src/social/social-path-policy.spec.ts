@@ -83,4 +83,38 @@ describe('social path policy', () => {
       }
     });
   });
+  describe('competition registry', () => {
+    it('allows reading the registry', () => {
+      expect(classifySocialPath('competitions', 'GET')).toEqual({
+        kind: 'allow',
+        path: '/competitions',
+      });
+    });
+
+    it('allows the four registry operations', () => {
+      expect(classifySocialPath('competitions', 'POST').kind).toBe('allow');
+      expect(
+        classifySocialPath('competitions/ef8a4e4b-b986-4e2a-b9b9-467b8135ad33', 'PATCH').kind,
+      ).toBe('allow');
+      expect(
+        classifySocialPath('competitions/ef8a4e4b-b986-4e2a-b9b9-467b8135ad33', 'DELETE').kind,
+      ).toBe('allow');
+    });
+
+    // DELETE without an id would be "delete the collection". Social has no
+    // such route, so this would 404 — but the allow-list is the layer that
+    // should say no, not the far side's routing table.
+    it('refuses a collection-level delete', () => {
+      expect(classifySocialPath('competitions', 'DELETE').kind).toBe('refuse');
+    });
+
+    it('refuses methods nobody implemented', () => {
+      expect(classifySocialPath('competitions/abc', 'PUT').kind).toBe('refuse');
+      expect(classifySocialPath('competitions/abc/publish', 'POST').kind).toBe('refuse');
+    });
+
+    it('refuses traversal out of the registry', () => {
+      expect(classifySocialPath('competitions/../users/abc/ban', 'POST').kind).toBe('refuse');
+    });
+  });
 });

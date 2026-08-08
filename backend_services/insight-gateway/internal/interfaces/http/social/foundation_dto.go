@@ -24,6 +24,17 @@ type PostDTO struct {
 	CreatedAt    time.Time         `json:"created_at"`
 	LikeCount    int64             `json:"like_count"`
 	CommentCount int64             `json:"comment_count"`
+
+	// The competition this post belongs to, when it belongs to one. Omitted
+	// entirely for platform-wide posts — `omitempty` so the client can test
+	// presence rather than compare against an empty string.
+	//
+	// Slug and name travel only alongside the id (Social sends them together
+	// or not at all): a chip rendered from a name with no id would filter to
+	// nothing when tapped.
+	CompetitionID   string `json:"competition_id,omitempty"`
+	CompetitionSlug string `json:"competition_slug,omitempty"`
+	CompetitionName string `json:"competition_name,omitempty"`
 }
 
 // FeedItemDTO — a post plus denormalized author display data, ready
@@ -161,6 +172,10 @@ func postDTO(p *socialv1.Post) PostDTO {
 		CreatedAt:    p.GetCreatedAt().AsTime(),
 		LikeCount:    p.GetLikeCount(),
 		CommentCount: p.GetCommentCount(),
+
+		CompetitionID:   p.GetCompetitionId(),
+		CompetitionSlug: p.GetCompetitionSlug(),
+		CompetitionName: p.GetCompetitionName(),
 	}
 }
 

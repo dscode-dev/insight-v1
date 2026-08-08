@@ -10,10 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	dompost "github.com/konoha-labs/insight-social/internal/domain/post"
 	"github.com/konoha-labs/insight-social/internal/infrastructure/postgres"
@@ -35,12 +37,21 @@ func (r *Repository) InsertPost(ctx context.Context, p *dompost.Post) error {
 		return fmt.Errorf("postrepo marshal metadata: %w", err)
 	}
 	_, err = r.pool.Exec(ctx, `
-INSERT INTO posts (id, author_id, author_type, content, metadata, visibility, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+INSERT INTO posts (id, author_id, author_type, content, metadata, visibility, created_at, competition_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		p.ID, p.AuthorID, string(p.AuthorType), p.Content, meta,
-		string(p.Visibility), p.CreatedAt,
+		string(p.Visibility), p.CreatedAt, p.CompetitionID,
 	)
 	if err != nil {
+		// 23503 is posts_competition_id_fkey: the post names a competition
+		// that is not in the registry. Reported as the domain's "unknown"
+		// rather than a wrapped driver error, because the caller's answer is
+		// a 400 naming the field, not a 500.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" &&
+			strings.Contains(pgErr.ConstraintName, "competition") {
+			return dompost.ErrCompetitionUnknown
+		}
 		return fmt.Errorf("postrepo insert: %w", err)
 	}
 	return nil
@@ -49,11 +60,19 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 const postCols = `
 p.id, p.author_id, p.author_type, p.content, p.metadata, p.visibility, p.created_at,
 (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
-(SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count`
+(SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+p.competition_id,
+-- Denormalised on read so the client can draw the competition chip without a
+-- second call. LEFT JOIN, not INNER: most posts carry no competition, and an
+-- inner join would silently drop them from every result.
+COALESCE(comp.slug, ''), COALESCE(comp.name, '')`
+
+const postJoins = `
+LEFT JOIN competitions comp ON comp.id = p.competition_id`
 
 func (r *Repository) GetPost(ctx context.Context, id uuid.UUID) (*dompost.Post, error) {
 	row := r.pool.QueryRow(ctx,
-		`SELECT `+postCols+` FROM posts p WHERE p.id = $1 AND p.deleted_at IS NULL`, id)
+		`SELECT `+postCols+` FROM posts p`+postJoins+` WHERE p.id = $1 AND p.deleted_at IS NULL`, id)
 	p, err := scanPost(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dompost.ErrNotFound
@@ -93,7 +112,8 @@ func scanPost(row pgx.Row) (*dompost.Post, error) {
 	var authorType, visibility string
 	var meta []byte
 	err := row.Scan(&p.ID, &p.AuthorID, &authorType, &p.Content, &meta,
-		&visibility, &p.CreatedAt, &p.LikeCount, &p.CommentCount)
+		&visibility, &p.CreatedAt, &p.LikeCount, &p.CommentCount,
+		&p.CompetitionID, &p.CompetitionSlug, &p.CompetitionName)
 	if err != nil {
 		return nil, err
 	}

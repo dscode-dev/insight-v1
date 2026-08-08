@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -194,11 +195,19 @@ func (h *FoundationHandlers) serveFeed(
 	h.metrics.feedRead(kind)
 
 	limit, cursor := pageParams(r)
-	resp, err := call(r.Context(), &socialv1.FeedRequest{
+	// `?competition_id=` is the rail selection under the header. Absent means
+	// "todos", the rail's default. Passed through as-is: Social validates it
+	// and answers InvalidArgument, so the Gateway does not need a second
+	// opinion about what a competition id looks like.
+	req := &socialv1.FeedRequest{
 		UserId: userID,
 		Limit:  &limit,
 		Cursor: cursor,
-	})
+	}
+	if competition := strings.TrimSpace(r.URL.Query().Get("competition_id")); competition != "" {
+		req.CompetitionId = &competition
+	}
+	resp, err := call(r.Context(), req)
 	if err != nil {
 		writeGrpcError(w, r, err)
 		return
@@ -354,6 +363,10 @@ type createPostBody struct {
 	Content    string            `json:"content"`
 	Metadata   map[string]string `json:"metadata"`
 	Visibility string            `json:"visibility"`
+	// Optional. Required by Social when visibility is "competition"; sending
+	// it on a public post is how that post reaches a competition's rail while
+	// staying visible everywhere.
+	CompetitionID string `json:"competition_id"`
 }
 
 func (h *FoundationHandlers) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -381,6 +394,14 @@ func (h *FoundationHandlers) CreatePost(w http.ResponseWriter, r *http.Request) 
 		Content:    body.Content,
 		Metadata:   body.Metadata,
 		Visibility: visibilityFromString(body.Visibility),
+		CompetitionId: func() *string {
+			// Empty means absent. Forwarding "" would make Social parse it as
+			// an id and reject the post with a confusing InvalidArgument.
+			if c := strings.TrimSpace(body.CompetitionID); c != "" {
+				return &c
+			}
+			return nil
+		}(),
 	})
 	if err != nil {
 		writeGrpcError(w, r, err)

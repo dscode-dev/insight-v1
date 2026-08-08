@@ -323,6 +323,14 @@ func main() {
 	// Control Plane — what the Explorer is allowed to collect. Writes require
 	// a named operator (consoleWrite) because a registry change alters what
 	// every user sees, and `updated_by` has to be able to answer who.
+	// Explorar. Both routes are user-plane, not console: they sit on the same
+	// port behind the Gateway and inherit the same X-User-Id trust as
+	// /posts/{id}/save. Reads need no identity — "em alta" is the same list
+	// for everyone — and the view batch deliberately does not record WHO
+	// viewed, only how many did.
+	httpMux.HandleFunc("GET /explore/trending", httpapi.ExploreTrending(pgPool))
+	httpMux.HandleFunc("POST /explore/views", httpapi.RecordPostViews(pgPool))
+
 	httpMux.HandleFunc("GET /console/social/competitions",
 		consoleRead(httpapi.ConsoleCompetitionsList(pgPool)))
 	httpMux.HandleFunc("POST /console/social/competitions",
@@ -331,6 +339,18 @@ func main() {
 		consoleWrite(httpapi.ConsoleCompetitionUpdate(pgPool)))
 	httpMux.HandleFunc("DELETE /console/social/competitions/{id}",
 		consoleWrite(httpapi.ConsoleCompetitionDelete(pgPool)))
+
+	// Radar source registry. Same guard as competitions; the difference is
+	// that these rows hold a provider credential, which is why no read path
+	// selects it — see console_radar.go.
+	httpMux.HandleFunc("GET /console/social/radar/sources",
+		consoleRead(httpapi.ConsoleRadarSourcesList(pgPool)))
+	httpMux.HandleFunc("POST /console/social/radar/sources",
+		consoleWrite(httpapi.ConsoleRadarSourceCreate(pgPool)))
+	httpMux.HandleFunc("PATCH /console/social/radar/sources/{id}",
+		consoleWrite(httpapi.ConsoleRadarSourceUpdate(pgPool)))
+	httpMux.HandleFunc("DELETE /console/social/radar/sources/{id}",
+		consoleWrite(httpapi.ConsoleRadarSourceDelete(pgPool)))
 
 	httpServer := &http.Server{
 		Addr:              settings.HTTPAddr,
