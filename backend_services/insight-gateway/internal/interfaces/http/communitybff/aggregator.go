@@ -4,7 +4,7 @@
 //   - GetCommunity   (CRITICAL — its failure is the request's error, e.g. 404)
 //   - GetStats       (non-critical — failure => partial, counters degrade)
 //   - GetMembership  (non-critical, per-viewer — NotFound is the normal
-//                     "not_member" state, NOT a failure)
+//     "not_member" state, NOT a failure)
 //
 // All three share the inbound context: the ONE correlation id is reused and a
 // client disconnect / global timeout cancels every in-flight call. The join is

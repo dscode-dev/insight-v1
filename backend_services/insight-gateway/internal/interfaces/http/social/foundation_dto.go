@@ -24,6 +24,7 @@ type PostDTO struct {
 	CreatedAt    time.Time         `json:"created_at"`
 	LikeCount    int64             `json:"like_count"`
 	CommentCount int64             `json:"comment_count"`
+	ShareCount   int64             `json:"share_count"`
 
 	// The competition this post belongs to, when it belongs to one. Omitted
 	// entirely for platform-wide posts — `omitempty` so the client can test
@@ -172,6 +173,7 @@ func postDTO(p *socialv1.Post) PostDTO {
 		CreatedAt:    p.GetCreatedAt().AsTime(),
 		LikeCount:    p.GetLikeCount(),
 		CommentCount: p.GetCommentCount(),
+		ShareCount:   p.GetShareCount(),
 
 		CompetitionID:   p.GetCompetitionId(),
 		CompetitionSlug: p.GetCompetitionSlug(),

@@ -26,7 +26,7 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14social/v1/post.proto\x12\tsocial.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x05\n\x04Post\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n\tauthor_id\x18\x02 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x03 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x04 \x01(\tR\x07\x63ontent\x12\x39\n\x08metadata\x18\x05 \x03(\x0b\x32\x1d.social.v1.Post.MetadataEntryR\x08metadata\x12\x39\n\nvisibility\x18\x06 \x01(\x0e\x32\x19.social.v1.PostVisibilityR\nvisibility\x12\x39\n\ncreated_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n\nlike_count\x18\x08 \x01(\x03R\tlikeCount\x12#\n\rcomment_count\x18\t \x01(\x03R\x0c\x63ommentCount\x12*\n\x0e\x63ompetition_id\x18\n \x01(\tH\x00R\rcompetitionId\x88\x01\x01\x12.\n\x10\x63ompetition_slug\x18\x0b \x01(\tH\x01R\x0f\x63ompetitionSlug\x88\x01\x01\x12.\n\x10\x63ompetition_name\x18\x0c \x01(\tH\x02R\x0f\x63ompetitionName\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x11\n\x0f_competition_idB\x13\n\x11_competition_slugB\x13\n\x11_competition_name\"\x81\x03\n\x11\x43reatePostRequest\x12\x1b\n\tauthor_id\x18\x01 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x02 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x03 \x01(\tR\x07\x63ontent\x12\x46\n\x08metadata\x18\x04 \x03(\x0b\x32*.social.v1.CreatePostRequest.MetadataEntryR\x08metadata\x12\x39\n\nvisibility\x18\x05 \x01(\x0e\x32\x19.social.v1.PostVisibilityR\nvisibility\x12*\n\x0e\x63ompetition_id\x18\x06 \x01(\tH\x00R\rcompetitionId\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x11\n\x0f_competition_id\" \n\x0eGetPostRequest\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\"F\n\x11\x44\x65letePostRequest\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12!\n\x0crequester_id\x18\x02 \x01(\tR\x0brequesterId\"\x8f\x02\n\x07\x43omment\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n\x07post_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n\tparent_id\x18\x03 \x01(\tR\x08parentId\x12\x1b\n\tauthor_id\x18\x04 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x05 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x06 \x01(\tR\x07\x63ontent\x12\x14\n\x05\x64\x65pth\x18\x07 \x01(\x05R\x05\x64\x65pth\x12\x39\n\ncreated_at\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\"\xbb\x01\n\x14\x43reateCommentRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x1b\n\tparent_id\x18\x02 \x01(\tR\x08parentId\x12\x1b\n\tauthor_id\x18\x03 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x04 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x05 \x01(\tR\x07\x63ontent\"{\n\x13ListCommentsRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x19\n\x05limit\x18\x02 \x01(\x05H\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06\x63ursor\x18\x03 \x01(\tH\x01R\x06\x63ursor\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_cursor\"|\n\x14ListCommentsResponse\x12.\n\x08\x63omments\x18\x01 \x03(\x0b\x32\x12.social.v1.CommentR\x08\x63omments\x12$\n\x0bnext_cursor\x18\x02 \x01(\tH\x00R\nnextCursor\x88\x01\x01\x42\x0e\n\x0c_next_cursor\"C\n\x0fLikePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId\"E\n\x11UnlikePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId*m\n\nAuthorType\x12\x1b\n\x17\x41UTHOR_TYPE_UNSPECIFIED\x10\x00\x12\x14\n\x10\x41UTHOR_TYPE_USER\x10\x01\x12\x15\n\x11\x41UTHOR_TYPE_AGENT\x10\x02\x12\x15\n\x11\x41UTHOR_TYPE_ADMIN\x10\x03*\x8b\x01\n\x0ePostVisibility\x12\x1f\n\x1bPOST_VISIBILITY_UNSPECIFIED\x10\x00\x12\x1a\n\x16POST_VISIBILITY_PUBLIC\x10\x01\x12\x1f\n\x1bPOST_VISIBILITY_COMPETITION\x10\x02\x12\x1b\n\x17POST_VISIBILITY_PRIVATE\x10\x03\x32\xcc\x03\n\x0bPostService\x12\x37\n\x06\x43reate\x12\x1c.social.v1.CreatePostRequest\x1a\x0f.social.v1.Post\x12\x31\n\x03Get\x12\x19.social.v1.GetPostRequest\x1a\x0f.social.v1.Post\x12>\n\x06\x44\x65lete\x12\x1c.social.v1.DeletePostRequest\x1a\x16.google.protobuf.Empty\x12\x44\n\rCreateComment\x12\x1f.social.v1.CreateCommentRequest\x1a\x12.social.v1.Comment\x12O\n\x0cListComments\x12\x1e.social.v1.ListCommentsRequest\x1a\x1f.social.v1.ListCommentsResponse\x12:\n\x04Like\x12\x1a.social.v1.LikePostRequest\x1a\x16.google.protobuf.Empty\x12>\n\x06Unlike\x12\x1c.social.v1.UnlikePostRequest\x1a\x16.google.protobuf.EmptyBAZ?github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14social/v1/post.proto\x12\tsocial.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x05\n\x04Post\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n\tauthor_id\x18\x02 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x03 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x04 \x01(\tR\x07\x63ontent\x12\x39\n\x08metadata\x18\x05 \x03(\x0b\x32\x1d.social.v1.Post.MetadataEntryR\x08metadata\x12\x39\n\nvisibility\x18\x06 \x01(\x0e\x32\x19.social.v1.PostVisibilityR\nvisibility\x12\x39\n\ncreated_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n\nlike_count\x18\x08 \x01(\x03R\tlikeCount\x12#\n\rcomment_count\x18\t \x01(\x03R\x0c\x63ommentCount\x12\x1f\n\x0bshare_count\x18\r \x01(\x03R\nshareCount\x12*\n\x0e\x63ompetition_id\x18\n \x01(\tH\x00R\rcompetitionId\x88\x01\x01\x12.\n\x10\x63ompetition_slug\x18\x0b \x01(\tH\x01R\x0f\x63ompetitionSlug\x88\x01\x01\x12.\n\x10\x63ompetition_name\x18\x0c \x01(\tH\x02R\x0f\x63ompetitionName\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x11\n\x0f_competition_idB\x13\n\x11_competition_slugB\x13\n\x11_competition_name\"\x81\x03\n\x11\x43reatePostRequest\x12\x1b\n\tauthor_id\x18\x01 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x02 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x03 \x01(\tR\x07\x63ontent\x12\x46\n\x08metadata\x18\x04 \x03(\x0b\x32*.social.v1.CreatePostRequest.MetadataEntryR\x08metadata\x12\x39\n\nvisibility\x18\x05 \x01(\x0e\x32\x19.social.v1.PostVisibilityR\nvisibility\x12*\n\x0e\x63ompetition_id\x18\x06 \x01(\tH\x00R\rcompetitionId\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x11\n\x0f_competition_id\" \n\x0eGetPostRequest\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\"F\n\x11\x44\x65letePostRequest\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12!\n\x0crequester_id\x18\x02 \x01(\tR\x0brequesterId\"\x8f\x02\n\x07\x43omment\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n\x07post_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n\tparent_id\x18\x03 \x01(\tR\x08parentId\x12\x1b\n\tauthor_id\x18\x04 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x05 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x06 \x01(\tR\x07\x63ontent\x12\x14\n\x05\x64\x65pth\x18\x07 \x01(\x05R\x05\x64\x65pth\x12\x39\n\ncreated_at\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\"\xbb\x01\n\x14\x43reateCommentRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x1b\n\tparent_id\x18\x02 \x01(\tR\x08parentId\x12\x1b\n\tauthor_id\x18\x03 \x01(\tR\x08\x61uthorId\x12\x36\n\x0b\x61uthor_type\x18\x04 \x01(\x0e\x32\x15.social.v1.AuthorTypeR\nauthorType\x12\x18\n\x07\x63ontent\x18\x05 \x01(\tR\x07\x63ontent\"{\n\x13ListCommentsRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x19\n\x05limit\x18\x02 \x01(\x05H\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06\x63ursor\x18\x03 \x01(\tH\x01R\x06\x63ursor\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_cursor\"|\n\x14ListCommentsResponse\x12.\n\x08\x63omments\x18\x01 \x03(\x0b\x32\x12.social.v1.CommentR\x08\x63omments\x12$\n\x0bnext_cursor\x18\x02 \x01(\tH\x00R\nnextCursor\x88\x01\x01\x42\x0e\n\x0c_next_cursor\"\x9f\x01\n\x10SharePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId\x12.\n\x06target\x18\x03 \x01(\x0e\x32\x16.social.v1.ShareTargetR\x06target\x12\x1d\n\x07\x63hannel\x18\x04 \x01(\tH\x00R\x07\x63hannel\x88\x01\x01\x42\n\n\x08_channel\"N\n\x11SharePostResponse\x12\x18\n\x07\x63reated\x18\x01 \x01(\x08R\x07\x63reated\x12\x1f\n\x0bshare_count\x18\x02 \x01(\x03R\nshareCount\"F\n\x12UnsharePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId\"C\n\x0fLikePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId\"E\n\x11UnlikePostRequest\x12\x17\n\x07post_id\x18\x01 \x01(\tR\x06postId\x12\x17\n\x07user_id\x18\x02 \x01(\tR\x06userId*m\n\nAuthorType\x12\x1b\n\x17\x41UTHOR_TYPE_UNSPECIFIED\x10\x00\x12\x14\n\x10\x41UTHOR_TYPE_USER\x10\x01\x12\x15\n\x11\x41UTHOR_TYPE_AGENT\x10\x02\x12\x15\n\x11\x41UTHOR_TYPE_ADMIN\x10\x03*\x8b\x01\n\x0ePostVisibility\x12\x1f\n\x1bPOST_VISIBILITY_UNSPECIFIED\x10\x00\x12\x1a\n\x16POST_VISIBILITY_PUBLIC\x10\x01\x12\x1f\n\x1bPOST_VISIBILITY_COMPETITION\x10\x02\x12\x1b\n\x17POST_VISIBILITY_PRIVATE\x10\x03*]\n\x0bShareTarget\x12\x1c\n\x18SHARE_TARGET_UNSPECIFIED\x10\x00\x12\x15\n\x11SHARE_TARGET_FEED\x10\x01\x12\x19\n\x15SHARE_TARGET_EXTERNAL\x10\x02\x32\xd2\x04\n\x0bPostService\x12\x37\n\x06\x43reate\x12\x1c.social.v1.CreatePostRequest\x1a\x0f.social.v1.Post\x12\x31\n\x03Get\x12\x19.social.v1.GetPostRequest\x1a\x0f.social.v1.Post\x12>\n\x06\x44\x65lete\x12\x1c.social.v1.DeletePostRequest\x1a\x16.google.protobuf.Empty\x12\x44\n\rCreateComment\x12\x1f.social.v1.CreateCommentRequest\x1a\x12.social.v1.Comment\x12O\n\x0cListComments\x12\x1e.social.v1.ListCommentsRequest\x1a\x1f.social.v1.ListCommentsResponse\x12:\n\x04Like\x12\x1a.social.v1.LikePostRequest\x1a\x16.google.protobuf.Empty\x12>\n\x06Unlike\x12\x1c.social.v1.UnlikePostRequest\x1a\x16.google.protobuf.Empty\x12\x42\n\x05Share\x12\x1b.social.v1.SharePostRequest\x1a\x1c.social.v1.SharePostResponse\x12@\n\x07Unshare\x12\x1d.social.v1.UnsharePostRequest\x1a\x16.google.protobuf.EmptyBAZ?github.com/konoha-labs/insight-protos/gen/go/social/v1;socialv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,34 +38,42 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_POST_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_CREATEPOSTREQUEST_METADATAENTRY']._loaded_options = None
   _globals['_CREATEPOSTREQUEST_METADATAENTRY']._serialized_options = b'8\001'
-  _globals['_AUTHORTYPE']._serialized_start=2089
-  _globals['_AUTHORTYPE']._serialized_end=2198
-  _globals['_POSTVISIBILITY']._serialized_start=2201
-  _globals['_POSTVISIBILITY']._serialized_end=2340
+  _globals['_AUTHORTYPE']._serialized_start=2436
+  _globals['_AUTHORTYPE']._serialized_end=2545
+  _globals['_POSTVISIBILITY']._serialized_start=2548
+  _globals['_POSTVISIBILITY']._serialized_end=2687
+  _globals['_SHARETARGET']._serialized_start=2689
+  _globals['_SHARETARGET']._serialized_end=2782
   _globals['_POST']._serialized_start=98
-  _globals['_POST']._serialized_end=738
-  _globals['_POST_METADATAENTRY']._serialized_start=618
-  _globals['_POST_METADATAENTRY']._serialized_end=677
-  _globals['_CREATEPOSTREQUEST']._serialized_start=741
-  _globals['_CREATEPOSTREQUEST']._serialized_end=1126
-  _globals['_CREATEPOSTREQUEST_METADATAENTRY']._serialized_start=618
-  _globals['_CREATEPOSTREQUEST_METADATAENTRY']._serialized_end=677
-  _globals['_GETPOSTREQUEST']._serialized_start=1128
-  _globals['_GETPOSTREQUEST']._serialized_end=1160
-  _globals['_DELETEPOSTREQUEST']._serialized_start=1162
-  _globals['_DELETEPOSTREQUEST']._serialized_end=1232
-  _globals['_COMMENT']._serialized_start=1235
-  _globals['_COMMENT']._serialized_end=1506
-  _globals['_CREATECOMMENTREQUEST']._serialized_start=1509
-  _globals['_CREATECOMMENTREQUEST']._serialized_end=1696
-  _globals['_LISTCOMMENTSREQUEST']._serialized_start=1698
-  _globals['_LISTCOMMENTSREQUEST']._serialized_end=1821
-  _globals['_LISTCOMMENTSRESPONSE']._serialized_start=1823
-  _globals['_LISTCOMMENTSRESPONSE']._serialized_end=1947
-  _globals['_LIKEPOSTREQUEST']._serialized_start=1949
-  _globals['_LIKEPOSTREQUEST']._serialized_end=2016
-  _globals['_UNLIKEPOSTREQUEST']._serialized_start=2018
-  _globals['_UNLIKEPOSTREQUEST']._serialized_end=2087
-  _globals['_POSTSERVICE']._serialized_start=2343
-  _globals['_POSTSERVICE']._serialized_end=2803
+  _globals['_POST']._serialized_end=771
+  _globals['_POST_METADATAENTRY']._serialized_start=651
+  _globals['_POST_METADATAENTRY']._serialized_end=710
+  _globals['_CREATEPOSTREQUEST']._serialized_start=774
+  _globals['_CREATEPOSTREQUEST']._serialized_end=1159
+  _globals['_CREATEPOSTREQUEST_METADATAENTRY']._serialized_start=651
+  _globals['_CREATEPOSTREQUEST_METADATAENTRY']._serialized_end=710
+  _globals['_GETPOSTREQUEST']._serialized_start=1161
+  _globals['_GETPOSTREQUEST']._serialized_end=1193
+  _globals['_DELETEPOSTREQUEST']._serialized_start=1195
+  _globals['_DELETEPOSTREQUEST']._serialized_end=1265
+  _globals['_COMMENT']._serialized_start=1268
+  _globals['_COMMENT']._serialized_end=1539
+  _globals['_CREATECOMMENTREQUEST']._serialized_start=1542
+  _globals['_CREATECOMMENTREQUEST']._serialized_end=1729
+  _globals['_LISTCOMMENTSREQUEST']._serialized_start=1731
+  _globals['_LISTCOMMENTSREQUEST']._serialized_end=1854
+  _globals['_LISTCOMMENTSRESPONSE']._serialized_start=1856
+  _globals['_LISTCOMMENTSRESPONSE']._serialized_end=1980
+  _globals['_SHAREPOSTREQUEST']._serialized_start=1983
+  _globals['_SHAREPOSTREQUEST']._serialized_end=2142
+  _globals['_SHAREPOSTRESPONSE']._serialized_start=2144
+  _globals['_SHAREPOSTRESPONSE']._serialized_end=2222
+  _globals['_UNSHAREPOSTREQUEST']._serialized_start=2224
+  _globals['_UNSHAREPOSTREQUEST']._serialized_end=2294
+  _globals['_LIKEPOSTREQUEST']._serialized_start=2296
+  _globals['_LIKEPOSTREQUEST']._serialized_end=2363
+  _globals['_UNLIKEPOSTREQUEST']._serialized_start=2365
+  _globals['_UNLIKEPOSTREQUEST']._serialized_end=2434
+  _globals['_POSTSERVICE']._serialized_start=2785
+  _globals['_POSTSERVICE']._serialized_end=3379
 # @@protoc_insertion_point(module_scope)

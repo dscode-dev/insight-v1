@@ -1,11 +1,11 @@
 // FEATURE-COMMUNITIES-V1 Stage 2 — observability (Prometheus, shared registry).
 //
-//   community_requests_total{endpoint}        — volume by endpoint
-//   community_latency_seconds{endpoint}       — end-to-end handler latency
-//   community_cache_events_total{result}      — hit | miss (stats cache)
-//   community_partial_responses_total         — detail responses with partial=true
-//   community_upstream_timeouts_total{endpoint}
-//   community_rate_limited_total              — per-user limiter rejections
+//	community_requests_total{endpoint}        — volume by endpoint
+//	community_latency_seconds{endpoint}       — end-to-end handler latency
+//	community_cache_events_total{result}      — hit | miss (stats cache)
+//	community_partial_responses_total         — detail responses with partial=true
+//	community_upstream_timeouts_total{endpoint}
+//	community_rate_limited_total              — per-user limiter rejections
 package communitybff
 
 import (

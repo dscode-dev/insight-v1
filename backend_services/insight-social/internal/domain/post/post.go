@@ -36,6 +36,11 @@ var (
 	// once registered in the console; an unknown id is a rejection, not a value
 	// to store and reconcile later.
 	ErrCompetitionUnknown = errors.New("competition_unknown")
+	// A channel says where an EXTERNAL share went. On a repost it would be a
+	// value no reader can interpret, and the database refuses it too
+	// (post_shares_channel_scope_check).
+	ErrChannelOnRepost    = errors.New("channel_only_for_external_share")
+	ErrInvalidShareTarget = errors.New("invalid_share_target")
 )
 
 const (
@@ -78,6 +83,7 @@ type Post struct {
 	CreatedAt    time.Time
 	LikeCount    int64
 	CommentCount int64
+	ShareCount   int64
 
 	// The competition this post belongs to, when it belongs to one.
 	//
@@ -217,4 +223,24 @@ type Repository interface {
 	// Like / Unlike are idempotent at the DB level (re-like no-ops).
 	Like(ctx context.Context, postID, userID uuid.UUID) error
 	Unlike(ctx context.Context, postID, userID uuid.UUID) error
+
+	// Share returns whether a row was created — false when a repost already
+	// existed — and the post's resulting count. Unshare removes a repost only.
+	Share(ctx context.Context, postID, userID uuid.UUID, target, channel string) (bool, int64, error)
+	Unshare(ctx context.Context, postID, userID uuid.UUID) error
+}
+
+// Share targets. A repost is a STATE — one per user and post, toggled by a
+// button. An external share is an EVENT: the same person sends the same post
+// to two friends, and both count. They share a table and differ by this value.
+const (
+	ShareFeed     = "feed"
+	ShareExternal = "external"
+)
+
+// ValidShareTarget reports whether the value is one the database accepts.
+// Checked here so the caller gets a domain error instead of a constraint
+// violation it would have to parse.
+func ValidShareTarget(target string) bool {
+	return target == ShareFeed || target == ShareExternal
 }

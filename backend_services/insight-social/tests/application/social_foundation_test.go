@@ -11,6 +11,7 @@ package application_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,7 +101,9 @@ func (f *fakeGraph) FollowingIDs(_ context.Context, userID uuid.UUID, excludeMut
 // domfeed.Repository (reads) over one in-memory slice — which is
 // exactly what makes proof 6 (query-time generation) demonstrable.
 type fakePosts struct {
-	posts []*dompost.Post
+	reposts        map[string]bool
+	externalShares int
+	posts          []*dompost.Post
 	// liked is keyed by "<viewerID>|<postID>" → true.
 	liked map[string]bool
 }
@@ -515,4 +518,36 @@ func TestCommentDepthLimitedToTwo(t *testing.T) {
 	if _, err := dompost.NewComment(p.ID, &parentID, 2, uuid.New(), dompost.AuthorUser, "r2"); err != dompost.ErrMaxDepthExceeded {
 		t.Fatalf("depth 3 must be rejected, got %v", err)
 	}
+}
+
+// Shares, in memory. Modelled on the real rules rather than stubbed: a repost
+// is unique per (user, post), an external share repeats, and the count sums
+// both — so a test that exercises the service exercises the semantics too.
+func (f *fakePosts) Share(_ context.Context, postID, userID uuid.UUID, target, channel string) (bool, int64, error) {
+	key := postID.String() + "|" + userID.String()
+	created := true
+	if target == "feed" {
+		if f.reposts == nil {
+			f.reposts = map[string]bool{}
+		}
+		if f.reposts[key] {
+			created = false
+		} else {
+			f.reposts[key] = true
+		}
+	} else {
+		f.externalShares++
+	}
+	var count int64 = int64(f.externalShares)
+	for k := range f.reposts {
+		if strings.HasPrefix(k, postID.String()+"|") {
+			count++
+		}
+	}
+	return created, count, nil
+}
+
+func (f *fakePosts) Unshare(_ context.Context, postID, userID uuid.UUID) error {
+	delete(f.reposts, postID.String()+"|"+userID.String())
+	return nil
 }

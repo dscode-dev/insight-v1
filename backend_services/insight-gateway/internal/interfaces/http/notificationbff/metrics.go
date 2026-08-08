@@ -1,10 +1,10 @@
 // FEATURE-NOTIFICATIONS-V1 Stage 2 — observability (Prometheus, shared registry).
 //
-//   notification_requests_total{endpoint}
-//   notification_latency_seconds{endpoint}
-//   notification_cache_events_total{result}     — unread-count cache hit|miss
-//   notification_partial_responses_total        — list responses with partial=true
-//   notification_upstream_timeouts_total{endpoint}
+//	notification_requests_total{endpoint}
+//	notification_latency_seconds{endpoint}
+//	notification_cache_events_total{result}     — unread-count cache hit|miss
+//	notification_partial_responses_total        — list responses with partial=true
+//	notification_upstream_timeouts_total{endpoint}
 package notificationbff
 
 import "github.com/prometheus/client_golang/prometheus"

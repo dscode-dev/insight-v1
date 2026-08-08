@@ -34,6 +34,9 @@ message Post {
   google.protobuf.Timestamp created_at = 7;
   int64 like_count = 8;
   int64 comment_count = 9;
+  // Reposts + external shares, summed. Sits beside like_count and
+  // comment_count because a reader treats all three the same way.
+  int64 share_count = 13;
   // The competition this post belongs to, when it belongs to one.
   //
   // The public feed is partitioned by competition: the app shows a horizontal
@@ -109,6 +112,47 @@ message ListCommentsResponse {
   optional string next_cursor = 2;
 }
 
+// A repost onto the sharer's own timeline, or the post leaving Insight.
+//
+// They differ in what they mean, not in shape. A repost is a STATE — you have
+// reposted a post or you have not, and the button is a toggle. An external
+// share is an EVENT: the same person sends the same post to two friends, and
+// deduplicating that would undercount exactly what the metric measures.
+enum ShareTarget {
+  SHARE_TARGET_UNSPECIFIED = 0;
+  // Repost. Idempotent: sharing twice leaves one, and `created` says which
+  // happened so the client can tell a fresh repost from a no-op.
+  SHARE_TARGET_FEED = 1;
+  // Left the platform — a copied link, a send to another app. Repeatable.
+  SHARE_TARGET_EXTERNAL = 2;
+}
+
+message SharePostRequest {
+  string post_id = 1;
+  string user_id = 2;
+  ShareTarget target = 3;
+  // Where an external share went ("whatsapp", "copy_link"), when the client
+  // knows. Never required — the client often cannot tell, and a mandatory
+  // field would be filled with a guess. Rejected on a repost, where it would
+  // be a value nobody can interpret.
+  optional string channel = 4;
+}
+
+message SharePostResponse {
+  // False when a repost already existed. The row is unchanged and the count
+  // did not move; without this the client cannot distinguish "done" from
+  // "already done" and would animate a state change that never happened.
+  bool created = 1;
+  // The post's share count after this call — both kinds summed, which is what
+  // "compartilhamentos" means to someone reading a post.
+  int64 share_count = 2;
+}
+
+message UnsharePostRequest {
+  string post_id = 1;
+  string user_id = 2;
+}
+
 // Likes — the only V1 reaction.
 message LikePostRequest {
   string post_id = 1;
@@ -128,4 +172,10 @@ service PostService {
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
   rpc Like(LikePostRequest) returns (google.protobuf.Empty);
   rpc Unlike(UnlikePostRequest) returns (google.protobuf.Empty);
+
+  // Compartilhamento. Two kinds behind one call — see ShareTarget.
+  rpc Share(SharePostRequest) returns (SharePostResponse);
+  // Undoes a repost only. An external share is an event that already
+  // happened somewhere else; there is nothing to take back.
+  rpc Unshare(UnsharePostRequest) returns (google.protobuf.Empty);
 }

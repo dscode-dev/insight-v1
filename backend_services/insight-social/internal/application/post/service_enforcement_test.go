@@ -8,6 +8,7 @@ package post
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,7 +16,11 @@ import (
 	dompost "github.com/konoha-labs/insight-social/internal/domain/post"
 )
 
-type memPostRepo struct{ posts map[uuid.UUID]*dompost.Post }
+type memPostRepo struct {
+	posts          map[uuid.UUID]*dompost.Post
+	reposts        map[string]bool
+	externalShares int
+}
 
 func newMemRepo() *memPostRepo { return &memPostRepo{posts: map[uuid.UUID]*dompost.Post{}} }
 
@@ -91,4 +96,36 @@ func TestCreate_AgentGuardError_FailsClosed(t *testing.T) {
 	if err == nil {
 		t.Fatal("guard error must fail closed (no publish)")
 	}
+}
+
+// Shares, in memory. Modelled on the real rules rather than stubbed: a repost
+// is unique per (user, post), an external share repeats, and the count sums
+// both — so a test that exercises the service exercises the semantics too.
+func (m *memPostRepo) Share(_ context.Context, postID, userID uuid.UUID, target, channel string) (bool, int64, error) {
+	key := postID.String() + "|" + userID.String()
+	created := true
+	if target == "feed" {
+		if m.reposts == nil {
+			m.reposts = map[string]bool{}
+		}
+		if m.reposts[key] {
+			created = false
+		} else {
+			m.reposts[key] = true
+		}
+	} else {
+		m.externalShares++
+	}
+	var count int64 = int64(m.externalShares)
+	for k := range m.reposts {
+		if strings.HasPrefix(k, postID.String()+"|") {
+			count++
+		}
+	}
+	return created, count, nil
+}
+
+func (m *memPostRepo) Unshare(_ context.Context, postID, userID uuid.UUID) error {
+	delete(m.reposts, postID.String()+"|"+userID.String())
+	return nil
 }

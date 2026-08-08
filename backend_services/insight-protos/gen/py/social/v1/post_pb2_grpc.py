@@ -50,6 +50,16 @@ class PostServiceStub:
                 request_serializer=social_dot_v1_dot_post__pb2.UnlikePostRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.Share = channel.unary_unary(
+                '/social.v1.PostService/Share',
+                request_serializer=social_dot_v1_dot_post__pb2.SharePostRequest.SerializeToString,
+                response_deserializer=social_dot_v1_dot_post__pb2.SharePostResponse.FromString,
+                _registered_method=True)
+        self.Unshare = channel.unary_unary(
+                '/social.v1.PostService/Unshare',
+                request_serializer=social_dot_v1_dot_post__pb2.UnsharePostRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
 
 
 class PostServiceServicer:
@@ -97,6 +107,21 @@ class PostServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Share(self, request, context):
+        """Compartilhamento. Two kinds behind one call — see ShareTarget.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Unshare(self, request, context):
+        """Undoes a repost only. An external share is an event that already
+        happened somewhere else; there is nothing to take back.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_PostServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -133,6 +158,16 @@ def add_PostServiceServicer_to_server(servicer, server):
             'Unlike': grpc.unary_unary_rpc_method_handler(
                     servicer.Unlike,
                     request_deserializer=social_dot_v1_dot_post__pb2.UnlikePostRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Share': grpc.unary_unary_rpc_method_handler(
+                    servicer.Share,
+                    request_deserializer=social_dot_v1_dot_post__pb2.SharePostRequest.FromString,
+                    response_serializer=social_dot_v1_dot_post__pb2.SharePostResponse.SerializeToString,
+            ),
+            'Unshare': grpc.unary_unary_rpc_method_handler(
+                    servicer.Unshare,
+                    request_deserializer=social_dot_v1_dot_post__pb2.UnsharePostRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -324,6 +359,60 @@ class PostService:
             target,
             '/social.v1.PostService/Unlike',
             social_dot_v1_dot_post__pb2.UnlikePostRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Share(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/social.v1.PostService/Share',
+            social_dot_v1_dot_post__pb2.SharePostRequest.SerializeToString,
+            social_dot_v1_dot_post__pb2.SharePostResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Unshare(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/social.v1.PostService/Unshare',
+            social_dot_v1_dot_post__pb2.UnsharePostRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,

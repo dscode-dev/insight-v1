@@ -147,3 +147,27 @@ func (s *Service) Unlike(ctx context.Context, postID, userID uuid.UUID) error {
 	observability.ReactionsTotal.WithLabelValues("unlike").Inc()
 	return nil
 }
+
+// Share records a repost or an external share.
+//
+// The two rules that are not the repository's job: a channel belongs only to
+// an external share, and an unknown target must not reach SQL. Both produce a
+// domain error the API maps to a 400 naming the field.
+func (s *Service) Share(
+	ctx context.Context, postID, userID uuid.UUID, target, channel string,
+) (created bool, count int64, err error) {
+	if !dompost.ValidShareTarget(target) {
+		return false, 0, dompost.ErrInvalidShareTarget
+	}
+	if target == dompost.ShareFeed && channel != "" {
+		return false, 0, dompost.ErrChannelOnRepost
+	}
+	return s.repo.Share(ctx, postID, userID, target, channel)
+}
+
+// Unshare removes the caller's repost. Idempotent: removing one that is not
+// there succeeds, because the button is a toggle and the user's intent is
+// satisfied either way.
+func (s *Service) Unshare(ctx context.Context, postID, userID uuid.UUID) error {
+	return s.repo.Unshare(ctx, postID, userID)
+}

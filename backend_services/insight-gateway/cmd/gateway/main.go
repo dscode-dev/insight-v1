@@ -671,6 +671,12 @@ func main() {
 			route(http.MethodGet, "/v1/posts/{postId}/comments", "comments_list", foundation.ListComments)
 			route(http.MethodPost, "/v1/posts/{postId}/like", "like", foundation.LikePost)
 			route(http.MethodDelete, "/v1/posts/{postId}/like", "unlike", foundation.UnlikePost)
+			// Compartilhamento. POST carries the target in the body — repost
+			// or external — because the two are the same action with different
+			// meanings, and two routes would suggest otherwise. DELETE removes
+			// a repost; an external share is an event with nothing to undo.
+			route(http.MethodPost, "/v1/posts/{postId}/share", "share", foundation.SharePost)
+			route(http.MethodDelete, "/v1/posts/{postId}/share", "unshare", foundation.UnsharePost)
 			// AZTECA-SOCIAL-A — Saved Posts + Boosts (proxied to social).
 			route(http.MethodPost, "/v1/posts/{postId}/save", "save", interactionsHandler.Save)
 			route(http.MethodDelete, "/v1/posts/{postId}/save", "unsave", interactionsHandler.Unsave)

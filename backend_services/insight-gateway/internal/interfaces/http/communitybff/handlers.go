@@ -3,11 +3,11 @@
 // Endpoint matrix (all requireAuth; the viewer id is the VERIFIED session
 // identity from authmw, never client-supplied):
 //
-//   GET    /v1/hub/communities/{id}              → Detail (aggregate)
-//   GET    /v1/hub/communities/{id}/members      → MembersPage (cursor, ?role=)
-//   GET    /v1/hub/communities/{id}/discussions  → DiscussionsPage (community feed)
-//   POST   /v1/hub/communities/{id}/join         → MembershipResult
-//   DELETE /v1/hub/communities/{id}/membership   → MembershipResult (leave)
+//	GET    /v1/hub/communities/{id}              → Detail (aggregate)
+//	GET    /v1/hub/communities/{id}/members      → MembersPage (cursor, ?role=)
+//	GET    /v1/hub/communities/{id}/discussions  → DiscussionsPage (community feed)
+//	POST   /v1/hub/communities/{id}/join         → MembershipResult
+//	DELETE /v1/hub/communities/{id}/membership   → MembershipResult (leave)
 //
 // The community feed is Discussions ONLY (ADR-0001) — never Posts, never a
 // hybrid. Deep links are built server-side; the client only navigates.

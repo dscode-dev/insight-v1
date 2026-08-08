@@ -61,6 +61,7 @@ const postCols = `
 p.id, p.author_id, p.author_type, p.content, p.metadata, p.visibility, p.created_at,
 (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
 (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+(SELECT COUNT(*) FROM post_shares s WHERE s.post_id = p.id) AS share_count,
 p.competition_id,
 -- Denormalised on read so the client can draw the competition chip without a
 -- second call. LEFT JOIN, not INNER: most posts carry no competition, and an
@@ -112,7 +113,7 @@ func scanPost(row pgx.Row) (*dompost.Post, error) {
 	var authorType, visibility string
 	var meta []byte
 	err := row.Scan(&p.ID, &p.AuthorID, &authorType, &p.Content, &meta,
-		&visibility, &p.CreatedAt, &p.LikeCount, &p.CommentCount,
+		&visibility, &p.CreatedAt, &p.LikeCount, &p.CommentCount, &p.ShareCount,
 		&p.CompetitionID, &p.CompetitionSlug, &p.CompetitionName)
 	if err != nil {
 		return nil, err
@@ -247,4 +248,88 @@ func decodeTimeCursor(cursor string) time.Time {
 		return time.Now().UTC().Add(time.Minute)
 	}
 	return time.Unix(0, nanos).UTC()
+}
+
+// ---- shares -----------------------------------------------------------------
+//
+// Two kinds behind one table, told apart by `target` — see migration 00014.
+// A repost is a STATE (unique per user and post, toggled by a button); an
+// external share is an EVENT (the same person sends the same post twice, and
+// both count).
+
+// Share records one share and returns whether a row was created plus the
+// post's resulting count.
+//
+// `created` is false when a repost already existed. Without it the caller
+// cannot tell "done" from "already done", and a client would animate a state
+// change that never happened.
+func (r *Repository) Share(
+	ctx context.Context, postID, userID uuid.UUID, target, channel string,
+) (created bool, count int64, err error) {
+	// A share of a deleted post would satisfy the foreign key (the row
+	// survives a soft delete) while referring to something no reader can see.
+	if _, err := r.GetPost(ctx, postID); err != nil {
+		return false, 0, err
+	}
+
+	var chanArg *string
+	if target == dompost.ShareExternal && channel != "" {
+		chanArg = &channel
+	}
+
+	// ON CONFLICT targets the PARTIAL unique index, so it applies to reposts
+	// and leaves external shares free to repeat. `RETURNING` fires only on a
+	// real insert, which is exactly the signal `created` needs — checking
+	// beforehand would race with a concurrent tap on the same button.
+	var inserted uuid.UUID
+	scanErr := r.pool.QueryRow(ctx, `
+INSERT INTO post_shares (post_id, user_id, target, channel)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, post_id) WHERE target = 'feed' DO NOTHING
+RETURNING id`,
+		postID, userID, target, chanArg,
+	).Scan(&inserted)
+
+	switch {
+	case scanErr == nil:
+		created = true
+	case errors.Is(scanErr, pgx.ErrNoRows):
+		// The repost was already there. Not an error: the button is a toggle
+		// and the user's intent is satisfied either way.
+		created = false
+	default:
+		return false, 0, fmt.Errorf("postrepo share: %w", scanErr)
+	}
+
+	count, err = r.ShareCount(ctx, postID)
+	if err != nil {
+		return created, 0, err
+	}
+	return created, count, nil
+}
+
+// Unshare removes the caller's repost. External shares are not removable —
+// they describe something that already happened outside the platform.
+func (r *Repository) Unshare(ctx context.Context, postID, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx,
+		`DELETE FROM post_shares
+		  WHERE post_id = $1 AND user_id = $2 AND target = 'feed'`,
+		postID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("postrepo unshare: %w", err)
+	}
+	return nil
+}
+
+// ShareCount sums BOTH kinds. "Compartilhamentos" beside a post means how many
+// times it travelled, and a reader does not distinguish the two.
+func (r *Repository) ShareCount(ctx context.Context, postID uuid.UUID) (int64, error) {
+	var count int64
+	if err := r.pool.QueryRow(ctx,
+		`SELECT count(*) FROM post_shares WHERE post_id = $1`, postID,
+	).Scan(&count); err != nil {
+		return 0, fmt.Errorf("postrepo share_count: %w", err)
+	}
+	return count, nil
 }

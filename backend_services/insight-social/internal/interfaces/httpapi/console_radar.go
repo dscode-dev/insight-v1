@@ -48,10 +48,10 @@ type radarSource struct {
 	LastErrorAt   *time.Time `json:"last_error_at"`
 	LastError     *string    `json:"last_error"`
 
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	UpdatedBy *string    `json:"updated_by"`
-	ItemCount int        `json:"item_count"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedBy *string   `json:"updated_by"`
+	ItemCount int       `json:"item_count"`
 	// Derived, so the console can render "chave configurada" without the key.
 	HasAPIKey bool `json:"has_api_key"`
 }

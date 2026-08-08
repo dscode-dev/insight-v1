@@ -64,10 +64,10 @@ type competitionRecord struct {
 	// time.Time, not string: created_at/updated_at are timestamptz, and pgx
 	// will not scan those into a string — it fails at runtime, on a path the
 	// validation tests never touch because they never open a connection.
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	UpdatedBy    *string `json:"updated_by"`
-	PostCount    int     `json:"post_count"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedBy *string   `json:"updated_by"`
+	PostCount int       `json:"post_count"`
 }
 
 // ConsoleCompetitionsList — GET /console/social/competitions
