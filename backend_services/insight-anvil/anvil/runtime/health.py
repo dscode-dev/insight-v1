@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,53 @@ class HealthServer:
         readiness_check: ReadinessCheck,
         feature_api_key: str = "",
         feature_snapshot: FeatureSnapshot | None = None,
+        historical_features: Any = None,
     ):
         self._cfg = cfg
         self._readiness_check = readiness_check
         self._feature_api_key = feature_api_key
         self._feature_snapshot = feature_snapshot
+        # HistoricalFeatureService. Optional: a deployment without the
+        # historical tables answers 503 on those routes and serves the rest.
+        self._historical_features = historical_features
         self._server: asyncio.AbstractServer | None = None
+
+    async def _historical_query(self, kind: str, query: dict[str, list[str]]) -> Any:
+        """Dispatch one historical-feature request.
+
+        Returns None for an unknown kind so the caller answers 404 — a
+        misspelled feature name must not look like an empty baseline, which
+        is what returning `{}` would do.
+        """
+        service = self._historical_features
+        seasons = [s for s in _all(query, "seasons") if s]
+
+        if kind == "coverage":
+            return await service.coverage()
+        # `club_id`, not the source's spelling of the name — see
+        # HistoricalFeatureService's module docstring for what filtering on
+        # the raw name silently costs.
+        if kind == "team":
+            return await service.team_baseline(
+                club_id=_first(query, "club_id"),
+                competition_key=_first(query, "competition_key"),
+                seasons=seasons or None)
+        if kind == "team-stats":
+            return await service.team_stats_baseline(
+                club_id=_first(query, "club_id"),
+                competition_key=_first(query, "competition_key"),
+                seasons=seasons or None)
+        if kind == "head-to-head":
+            return await service.head_to_head(
+                home_club_id=_first(query, "home_club_id"),
+                away_club_id=_first(query, "away_club_id"),
+                competition_key=_optional(query, "competition_key"),
+                limit=_positive_int(query, "limit", 10, 500))
+        if kind == "market":
+            return await service.market_baseline(
+                competition_key=_first(query, "competition_key"),
+                seasons=seasons or None)
+        return None
 
     async def start(self) -> None:
         self._server = await asyncio.start_server(
@@ -104,6 +146,31 @@ class HealthServer:
 
                 body, content_type = render_metrics()
                 await self._write_raw(writer, 200, content_type, body)
+                return
+
+            # Historical baselines — what Atlas compares a live reading
+            # against. Same api-key gate as the match features: one key, one
+            # surface, so enabling one does not silently open the other.
+            hist_prefix = "/internal/features/historical/"
+            if method == "GET" and path.startswith(hist_prefix):
+                if not self._feature_api_key or self._historical_features is None:
+                    await self._write_json(writer, 503, {"detail": "historical_api_disabled"})
+                    return
+                supplied = headers.get("x-anvil-api-key", "")
+                if not hmac.compare_digest(supplied, self._feature_api_key):
+                    await self._write_json(writer, 401, {"detail": "invalid_api_key"})
+                    return
+                query = parse_qs(parsed.query)
+                kind = path[len(hist_prefix):].strip("/")
+                try:
+                    payload = await self._historical_query(kind, query)
+                except (ValueError, KeyError) as exc:
+                    await self._write_json(writer, 400, {"detail": str(exc)})
+                    return
+                if payload is None:
+                    await self._write_json(writer, 404, {"detail": "unknown_historical_feature"})
+                    return
+                await self._write_json(writer, 200, payload)
                 return
 
             prefix = "/internal/features/matches/"
@@ -208,11 +275,31 @@ class HealthServer:
         return datetime.now(timezone.utc).isoformat()
 
 
+def _all(query: dict[str, list[str]], key: str) -> list[str]:
+    """Repeated params AND comma-separated, since callers use both."""
+    out: list[str] = []
+    for raw in query.get(key, []):
+        out.extend(part.strip() for part in raw.split(","))
+    return [v for v in out if v]
+
+
 def _first(query: dict[str, list[str]], key: str) -> str:
     values = query.get(key)
     if not values or not values[0]:
         raise KeyError(f"{key} is required")
     return values[0]
+
+
+def _optional(query: dict[str, list[str]], key: str) -> str | None:
+    """For parameters that are genuinely optional.
+
+    `_first` raises when the value is absent, so `_first(q, k) or None` cannot
+    express "optional" — the exception fires before the `or` is reached. That
+    is how head-to-head, whose competition filter is optional by design,
+    answered 400 `competition_key is required` to every call that omitted it.
+    """
+    values = query.get(key)
+    return values[0] if values and values[0] else None
 
 
 def _positive_int(

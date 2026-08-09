@@ -118,13 +118,18 @@ def test_emits_nothing_below_minimum_similarity() -> None:
 
 
 def test_emits_nothing_on_low_agreement() -> None:
-    matches = [_match(f"m{i}", 0.9) for i in range(4)]
-    assert (
-        OracleSimilarityDetector().detect(
-            _inputs(_result(matches, neighbor_agreement=0.1))
-        )
-        == []
-    )
+    # Low agreement must come from a genuinely WIDE distance
+    # distribution, not from a hand-set confidence field. The detector
+    # now re-scores the neighbourhood it actually accepted (previously
+    # it trusted a `confidence` computed over the pre-filter set), and
+    # SimilarityService always derives confidence from these very
+    # matches — so a fixture pairing four identical similarities with
+    # neighbor_agreement=0.1 described a state production cannot reach.
+    matches = [
+        _match("m0", 0.95), _match("m1", 0.92),
+        _match("m2", 0.55), _match("m3", 0.50),
+    ]
+    assert OracleSimilarityDetector().detect(_inputs(_result(matches))) == []
 
 
 def test_gate_rejects_incompatible_competition() -> None:

@@ -34,6 +34,13 @@ class Execution:
     source_contribution: dict[str, int] = field(default_factory=dict)
     atlas_ingestion: dict[str, Any] = field(default_factory=lambda: {"status": "not_started"})
     generation: str = ""
+    # Why a `failed` execution failed. Empty on every other state.
+    #
+    # Without it a crashed execution could only say "failed", and the reason
+    # lived in a stack trace scrolling past among access logs. The console
+    # shows this string, so the first question an operator asks is answered
+    # on the screen they are already looking at.
+    error: str = ""
     execution_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = ""
     started_at: str = ""

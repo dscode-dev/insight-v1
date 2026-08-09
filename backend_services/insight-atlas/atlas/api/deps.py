@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +13,7 @@ from atlas.inference import InferenceEngine
 from atlas.registry import ModelRegistry
 from atlas.store import FeatureStore, InferenceCache
 from atlas.training import TrainingPipeline
+
 if TYPE_CHECKING:
     from atlas.similarity import SimilarityService
     from atlas.vector_memory.repository import PgVectorMemoryRepository
@@ -28,11 +30,13 @@ class AppContainer:
     training: TrainingPipeline
     analytics: AnalyticsReader
     sentiment: SentimentReader
-    vector_memory: "PgVectorMemoryRepository | Any"
-    similarity: "SimilarityService | Any"
+    vector_memory: PgVectorMemoryRepository | Any
+    similarity: SimilarityService | Any
     replay: Any
     ingestion: Any
     datasets: Any
+    strength: Any
+    approvals: Any
 
 
 def get_container(request: Request) -> AppContainer:
@@ -46,7 +50,9 @@ def require_internal_token(
     container: AppContainer = Depends(get_container),
     x_internal_token: str | None = Header(default=None),
 ) -> None:
-    if not x_internal_token or x_internal_token != container.settings.internal_token:
+    if not x_internal_token or not secrets.compare_digest(
+        x_internal_token, container.settings.internal_token
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="internal_token_required"
         )

@@ -39,6 +39,16 @@ def cache_key(
             f.match_phase or "-",
             request.top_k,
             f"{request.minimum_similarity:.4f}",
+            # `minimum_neighbors` is NOT merely a display field: it
+            # drives `coverage = len(matches) / minimum_neighbors`,
+            # which feeds `confidence`, and it is echoed into
+            # `SimilarityConfidence.minimum_neighbors` — which
+            # OracleSimilarityDetector gates on directly. Leaving it out
+            # of the key meant two requests differing only in this value
+            # collided, and the second silently received the first's
+            # coverage/confidence (e.g. 1.0 instead of 0.4 for the same
+            # four neighbours), which could flip an Oracle gate.
+            request.minimum_neighbors,
         )
     )
 

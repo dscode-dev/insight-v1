@@ -27,6 +27,8 @@ const (
 	PostService_ListComments_FullMethodName  = "/social.v1.PostService/ListComments"
 	PostService_Like_FullMethodName          = "/social.v1.PostService/Like"
 	PostService_Unlike_FullMethodName        = "/social.v1.PostService/Unlike"
+	PostService_Share_FullMethodName         = "/social.v1.PostService/Share"
+	PostService_Unshare_FullMethodName       = "/social.v1.PostService/Unshare"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -40,6 +42,11 @@ type PostServiceClient interface {
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
 	Like(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Unlike(ctx context.Context, in *UnlikePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Compartilhamento. Two kinds behind one call — see ShareTarget.
+	Share(ctx context.Context, in *SharePostRequest, opts ...grpc.CallOption) (*SharePostResponse, error)
+	// Undoes a repost only. An external share is an event that already
+	// happened somewhere else; there is nothing to take back.
+	Unshare(ctx context.Context, in *UnsharePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type postServiceClient struct {
@@ -120,6 +127,26 @@ func (c *postServiceClient) Unlike(ctx context.Context, in *UnlikePostRequest, o
 	return out, nil
 }
 
+func (c *postServiceClient) Share(ctx context.Context, in *SharePostRequest, opts ...grpc.CallOption) (*SharePostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SharePostResponse)
+	err := c.cc.Invoke(ctx, PostService_Share_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) Unshare(ctx context.Context, in *UnsharePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_Unshare_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations should embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -131,6 +158,11 @@ type PostServiceServer interface {
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
 	Like(context.Context, *LikePostRequest) (*emptypb.Empty, error)
 	Unlike(context.Context, *UnlikePostRequest) (*emptypb.Empty, error)
+	// Compartilhamento. Two kinds behind one call — see ShareTarget.
+	Share(context.Context, *SharePostRequest) (*SharePostResponse, error)
+	// Undoes a repost only. An external share is an event that already
+	// happened somewhere else; there is nothing to take back.
+	Unshare(context.Context, *UnsharePostRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedPostServiceServer should be embedded to have
@@ -160,6 +192,12 @@ func (UnimplementedPostServiceServer) Like(context.Context, *LikePostRequest) (*
 }
 func (UnimplementedPostServiceServer) Unlike(context.Context, *UnlikePostRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unlike not implemented")
+}
+func (UnimplementedPostServiceServer) Share(context.Context, *SharePostRequest) (*SharePostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Share not implemented")
+}
+func (UnimplementedPostServiceServer) Unshare(context.Context, *UnsharePostRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Unshare not implemented")
 }
 func (UnimplementedPostServiceServer) testEmbeddedByValue() {}
 
@@ -307,6 +345,42 @@ func _PostService_Unlike_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_Share_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SharePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).Share(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_Share_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).Share(ctx, req.(*SharePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_Unshare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsharePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).Unshare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_Unshare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).Unshare(ctx, req.(*UnsharePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -341,6 +415,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unlike",
 			Handler:    _PostService_Unlike_Handler,
+		},
+		{
+			MethodName: "Share",
+			Handler:    _PostService_Share_Handler,
+		},
+		{
+			MethodName: "Unshare",
+			Handler:    _PostService_Unshare_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

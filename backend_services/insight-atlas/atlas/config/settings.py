@@ -39,9 +39,30 @@ class Settings(BaseSettings):
         default=10, alias="INFERENCE_CACHE_TTL_SECONDS"
     )
 
-    # --- Anvil analytics API (Gateway mediated) ---
+    # --- Anvil analytics API (Gateway mediated by default) ---
     anvil_api_base_url: str = Field(..., alias="ATLAS_ANVIL_API_BASE_URL")
     anvil_api_key: str = Field(..., alias="ATLAS_ANVIL_API_KEY", min_length=32)
+    # Path prefix for the feature read.
+    #
+    # The default is the GATEWAY-facing route: the Insight Gateway
+    # authenticates Atlas, then forwards to Anvil, rewriting
+    # `/internal/anvil/features/...` to the `/internal/features/...`
+    # that Anvil itself serves. When Anvil runs alongside Atlas (same
+    # host, no gateway in between) nothing performs that rewrite, and
+    # the default prefix 404s against a direct Anvil. Set this to
+    # `/internal/features` in that deployment.
+    anvil_features_path_prefix: str = Field(
+        default="/internal/anvil/features", alias="ATLAS_ANVIL_FEATURES_PATH_PREFIX"
+    )
+    # Header carrying the API key. Same reasoning as the path prefix:
+    # the gateway accepts `X-Atlas-Anvil-Key` and re-signs the call with
+    # the `x-anvil-api-key` Anvil actually checks. Talking straight to
+    # Anvil, nothing translates, and the mismatch surfaces as a 401 that
+    # looks exactly like a wrong key. Set to `x-anvil-api-key` when
+    # Anvil is colocated.
+    anvil_api_key_header: str = Field(
+        default="X-Atlas-Anvil-Key", alias="ATLAS_ANVIL_API_KEY_HEADER"
+    )
     anvil_api_timeout_seconds: float = Field(
         default=8.0, alias="ATLAS_ANVIL_API_TIMEOUT_SECONDS"
     )
@@ -60,8 +81,15 @@ class Settings(BaseSettings):
         default="/var/atlas/datasets/historical.jsonl",
         alias="ATLAS_HISTORICAL_DATASET_PATH",
     )
+    # `current/` is what VectorMemoryRefresher publishes after each rebuild.
+    #
+    # The previous default named `outcome_v4-mld6-20260623/matches.jsonl`, a
+    # directory no script in this repository produces — so a fresh deployment
+    # answered /atlas/intelligence with a FileNotFoundError until someone
+    # pointed this somewhere real by hand. A default has to name a path the
+    # system itself creates.
     intelligence_dataset_path: str = Field(
-        default="/var/atlas/datasets/outcome_v4-mld6-20260623/matches.jsonl",
+        default="/var/atlas/datasets/current/matches.jsonl",
         alias="ATLAS_INTELLIGENCE_DATASET_PATH",
     )
     explorer_data_root: str = Field(
@@ -177,6 +205,40 @@ class Settings(BaseSettings):
     janitor_inactivity_seconds: int = Field(
         default=1800, alias="JANITOR_INACTIVITY_SECONDS"
     )
+    # --- ATLAS-SIM-A: live team-strength engine ---
+    # Explorer's validated lake is the source of truth for match RESULTS
+    # (there is no live "match finished N-M" canonical event — only
+    # in-play signals flow through the Hub stream). The strength-sync
+    # watcher self-throttles well above the shared 30s watcher interval
+    # since re-scanning the whole lake every tick would be wasteful.
+    strength_sync_enabled: bool = Field(
+        default=True, alias="ATLAS_STRENGTH_SYNC_ENABLED"
+    )
+    strength_sync_min_interval_seconds: float = Field(
+        default=1800.0, alias="ATLAS_STRENGTH_SYNC_MIN_INTERVAL_SECONDS", gt=0.0
+    )
+    # Rebuilds the similarity corpus from the lake and re-encodes it into
+    # pgvector. Self-throttles the same way StrengthSyncWatcher does, and
+    # additionally skips entirely when the lake fingerprint has not moved —
+    # the usual case, since collection is far less frequent than the tick.
+    vector_refresh_enabled: bool = Field(
+        default=True, alias="ATLAS_VECTOR_REFRESH_ENABLED"
+    )
+    vector_refresh_min_interval_seconds: float = Field(
+        default=1800.0, alias="ATLAS_VECTOR_REFRESH_MIN_INTERVAL_SECONDS", gt=0.0
+    )
+    vector_refresh_dataset_dir: str = Field(
+        default="/var/atlas/datasets", alias="ATLAS_VECTOR_REFRESH_DATASET_DIR",
+    )
+    # Frozen regression baseline (ATLAS_V1_FROZEN.md). Empty = no
+    # baseline loaded, which is the historical behaviour: every replay
+    # then reports quality WITHOUT a regression section, because there
+    # is nothing to diff against. Record one with
+    # `scripts/atlas_record_baseline.py` and point this at it to make
+    # the Quality Gate's regression half actually able to fire.
+    regression_baseline_path: str = Field(
+        default="", alias="ATLAS_REGRESSION_BASELINE_PATH"
+    )
     atlas_consumer_group: str = Field(
         default="insight-atlas", alias="ATLAS_CONSUMER_GROUP"
     )
@@ -191,6 +253,14 @@ class Settings(BaseSettings):
     )
     atlas_retry_key_prefix: str = Field(
         default="atlas:canonical_retry:", alias="ATLAS_RETRY_KEY_PREFIX"
+    )
+    # Idempotency-ledger + handler-retry-counter keys are per-event_id and
+    # otherwise live forever (every event Atlas has ever processed leaves a
+    # permanent Redis key). A production consumer never needs idempotency
+    # protection older than a plausible redelivery/outage window; 7 days is
+    # generous relative to XAUTOCLAIM's pending_reclaim_idle_ms (seconds).
+    atlas_processed_ttl_seconds: int = Field(
+        default=604_800, alias="ATLAS_PROCESSED_TTL_SECONDS"
     )
     atlas_pending_reclaim_idle_ms: int = Field(
         default=60_000, alias="ATLAS_PENDING_RECLAIM_IDLE_MS"
@@ -241,6 +311,7 @@ class Settings(BaseSettings):
         "historical_test_year",
         "atlas_pending_reclaim_idle_ms",
         "atlas_max_handler_attempts",
+        "atlas_processed_ttl_seconds",
         "odds_hot_ttl_seconds",
         "odds_history_limit",
         "identity_tolerance_seconds",
@@ -260,7 +331,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def _watcher_jitter_fits_interval(self) -> "Settings":
+    def _watcher_jitter_fits_interval(self) -> Settings:
         if self.watcher_jitter_seconds < 0:
             raise ValueError("ATLAS_WATCHER_JITTER_SECONDS must be >= 0")
         if self.watcher_jitter_seconds >= self.watcher_interval_seconds:

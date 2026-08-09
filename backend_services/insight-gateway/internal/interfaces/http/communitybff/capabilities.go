@@ -44,7 +44,7 @@ type Capabilities struct {
 //   - moderator           → + delete discussions (moderation).
 //   - admin               → + manage/invite members, settings, admin panel.
 //   - owner               → everything admin can, but CANNOT leave (must
-//                           transfer ownership first — a V1-absent capability).
+//     transfer ownership first — a V1-absent capability).
 func capabilitiesFor(role string, isMember, privacyPublic bool) Capabilities {
 	c := Capabilities{}
 	if !isMember {

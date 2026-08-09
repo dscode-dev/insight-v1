@@ -21,6 +21,12 @@ from atlas.intelligence.contracts import (
 from atlas.intelligence.evidence_engine import EvidenceEngine
 from atlas.intelligence.historical import stable_id
 
+# Minimum similar-match count before a behaviour may be asserted FROM
+# the neighbourhood. Below it, neighbourhood-derived scores (which
+# default to 0.0 on an empty set and can invert into maximum strength)
+# are not trustworthy claims about anything.
+_MIN_NEIGHBOURS_FOR_BEHAVIOUR = 3
+
 
 @dataclass(frozen=True, slots=True)
 class _Detection:
@@ -57,16 +63,27 @@ class BehavioralPatternEngine:
         under_25 = sum(item.total_goals <= 2 for item in matches)
         under_rate = under_25 / sample if sample else 0.0
         goal_trend = trend.get("goal_trend")
+        # `has_neighbourhood` gates every claim derived from the
+        # similarity neighbourhood. With an EMPTY neighbourhood
+        # `average_goals` defaults to 0.0, which made
+        # `(3.0 - 0.0) / 1.5 = 2.0` clamp to strength 1.0 AND satisfied
+        # the `<= 2.5` guard — so "low_scoring, strength 1.0" was
+        # asserted from literally zero observations, with the evidence
+        # string reading "0 similar matches averaged 0.00 goals".
+        # Confidence correctly collapsed to ~0.08, but `report.patterns`
+        # is a bare list of names carrying neither strength nor sample,
+        # so a consumer saw only the label.
+        has_neighbourhood = sample >= _MIN_NEIGHBOURS_FOR_BEHAVIOUR
         low_scoring_strength = max(
             under_rate,
-            (3.0 - similarity.average_goals) / 1.5,
+            (3.0 - similarity.average_goals) / 1.5 if has_neighbourhood else 0.0,
             (
                 goal_trend.strength * 0.8
                 if goal_trend and goal_trend.direction.value == "falling"
                 else 0.0
             ),
         )
-        if similarity.average_goals <= 2.5 or under_rate >= 0.55:
+        if (has_neighbourhood and similarity.average_goals <= 2.5) or under_rate >= 0.55:
             detections.append(
                 _Detection(
                     BehaviorType.low_scoring,
@@ -149,35 +166,46 @@ class BehavioralPatternEngine:
                 else 0.0
             ),
         )
-        if volatility >= 0.8:
-            volatility_type = BehaviorType.chaotic
-            pattern_name = "high_volatility"
-            volatility_strength = volatility
-        elif volatility >= 0.6:
-            volatility_type = BehaviorType.volatile
-            pattern_name = "high_volatility"
-            volatility_strength = volatility
-        else:
-            volatility_type = BehaviorType.stable
-            pattern_name = "low_volatility"
-            volatility_strength = 1.0 - volatility
-        volatility_occurrences = sum(
-            pattern_name in item.shared_patterns for item in matches
+        # This block had NO guard: with no volatility signal and no
+        # volatility trend, `volatility` fell through as 0.0, took the
+        # `else` branch, and emitted `stable` with strength
+        # `1.0 - 0.0 = 1.0` — maximum confidence in stability inferred
+        # purely from the ABSENCE of a volatility observation. Absence
+        # of evidence is not evidence of stability: require a real
+        # observation (either input present) before classifying at all.
+        volatility_observed = (
+            volatility_signal is not None or volatility_trend is not None
         )
-        detections.append(
-            _Detection(
-                volatility_type,
-                _clamp(volatility_strength),
-                volatility_occurrences,
-                (
-                    f"volatility strength {volatility:.3f}; "
-                    f"{volatility_occurrences} similar contexts shared "
-                    f"{pattern_name.replace('_', ' ')}"
-                ),
-                "volatility signal and historical similarity",
-                market.confidence if market else 0.4,
+        if volatility_observed:
+            if volatility >= 0.8:
+                volatility_type = BehaviorType.chaotic
+                pattern_name = "high_volatility"
+                volatility_strength = volatility
+            elif volatility >= 0.6:
+                volatility_type = BehaviorType.volatile
+                pattern_name = "high_volatility"
+                volatility_strength = volatility
+            else:
+                volatility_type = BehaviorType.stable
+                pattern_name = "low_volatility"
+                volatility_strength = 1.0 - volatility
+            volatility_occurrences = sum(
+                pattern_name in item.shared_patterns for item in matches
             )
-        )
+            detections.append(
+                _Detection(
+                    volatility_type,
+                    _clamp(volatility_strength),
+                    volatility_occurrences,
+                    (
+                        f"volatility strength {volatility:.3f}; "
+                        f"{volatility_occurrences} similar contexts shared "
+                        f"{pattern_name.replace('_', ' ')}"
+                    ),
+                    "volatility signal and historical similarity",
+                    market.confidence if market else 0.4,
+                )
+            )
 
         if market and market.disagreement >= 0.2:
             occurrences = sum(

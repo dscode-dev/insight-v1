@@ -41,6 +41,10 @@ type PostClient interface {
 	ListComments(ctx context.Context, in *socialv1.ListCommentsRequest, opts ...grpc.CallOption) (*socialv1.ListCommentsResponse, error)
 	Like(ctx context.Context, in *socialv1.LikePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Unlike(ctx context.Context, in *socialv1.UnlikePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Share returns whether a row was created and the resulting count; Unshare
+	// removes a repost. See social/v1/post.proto for why only one is undoable.
+	Share(ctx context.Context, in *socialv1.SharePostRequest, opts ...grpc.CallOption) (*socialv1.SharePostResponse, error)
+	Unshare(ctx context.Context, in *socialv1.UnsharePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 // RelationshipClient — social.v1.RelationshipService transport slice

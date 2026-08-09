@@ -18,9 +18,9 @@ Unauthenticated (liveness/readiness probes only, no data):
 
 Control endpoints (audited):
     POST /explorer/jobs/start|pause|resume|restart|cancel
-    POST /explorer/sources/enable|disable
+    POST /explorer/sources/enable|disable|priority
     POST /explorer/runtime/reload
-    POST /explorer/tickets/reprocess
+    POST /explorer/tickets/reprocess|annotate
     POST /explorer/pipelines  (create)      PUT/DELETE /explorer/pipelines/{id}
     POST /explorer/pipelines/{id}/duplicate|execute   (type=historical)
     POST /explorer/pipelines/{id}/start|stop|restart  (type=realtime)
@@ -120,6 +120,16 @@ def create_app(service: ExplorerReadService | None = None, run_scheduler: bool |
         supervisor = ExecutionSupervisor(lake, pipeline_store, execution_store, use_ai=use_ai,
                                          max_concurrent=max_concurrent)
         app.state.supervisor = supervisor
+        # Executions left "running" by a process that is gone. Their threads
+        # did not survive whatever ended that process; the rows did. Without
+        # this the console reports jobs nobody is executing, forever.
+        orphans = supervisor.recover_orphans()
+        if orphans:
+            from explorer.observability.logging import get_logger
+
+            get_logger("explorer.api").warning(
+                "orphan_executions_failed", count=len(orphans),
+                execution_ids=orphans[:10])
 
         publisher = None
         if os.environ.get("EXPLORER_REDIS_URL"):
@@ -241,6 +251,13 @@ def create_app(service: ExplorerReadService | None = None, run_scheduler: bool |
     @app.get("/explorer/quality", dependencies=_auth)
     def quality() -> dict[str, Any]:
         return svc.quality()
+
+    @app.get("/explorer/data-intelligence/dashboard", dependencies=_auth)
+    def data_intelligence_dashboard() -> dict[str, Any]:
+        """Composite overview the Console's Data Intelligence screens read.
+        Four screens have been calling this path and silently rendering a
+        404 as an empty dashboard — see the service method's docstring."""
+        return svc.data_intelligence_dashboard()
 
     @app.get("/explorer/storage", dependencies=_auth)
     def storage() -> dict[str, Any]:
@@ -394,6 +411,28 @@ def create_app(service: ExplorerReadService | None = None, run_scheduler: bool |
                         x_ops_token: str | None = Header(None)):
         _authorize(x_ops_token)
         return _run(lambda: controls().disable_source(body["source"], _actor(x_operator)))
+
+    @app.post("/explorer/sources/priority")
+    def sources_priority(body: dict[str, Any] = Body(...), x_operator: str | None = Header(None),
+                         x_ops_token: str | None = Header(None)):
+        _authorize(x_ops_token)
+        return _run(lambda: controls().set_source_priority(
+            body["source"], body["priority"], _actor(x_operator)
+        ))
+
+    @app.post("/explorer/tickets/annotate")
+    def tickets_annotate(body: dict[str, Any] = Body(...), x_operator: str | None = Header(None),
+                         x_ops_token: str | None = Header(None)):
+        _authorize(x_ops_token)
+        return _run(lambda: controls().annotate_ticket(
+            body["ticket_id"],
+            assignment=body.get("assignment") or "",
+            status=body.get("status") or "",
+            comment=body.get("comment") or "",
+            execution_id=body.get("execution_id") or "",
+            pipeline_id=body.get("pipeline_id") or "",
+            actor=_actor(x_operator),
+        ))
 
     @app.post("/explorer/runtime/reload")
     def runtime_reload(x_operator: str | None = Header(None), x_ops_token: str | None = Header(None)):

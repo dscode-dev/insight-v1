@@ -39,7 +39,6 @@ import (
 	"github.com/konoha-labs/insight-nexus/internal/application/evolution"
 	"github.com/konoha-labs/insight-nexus/internal/application/matchsweep"
 	"github.com/konoha-labs/insight-nexus/internal/application/publication"
-	"github.com/konoha-labs/insight-nexus/internal/application/publisher"
 	"github.com/konoha-labs/insight-nexus/internal/application/router"
 	"github.com/konoha-labs/insight-nexus/internal/domain/agent"
 	"github.com/konoha-labs/insight-nexus/internal/domain/cluster"
@@ -74,14 +73,9 @@ type Pipeline struct {
 	pubs         ports.PublicationRepository
 	decisionRepo ports.DecisionRepository
 	queue        ports.DraftQueue
-	// publisher — Sprint 4: transforms the queued draft into a Social
-	// post (LLM compose → validate → publish, ticket on all-provider
-	// failure). Optional: nil keeps the Sprint 3 queue-only behaviour.
-	publisher *publisher.Engine
-
-	metrics Metrics
-	logger  zerolog.Logger
-	now     func() time.Time
+	metrics      Metrics
+	logger       zerolog.Logger
+	now          func() time.Time
 }
 
 type Deps struct {
@@ -99,7 +93,6 @@ type Deps struct {
 	Publications ports.PublicationRepository
 	DecisionRepo ports.DecisionRepository
 	Queue        ports.DraftQueue
-	Publisher    *publisher.Engine // optional (Sprint 4)
 	Metrics      Metrics
 	Logger       zerolog.Logger
 	Now          func() time.Time
@@ -125,7 +118,6 @@ func New(d Deps) *Pipeline {
 		pubs:         d.Publications,
 		decisionRepo: d.DecisionRepo,
 		queue:        d.Queue,
-		publisher:    d.Publisher,
 		metrics:      d.Metrics,
 		logger:       d.Logger,
 		now:          now,
@@ -311,12 +303,14 @@ func (p *Pipeline) handleForAgent(
 		return nil, dec, fmt.Errorf("save memory: %w", err)
 	}
 
-	// 6. Publishing queue + durable candidate.
+	// 6. Durable candidate, then the publishing queue.
+	//
+	// ORDER MATTERS. The candidate row is written FIRST: it is what the
+	// console lists as "queued". Enqueuing first would open a window where
+	// the publish worker could pick the draft up, publish it, and update a
+	// candidate row that does not exist yet.
 	priority := dec.Action == decision.ActionHighPriority ||
 		dec.Action == decision.ActionGlobal
-	if err := p.queue.Enqueue(ctx, a.QueueName(), d, priority); err != nil {
-		return nil, dec, fmt.Errorf("enqueue: %w", err)
-	}
 	if err := p.pubs.RecordCandidate(ctx, ports.PublicationCandidate{
 		DraftID:  d.ID,
 		AgentID:  a.ID,
@@ -326,24 +320,22 @@ func (p *Pipeline) handleForAgent(
 	}); err != nil {
 		return nil, dec, fmt.Errorf("record candidate: %w", err)
 	}
-	p.metrics.PublicationCandidate(a.Name)
-
-	// 7. Sprint 4 — publication engine: draft → LLM compose →
-	// validate → Social post (or explained suppression / ticket).
-	// Failures here NEVER fail trend handling: the draft is already
-	// durable + queued; the publisher records its own outcome.
-	if p.publisher != nil {
-		if _, perr := p.publisher.Publish(ctx, publisher.Input{
-			Draft:    d,
-			Context:  dc,
-			Decision: dec,
-		}); perr != nil {
-			p.logger.Error().Err(perr).
-				Str("agent", a.Name).
-				Str("draft_id", d.ID.String()).
-				Msg("publication_engine_failed")
-		}
+	// The handoff. Publication itself runs in publishworker, off this
+	// goroutine: an LLM call takes up to one timeout per provider, and
+	// doing it here stalled the trend stream for every other agent.
+	//
+	// This is the last durable write before the trend is acknowledged, so
+	// a crash after it loses nothing — the queue entry is unacked and gets
+	// redelivered to the worker.
+	if err := p.queue.Enqueue(ctx, a.QueueName(), ports.QueuedDraft{
+		Draft:    d,
+		Context:  dc,
+		Decision: dec,
+		Priority: priority,
+	}); err != nil {
+		return nil, dec, fmt.Errorf("enqueue: %w", err)
 	}
+	p.metrics.PublicationCandidate(a.Name)
 	return &d, dec, nil
 }
 

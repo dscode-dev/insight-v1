@@ -18,41 +18,38 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from fastapi import FastAPI
-from atlas.operations import atlas_operations, start_grpc_server
-from atlas.runtime.logging import configure_logging
-from atlas.runtime.redis_factory import create_redis_client
-from atlas.streaming.publisher import DerivedPublisher
-from atlas.streaming.streams import StreamPartitioning
 
+import atlas.registry.models  # noqa: F401 — populates Base.metadata
 from atlas.api.deps import AppContainer
 from atlas.api.routes import backtest as backtest_routes
 from atlas.api.routes import context as context_routes
-from atlas.backtest import ReplayService
-from atlas.api.routes import internal as internal_routes
 from atlas.api.routes import intelligence_workspace as intelligence_workspace_routes
+from atlas.api.routes import internal as internal_routes
 from atlas.api.routes import meta as meta_routes
+from atlas.backtest import ReplayService
+from atlas.backtest.approval import PromotionDecisionRepository
 from atlas.clients import AnvilGatewayReader, NullSentimentReader
+from atlas.coherence import StoryCoherenceEngine
 from atlas.config import get_settings
-from atlas.contracts import FeatureWindowOrigin
-from atlas.emitters import ContextEmitter
 from atlas.context_engine import (
     CheckpointTracker,
     ContextRecalculationEngine,
     RedisCheckpointStore,
     RedisMatchContextStore,
 )
+from atlas.contracts import FeatureWindowOrigin
+from atlas.datasets import AtlasDatasetService
+from atlas.emitters import ContextEmitter
 from atlas.event_aggregation import AggregationEngine, RedisAggregationStore
-from atlas.event_impact import Impact, EventImpactEngine
+from atlas.event_impact import EventImpactEngine, Impact
 from atlas.identity import IdentityRegistry, IdentityResolver
 from atlas.inference import InferenceEngine
 from atlas.ingestion import AtlasIngestionRepository, AtlasIngestionService
-from atlas.operational_events import event_bus
-from atlas.datasets import AtlasDatasetService
 from atlas.intelligence import IntelligencePipeline
 from atlas.intelligence.competition import CompetitionIntelligenceEngine
 from atlas.intelligence.continuation import ContinuationEngine
@@ -69,13 +66,24 @@ from atlas.odds import (
     OddsHandler,
     OddsRepository,
 )
+from atlas.operational_events import event_bus
+from atlas.operations import atlas_operations, start_grpc_server
+from atlas.ops import DLQReplayService
 from atlas.patterns import PatternMemory
 from atlas.publication_engine import PublicationEngine
 from atlas.registry import ModelRegistry, build_engine, build_session_factory
-from atlas.similarity import SimilarityCache, SimilarityRepository, SimilarityService
+from atlas.registry.base import Base
+from atlas.runtime.logging import configure_logging
+from atlas.runtime.redis_factory import create_redis_client
 from atlas.signal_engine import SignalEngine
-from atlas.coherence import StoryCoherenceEngine
-from atlas.ops import DLQReplayService
+from atlas.similarity import SimilarityCache, SimilarityRepository, SimilarityService
+from atlas.store import FeatureStore, InferenceCache
+from atlas.streaming import CanonicalConsumer, CanonicalEnvelope, ConsumerConfig
+from atlas.streaming.publisher import DerivedPublisher
+from atlas.streaming.streams import StreamPartitioning
+from atlas.strength import StrengthRepository
+from atlas.strength.sync_watcher import StrengthSyncWatcher
+from atlas.training import TrainingPipeline
 from atlas.trends import (
     CorrelatedTrendRepository,
     PublishScoreEngine,
@@ -88,16 +96,12 @@ from atlas.trends import (
     TrendPublisher,
     TrendRepository,
 )
-from atlas.trends.similarity_probe import OnlineSimilarityProbe
 from atlas.trends.correlation import RedisRecentTrendStore
-from atlas.registry.base import Base
-import atlas.registry.models  # noqa: F401 — populates Base.metadata
-from atlas.store import FeatureStore, InferenceCache
-from atlas.streaming import CanonicalConsumer, ConsumerConfig, CanonicalEnvelope
-from atlas.training import TrainingPipeline
+from atlas.trends.similarity_probe import OnlineSimilarityProbe
 from atlas.trends.timeline import TrendTimelineRepository
 from atlas.validation import quarantine_snapshot
 from atlas.vector_memory import PgVectorMemoryRepository
+from atlas.vector_memory.refresh import build_vector_refresher
 from atlas.watchers import (
     ClusterJanitor,
     CoherenceWatcher,
@@ -171,6 +175,40 @@ def _extract_minute(event: dict) -> int | None:
     if isinstance(raw, str) and raw.isdigit():
         return int(raw)
     return None
+
+
+def _load_regression_baseline(settings):
+    """Load the frozen regression baseline, if one is configured.
+
+    Best-effort BY DESIGN: a missing/corrupt/incompatible baseline must
+    degrade to "no regression section in the quality report" — which is
+    exactly the behaviour before baselines existed — rather than
+    preventing the service from starting. It is logged loudly at ERROR
+    either way, because silently running the Quality Gate with no
+    reference is precisely the failure this whole mechanism exists to
+    prevent.
+    """
+    path = (settings.regression_baseline_path or "").strip()
+    if not path:
+        logger.info("atlas_regression_baseline_not_configured")
+        return None
+    try:
+        from atlas.backtest import load_baseline
+
+        result, manifest = load_baseline(path)
+    except Exception:
+        logger.exception("atlas_regression_baseline_load_failed", extra={"path": path})
+        return None
+    logger.info(
+        "atlas_regression_baseline_loaded",
+        extra={
+            "path": path,
+            "scenario_id": result.scenario_id,
+            "replay_hash": result.deterministic_hash,
+            "similarity_version": manifest.similarity_version,
+        },
+    )
+    return result
 
 
 def build_app() -> FastAPI:
@@ -335,12 +373,34 @@ def build_app() -> FastAPI:
         inactivity_seconds=settings.janitor_inactivity_seconds,
         market_memory=market_memory_engine,
     ))
+    # ATLAS-SIM-A: keeps atlas.team_strength_state/head_to_head_state/
+    # team_standings_state current from Explorer's validated lake (the
+    # system of record for match results — see StrengthSyncWatcher's
+    # docstring for why this isn't a canonical-event consumer hook).
+    # explorer_data_root is the LAKE ROOT (raw/normalized/validated/...
+    # side by side, per explorer/config.py::LAKE_LAYERS) — must read only
+    # the validated/ layer, never raw/normalized.
+    strength_repository = StrengthRepository(session_factory)
+    watcher_registry.register(StrengthSyncWatcher(
+        strength_repository,
+        f"{settings.explorer_data_root.rstrip('/')}/validated",
+        min_sync_interval_seconds=settings.strength_sync_min_interval_seconds,
+        enabled=settings.strength_sync_enabled,
+    ))
     watcher_registry.register(IntelligenceWatcher(
         competition_engine,
         regime_engine,
         meta_engine,
         crossmatch_engine,
     ))
+    # Rebuilds the similarity corpus from the same validated lake and
+    # re-encodes it into pgvector — the hot path the live flow reads.
+    # Registered next to StrengthSyncWatcher because they are the same kind
+    # of job on the same input; before this existed, both halves of the
+    # chain were scripts, neither ran, and the vector table stayed empty
+    # while ClickHouse filled. Nothing reported that: an empty vector search
+    # returns zero neighbours and low confidence, not an error.
+    watcher_registry.register(build_vector_refresher(settings, session_factory))
     watcher_scheduler = WatcherScheduler(
         watcher_registry,
         ObservationSink(trends_pipeline),
@@ -376,6 +436,8 @@ def build_app() -> FastAPI:
         base_url=settings.anvil_api_base_url,
         api_key=settings.anvil_api_key,
         timeout_seconds=settings.anvil_api_timeout_seconds,
+        features_path_prefix=settings.anvil_features_path_prefix,
+        api_key_header=settings.anvil_api_key_header,
     )
     # Consolidation Sprint 0: sentiment features come from the
     # canonical context stream; no HTTP sentiment dependency remains.
@@ -403,11 +465,15 @@ def build_app() -> FastAPI:
         sentiment=sentiment_reader,
         vector_memory=PgVectorMemoryRepository(session_factory),
         similarity=similarity_service,
-        replay=ReplayService(events=event_bus),
+        replay=ReplayService(
+            events=event_bus, baseline=_load_regression_baseline(settings)
+        ),
         ingestion=AtlasIngestionService(ingestion_repository),
         datasets=AtlasDatasetService(
             session_factory, Path(settings.intelligence_dataset_path).parent
         ),
+        strength=strength_repository,
+        approvals=PromotionDecisionRepository(session_factory),
     )
 
     # Sprint 5.1 — canonical-event consumer. Reads Hub-published
@@ -423,6 +489,7 @@ def build_app() -> FastAPI:
             streams=tuple(settings.canonical_streams()),
             dlq_stream=settings.atlas_dlq_stream,
             processed_key_prefix=settings.atlas_processed_event_prefix,
+            processed_ttl_seconds=settings.atlas_processed_ttl_seconds,
             retry_key_prefix=settings.atlas_retry_key_prefix,
             pending_reclaim_idle_ms=settings.atlas_pending_reclaim_idle_ms,
             max_handler_attempts=settings.atlas_max_handler_attempts,
@@ -435,6 +502,7 @@ def build_app() -> FastAPI:
         odds_shift: bool,
         odds_context: dict | None,
         market_state: dict | None = None,
+        odds_history: list | None = None,
     ) -> None:
         """Run the Sprint 6.2 intelligence pipeline. Best-effort: a
         failure is logged + counted (never silent) but does not break
@@ -450,7 +518,7 @@ def build_app() -> FastAPI:
                 odds_context=odds_context,
                 market_state=market_state,
             )
-        except Exception:  # noqa: BLE001 — intelligence must not break ingestion
+        except Exception:
             logger.exception(
                 "atlas_intelligence_failed",
                 extra={"event_id": event.get("event_id"), "key": env.idempotency_key},
@@ -466,9 +534,13 @@ def build_app() -> FastAPI:
                     "recalc_trigger": result.recalc.trigger or None,
                 },
             )
-        await run_trends(env, result, odds_context=odds_context)
+        await run_trends(
+            env, result, odds_context=odds_context, precomputed_odds_history=odds_history,
+        )
 
-    async def run_trends(env: CanonicalEnvelope, result, *, odds_context) -> None:
+    async def run_trends(
+        env: CanonicalEnvelope, result, *, odds_context, precomputed_odds_history: list | None = None,
+    ) -> None:
         """Sprint 0 — trend detection over this tick's correlated inputs.
         Persist-then-publish; failures are logged + counted, never break
         ingestion."""
@@ -480,16 +552,22 @@ def build_app() -> FastAPI:
         payload = event.get("payload") or {}
         try:
             # Odds timeline (market + historical detectors) — keyed by the
-            # stable odds grouping id carried in the payload.
-            odds_history = []
-            payload_match = payload.get("match_id")
-            if str(event.get("event_type", "")) == "match.odds" and payload_match:
-                try:
-                    odds_history = await odds_repository.history(
-                        UUID(str(payload_match)), limit=settings.odds_history_limit
-                    )
-                except (ValueError, TypeError):
-                    odds_history = []
+            # stable odds grouping id carried in the payload. `handle_envelope`
+            # already fetched this exact (match_id, limit) history for the
+            # match.odds path (see odds_handler.handle()'s return value) —
+            # reuse it instead of a third identical Postgres round-trip.
+            if precomputed_odds_history is not None:
+                odds_history = precomputed_odds_history
+            else:
+                odds_history = []
+                payload_match = payload.get("match_id")
+                if str(event.get("event_type", "")) == "match.odds" and payload_match:
+                    try:
+                        odds_history = await odds_repository.history(
+                            UUID(str(payload_match)), limit=settings.odds_history_limit
+                        )
+                    except (ValueError, TypeError):
+                        odds_history = []
 
             # Latest hot feature snapshot (pulse + echo detectors).
             features = None
@@ -527,7 +605,7 @@ def build_app() -> FastAPI:
             # Sprint 3.6 — record evolving state for the watchers.
             try:
                 await _record_series(series_store, result.canonical_match_id, inputs)
-            except Exception:  # noqa: BLE001 — recording must not break ingestion
+            except Exception:
                 logger.exception("atlas_series_record_failed")
 
             outcome = await trends_pipeline.process(inputs)
@@ -545,7 +623,7 @@ def build_app() -> FastAPI:
                         "key": env.idempotency_key,
                     },
                 )
-        except Exception:  # noqa: BLE001 — trends must not break ingestion
+        except Exception:
             logger.exception(
                 "atlas_trends_failed",
                 extra={"event_id": event.get("event_id"), "key": env.idempotency_key},
@@ -563,7 +641,11 @@ def build_app() -> FastAPI:
         # snapshot path — they have a dedicated persistence + feature +
         # context pipeline that preserves the full odds history.
         if event_type == "match.odds":
-            await odds_handler.handle(env)
+            # handle() already fetches this match's full history
+            # (limit=settings.odds_history_limit, same as below) to
+            # build features+context — reuse it for market_state instead
+            # of issuing the identical Postgres query a second time.
+            history = await odds_handler.handle(env)
             # An odds event that reached Atlas already passed the Hub's
             # change gate → a meaningful shift. Feed it to intelligence
             # with the freshly-stored odds context.
@@ -576,9 +658,6 @@ def build_app() -> FastAPI:
                     odds_context = await odds_handler.context_for(odds_match)
                     # Magnus Absorption — recompute the market-state
                     # view from the full persisted odds timeline.
-                    history = await odds_repository.history(
-                        odds_match, limit=settings.odds_history_limit
-                    )
                     market_state = market_state_engine.compute(history).as_dict()
                 except (ValueError, TypeError):
                     odds_context = None
@@ -587,6 +666,7 @@ def build_app() -> FastAPI:
                 odds_shift=True,
                 odds_context=odds_context,
                 market_state=market_state,
+                odds_history=history,
             )
             return
         # Every other canonical event flows through intelligence too
@@ -645,11 +725,41 @@ def build_app() -> FastAPI:
         )
         await emitter.emit(context)
 
+    async def _run_consumer_supervised() -> None:
+        """Restarts `canonical_consumer.run()` with backoff if it ever
+        exits unexpectedly, instead of silently taking down ingestion
+        for the process lifetime with no recovery (ATLAS review Round
+        3, finding #1 — `_dispatch`'s own safety net makes this rare
+        now, but a supervisor is cheap insurance against a future bug
+        slipping past it). `app.state.consumer_alive` feeds `/ready` so
+        a crashed-and-not-yet-recovered consumer is actually visible to
+        health checks, not masked by the one-shot `operations_ready`
+        flag."""
+        backoff_seconds = 1.0
+        while True:
+            app.state.consumer_alive = True
+            try:
+                await canonical_consumer.run(handle_envelope)
+                return  # run() only returns normally once _stop is set (real shutdown)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                app.state.consumer_alive = False
+                logger.exception("atlas_consumer_crashed")
+                await asyncio.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2, 60.0)
+                try:
+                    await canonical_consumer.reconnect()
+                except Exception:
+                    logger.exception("atlas_consumer_reconnect_failed")
+                    continue
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.container = container
         app.state.canonical_consumer = canonical_consumer
         app.state.operations_ready = False
+        app.state.consumer_alive = not settings.canonical_consumer_enabled
 
         if settings.auto_apply_migrations and settings.database_url.startswith("sqlite"):
             async with db_engine.begin() as conn:
@@ -658,12 +768,13 @@ def build_app() -> FastAPI:
         # Start the canonical consumer in the background. The task
         # is supervised by the lifespan — cancelled at shutdown so
         # in-flight handler invocations finish + the redis client
-        # closes cleanly.
+        # closes cleanly. _run_consumer_supervised restarts run()
+        # itself if it ever exits unexpectedly (see its docstring).
         consumer_task: asyncio.Task[None] | None = None
         if settings.canonical_consumer_enabled:
             await canonical_consumer.connect()
             consumer_task = asyncio.create_task(
-                canonical_consumer.run(handle_envelope),
+                _run_consumer_supervised(),
                 name="atlas-canonical-consumer",
             )
 
@@ -732,22 +843,33 @@ def build_app() -> FastAPI:
     @app.get("/ready", tags=["meta"])
     async def ready() -> dict[str, str]:
         try:
-            async with db_engine.connect() as conn:
-                await conn.exec_driver_sql("SELECT 1")
+            # A hung/unreachable Postgres must fail this probe FAST, not
+            # hang past the caller's own probe timeout (which delays
+            # failure detection instead of surfacing it) — build_engine
+            # sets no connect/command timeout, so bound it here.
+            async with asyncio.timeout(2.0):
+                async with db_engine.connect() as conn:
+                    await conn.exec_driver_sql("SELECT 1")
         except Exception as exc:
             return {"status": "not_ready", "error": str(exc)[:200]}
+        if not getattr(app.state, "consumer_alive", True):
+            return {"status": "not_ready", "error": "canonical_consumer_crashed"}
         return {"status": "ready"}
 
     @app.get("/metrics", tags=["meta"], include_in_schema=False)
     async def metrics():
         from fastapi import Response
+
         from atlas.runtime.metrics import render_metrics
 
         body, content_type = render_metrics()
         return Response(content=body, media_type=content_type)
 
     app.state.operations_service = atlas_operations(
-        ready=lambda: bool(getattr(app.state, "operations_ready", False)),
+        ready=lambda: (
+            bool(getattr(app.state, "operations_ready", False))
+            and bool(getattr(app.state, "consumer_alive", True))
+        ),
         active_jobs=lambda: 1 if settings.canonical_consumer_enabled else 0,
     )
 
@@ -777,6 +899,15 @@ def build_app() -> FastAPI:
     app.include_router(intelligence_workspace_routes.atlas_router)
     app.include_router(meta_routes.router)
     app.include_router(backtest_routes.router)
+    # /backtests is the only require_internal_token-protected router that
+    # doesn't live under /v1/internal or /atlas — harmless today (the
+    # token check is the real gate, not the prefix), but if an edge
+    # layer ever allow-lists internal traffic by those two prefixes,
+    # this would silently fall outside it. Kept as an additive alias —
+    # the original /backtests/* path is untouched for existing callers.
+    app.include_router(
+        backtest_routes.router, prefix="/v1/internal", include_in_schema=False,
+    )
     return app
 
 

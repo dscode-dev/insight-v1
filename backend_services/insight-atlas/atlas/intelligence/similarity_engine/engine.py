@@ -8,9 +8,9 @@ history, never as predicted probabilities.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,15 +46,42 @@ _CONTINENTAL = {
 }
 _INTERNATIONAL = {"world_cup", "euro", "copa_america"}
 
+# ATLAS-SIM-A (v2): rebalanced to fold in team-strength (Elo/attack/
+# defense), market microstructure (line_movement, not just the point-in-
+# time favorite_strength) and match-context (h2h/standings/rest) signals
+# atlas/strength/ now computes live. v1's 7-signal table is FROZEN per
+# ATLAS_V1_FROZEN.md and stays available via `atlas-memory-embedding-v1`
+# tagged vectors (see atlas/vector_memory) — this table only backs the
+# new `-v2` embedding_version, coexisting rather than replacing v1.
 _WEIGHTS = {
-    "elo_delta": 0.18,
-    "home_form": 0.15,
-    "away_form": 0.15,
-    "draw_tendency": 0.15,
-    "market_pressure": 0.15,
-    "volatility": 0.12,
-    "uncertainty": 0.10,
+    "elo_delta": 0.16,
+    "home_attack_strength": 0.07,
+    "away_attack_strength": 0.07,
+    "home_defense_strength": 0.07,
+    "away_defense_strength": 0.07,
+    "market_pressure": 0.10,
+    "line_movement": 0.08,
+    "home_form": 0.07,
+    "away_form": 0.07,
+    "h2h_advantage": 0.05,
+    "table_position_gap": 0.05,
+    "rest_advantage": 0.04,
+    "draw_tendency": 0.04,
+    "volatility": 0.03,
+    "uncertainty": 0.03,
 }
+# Signals that are always present (defaulted, never fabricated as a
+# stand-in for "unknown" — 0.5/0.0 are genuinely neutral values here).
+_ALWAYS_PRESENT = frozenset({
+    "elo_delta", "home_attack_strength", "away_attack_strength",
+    "home_defense_strength", "away_defense_strength",
+    "home_form", "away_form", "draw_tendency", "volatility", "uncertainty",
+})
+# Signals that may be genuinely inapplicable (no market, no prior
+# meetings, unknown standings/rest) — omitted, not defaulted, and the
+# missing-data renormalization in `_similarity` drops them pairwise.
+_OPTIONAL = frozenset(_WEIGHTS) - _ALWAYS_PRESENT
+TOTAL_DIMENSIONS = len(_WEIGHTS)
 
 
 class MatchSimilarityProfile(BaseModel):
@@ -74,6 +101,18 @@ class MatchSimilarityProfile(BaseModel):
     volatility: UnitScore
     uncertainty: UnitScore
     market_available: bool
+    # ATLAS-SIM-A (v2) additions. Attack/defense strength are always
+    # present (0.5 = league-average default, same "always present"
+    # posture as home_form/draw_tendency). The other four follow
+    # market_pressure's existing "None = genuinely inapplicable" pattern.
+    home_attack_strength: UnitScore = 0.5
+    away_attack_strength: UnitScore = 0.5
+    home_defense_strength: UnitScore = 0.5
+    away_defense_strength: UnitScore = 0.5
+    line_movement: float | None = Field(default=None, ge=-1.0, le=1.0)
+    h2h_advantage: float | None = Field(default=None, ge=-1.0, le=1.0)
+    table_position_gap: float | None = Field(default=None, ge=-1.0, le=1.0)
+    rest_advantage: float | None = Field(default=None, ge=-1.0, le=1.0)
     signals: tuple[str, ...] = ()
     trends: tuple[str, ...] = ()
 
@@ -362,6 +401,14 @@ def profile_from_intelligence(
         volatility=_record_volatility(record),
         uncertainty=_uncertainty(record),
         market_available=record.has_odds and market is not None,
+        home_attack_strength=_feature_default(record, "home_attack_strength", 0.5),
+        away_attack_strength=_feature_default(record, "away_attack_strength", 0.5),
+        home_defense_strength=_feature_default(record, "home_defense_strength", 0.5),
+        away_defense_strength=_feature_default(record, "away_defense_strength", 0.5),
+        line_movement=_optional_signed_feature(record, "line_movement"),
+        h2h_advantage=_optional_signed_feature(record, "h2h_advantage"),
+        table_position_gap=_optional_signed_feature(record, "table_position_gap"),
+        rest_advantage=_optional_signed_feature(record, "rest_advantage"),
         signals=tuple(sorted(signal_names)),
         trends=tuple(sorted(profile_trends.intersection(declared_trends))),
     )
@@ -395,6 +442,14 @@ def profile_from_record(record: HistoricalRecord) -> MatchSimilarityProfile:
         volatility=_record_volatility(record),
         uncertainty=_uncertainty(record),
         market_available=record.has_odds,
+        home_attack_strength=_feature_default(record, "home_attack_strength", 0.5),
+        away_attack_strength=_feature_default(record, "away_attack_strength", 0.5),
+        home_defense_strength=_feature_default(record, "home_defense_strength", 0.5),
+        away_defense_strength=_feature_default(record, "away_defense_strength", 0.5),
+        line_movement=_optional_signed_feature(record, "line_movement"),
+        h2h_advantage=_optional_signed_feature(record, "h2h_advantage"),
+        table_position_gap=_optional_signed_feature(record, "table_position_gap"),
+        rest_advantage=_optional_signed_feature(record, "rest_advantage"),
         signals=tuple(sorted(signal_names)),
         trends=tuple(sorted(_profile_trends(record))),
     )
@@ -414,15 +469,23 @@ def _similarity(
     query: MatchSimilarityProfile, candidate: MatchSimilarityProfile
 ) -> tuple[float, tuple[str, ...], tuple[str, ...]]:
     values = {
-        "elo_delta": (_unit_elo(query.elo_delta), _unit_elo(candidate.elo_delta)),
+        "elo_delta": (_signed_to_unit(query.elo_delta), _signed_to_unit(candidate.elo_delta)),
         "home_form": (query.home_form, candidate.home_form),
         "away_form": (query.away_form, candidate.away_form),
         "draw_tendency": (query.draw_tendency, candidate.draw_tendency),
         "volatility": (query.volatility, candidate.volatility),
         "uncertainty": (query.uncertainty, candidate.uncertainty),
+        "home_attack_strength": (query.home_attack_strength, candidate.home_attack_strength),
+        "away_attack_strength": (query.away_attack_strength, candidate.away_attack_strength),
+        "home_defense_strength": (query.home_defense_strength, candidate.home_defense_strength),
+        "away_defense_strength": (query.away_defense_strength, candidate.away_defense_strength),
     }
     if query.market_pressure is not None and candidate.market_pressure is not None:
         values["market_pressure"] = (query.market_pressure, candidate.market_pressure)
+    for name in ("line_movement", "h2h_advantage", "table_position_gap", "rest_advantage"):
+        left, right = getattr(query, name), getattr(candidate, name)
+        if left is not None and right is not None:
+            values[name] = (_signed_to_unit(left), _signed_to_unit(right))
     weighted = sum(
         _WEIGHTS[name] * (1.0 - abs(left - right))
         for name, (left, right) in values.items()
@@ -485,11 +548,31 @@ def _feature(record: HistoricalRecord, name: str) -> float:
     return max(0.0, min(1.0, float(record.features.get(name, 0.0))))
 
 
+def _feature_default(record: HistoricalRecord, name: str, default: float) -> float:
+    """Like `_feature`, but the fallback for an absent key is `default`
+    (e.g. 0.5 = neutral) instead of 0.0 — 0.0 would read as "worst
+    possible" for a strength ratio, not "unknown"."""
+    if name not in record.features:
+        return default
+    return max(0.0, min(1.0, float(record.features[name])))
+
+
+def _optional_signed_feature(record: HistoricalRecord, name: str) -> float | None:
+    """A signed [-1, 1] feature that's genuinely absent (not just
+    zero) when the key isn't present — never fabricated."""
+    if name not in record.features:
+        return None
+    return max(-1.0, min(1.0, float(record.features[name])))
+
+
 def _elo(record: HistoricalRecord) -> float:
     return max(-1.0, min(1.0, float(record.features.get("elo_difference", 0.0))))
 
 
-def _unit_elo(value: float) -> float:
+def _signed_to_unit(value: float) -> float:
+    """Maps any signed [-1, 1] value onto [0, 1] for the weighted-diff
+    comparison in `_similarity` — used for elo_delta and every new
+    signed derived signal (line_movement, h2h_advantage, ...)."""
     return (value + 1.0) / 2.0
 
 
@@ -513,8 +596,10 @@ def _uncertainty(record: HistoricalRecord) -> float:
 
 
 def _dimension_coverage(profile: MatchSimilarityProfile) -> float:
-    dimensions = 7 if profile.market_pressure is not None else 6
-    return dimensions / 7.0
+    present = len(_ALWAYS_PRESENT) + sum(
+        1 for name in _OPTIONAL if getattr(profile, name) is not None
+    )
+    return present / TOTAL_DIMENSIONS
 
 
 def _profile_signature(profile: MatchSimilarityProfile) -> tuple:
@@ -531,6 +616,17 @@ def _profile_signature(profile: MatchSimilarityProfile) -> tuple:
         ),
         round(profile.volatility, 4),
         round(profile.uncertainty, 4),
+        round(profile.home_attack_strength, 4),
+        round(profile.away_attack_strength, 4),
+        round(profile.home_defense_strength, 4),
+        round(profile.away_defense_strength, 4),
+        round(profile.line_movement, 4) if profile.line_movement is not None else None,
+        round(profile.h2h_advantage, 4) if profile.h2h_advantage is not None else None,
+        (
+            round(profile.table_position_gap, 4)
+            if profile.table_position_gap is not None else None
+        ),
+        round(profile.rest_advantage, 4) if profile.rest_advantage is not None else None,
     )
 
 

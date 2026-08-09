@@ -40,12 +40,23 @@ describe("ServiceRegistry", () => {
     expect(cloud.map((s) => s.id)).toContain("social");
   });
 
-  it("distinguishes configured from unavailable (Nexus unset ⇒ not configured)", () => {
+  it("Intelligence-plane services are reachable via the Control Plane, not directly", () => {
     __resetControlPlaneConfig();
-    expect(ServiceRegistry.get("nexus")?.configured).toBe(false);
-    process.env.ATLAS_API_BASE_URL = "http://atlas:8085";
+    // Atlas and Nexus no longer have a console-side endpoint at all —
+    // insight-context.md v2.0 routes them through the Control Plane, and
+    // the console has no base URL or token for either. "Configured"
+    // therefore means "the Control Plane can be reached", which is
+    // always true: it is the one service the console may call.
+    for (const id of ["atlas", "nexus", "robozao-gateway"]) {
+      expect(ServiceRegistry.get(id)?.configured).toBe(true);
+    }
+  });
+
+  it("services with no probe at all stay unconfigured", () => {
     __resetControlPlaneConfig();
-    expect(ServiceRegistry.get("atlas")?.configured).toBe(true);
+    // Honest: the console has no way to observe these, and saying
+    // otherwise would render a health it never measured.
+    expect(ServiceRegistry.get("sport-hub")?.configured).toBe(false);
   });
 
   it("never invents services and never serializes endpoints", () => {

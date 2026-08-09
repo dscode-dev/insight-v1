@@ -132,8 +132,26 @@ class InferenceEngine:
                     extra={"family": family.value, "path": version.artifact_path},
                 )
                 return None
-            state = load_artifact(version.artifact_path)
-            wrapper = self._load_wrapper(family, state)
+            # Every other failure mode above degrades to None (the
+            # caller already treats "no model for this family" as a
+            # normal, handled outcome). Deserialisation did not: a
+            # CORRUPT-but-present artifact, or a state dict the wrapper
+            # can't rebuild, raised straight out of _get into the
+            # request path — turning one bad file into a 500 on
+            # /v1/context instead of a degraded-but-served response.
+            try:
+                state = load_artifact(version.artifact_path)
+                wrapper = self._load_wrapper(family, state)
+            except Exception:
+                logger.exception(
+                    "inference_artifact_load_failed",
+                    extra={
+                        "family": family.value,
+                        "path": version.artifact_path,
+                        "version": str(version.id),
+                    },
+                )
+                return None
             self._cache[family] = (version, wrapper)
             return (version, wrapper)
 

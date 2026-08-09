@@ -21,33 +21,40 @@ from atlas.intelligence.contracts import (
 )
 from atlas.intelligence.evidence_engine import EvidenceEngine
 
+# Parents MUST be names the signal engine actually emits. The previous
+# table declared 12 parents that no engine ever produces
+# (implied_home_strength, odds_gap, market_entropy, bookmaker_spread,
+# historical_balance, market_uncertainty, home_points_5, home_streak,
+# away_points_5, away_streak, goal_volatility, plus `low_scoring` which
+# is a BehaviorType, not a signal). Those were FEATURE and BEHAVIOUR
+# names, not signal names. Every permanently-absent parent applied a
+# 0.92 multiplier, so signals were deflated by up to 64% on perfect
+# input — market_disagreement fell from 0.8 to 0.289 — and the reason
+# was buried in a dependency_edges string instead of being logged or
+# ticketed. Structural, permanent, silent degradation.
+#
+# The emitted vocabulary is: home_form, away_form, momentum, streak,
+# favorite_pressure, market_consensus, market_disagreement,
+# competition_volatility, draw_tendency, scoring_tendency,
+# defensive_instability, goal_distribution. Signals with no real parent
+# in that vocabulary are roots and simply have no entry.
 DEPENDENCIES: dict[str, tuple[str, ...]] = {
-    "favorite_pressure": (
-        "implied_home_strength",
-        "odds_gap",
-        "market_consensus",
-    ),
-    "market_consensus": ("implied_home_strength", "market_entropy"),
-    "market_disagreement": ("market_entropy", "bookmaker_spread"),
-    "draw_tendency": (
-        "historical_balance",
-        "low_scoring",
-        "market_uncertainty",
-    ),
-    "low_scoring": ("scoring_tendency", "goal_distribution"),
-    "competition_volatility": ("goal_volatility", "market_disagreement"),
-    "home_form": ("home_points_5", "home_streak"),
-    "away_form": ("away_points_5", "away_streak"),
+    "favorite_pressure": ("market_consensus",),
+    "draw_tendency": ("scoring_tendency",),
+    "competition_volatility": ("market_disagreement",),
+    "home_form": ("streak",),
+    "away_form": ("streak",),
     "momentum": ("home_form", "away_form"),
 }
 
+# Same vocabulary rule as DEPENDENCIES — names that are never emitted
+# can never reinforce anything, so they only made the groups look
+# richer than they were.
 REINFORCEMENT_GROUPS: tuple[tuple[str, ...], ...] = (
-    ("favorite_pressure", "market_consensus", "implied_home_strength", "odds_gap"),
-    ("draw_tendency", "historical_balance", "low_scoring", "market_uncertainty"),
-    ("low_scoring", "goal_distribution", "draw_tendency"),
-    ("home_form", "momentum", "home_streak"),
-    ("away_form", "momentum", "away_streak"),
-    ("competition_volatility", "market_disagreement", "goal_volatility"),
+    ("favorite_pressure", "market_consensus"),
+    ("draw_tendency", "scoring_tendency", "goal_distribution"),
+    ("home_form", "away_form", "momentum", "streak"),
+    ("competition_volatility", "market_disagreement"),
 )
 
 CONFLICT_RULES: tuple[tuple[str, str, str], ...] = (
@@ -386,55 +393,83 @@ class SignalStateEngine:
         as_of: datetime,
     ) -> dict[str, SignalState]:
         updated = dict(states)
+        # Collect supporters across ALL groups FIRST, from a frozen
+        # snapshot, then apply one boost per signal.
+        #
+        # The previous version mutated `updated` inside the group loop,
+        # so a signal appearing in two groups (momentum was in both the
+        # home_form and away_form groups) got boosted twice, the second
+        # time on top of the already-boosted value — it could end up
+        # with HIGHER effective confidence than its own base confidence.
+        # Boost now scales with the count of DISTINCT supporters, not
+        # with how many groups happen to mention the signal.
+        supporters_by_signal: dict[str, set[str]] = {}
         for group in REINFORCEMENT_GROUPS:
             present = [
-                updated[key]
+                states[key]
                 for key in group
-                if key in updated and updated[key].active and not updated[key].expired
+                if key in states and states[key].active and not states[key].expired
             ]
             if len(present) < 2:
                 continue
             for state in present:
-                supporters = [
-                    item.signal_key for item in present if item.signal_key != state.signal_key
-                ]
-                boost = min(0.18, 0.04 * len(supporters))
-                confidence = _clamp(state.effective_confidence + boost)
-                weight = _clamp(state.effective_weight + boost / 2)
-                evidence = self._evidence.create(
-                    scope_key=scope_key,
-                    evidence_type=EvidenceType.statistical,
-                    source="signal_reinforcement_engine",
-                    description=(
-                        f"{state.signal_key} reinforced by compatible signals: "
-                        f"{', '.join(supporters)}"
+                supporters_by_signal.setdefault(state.signal_key, set()).update(
+                    item.signal_key
+                    for item in present
+                    if item.signal_key != state.signal_key
+                )
+
+        for signal_key, supporter_set in supporters_by_signal.items():
+            state = states[signal_key]
+            supporters = sorted(supporter_set)
+            boost = min(0.18, 0.04 * len(supporters))
+            confidence = _clamp(state.effective_confidence + boost)
+            weight = _clamp(state.effective_weight + boost / 2)
+            evidence = self._evidence.create(
+                scope_key=scope_key,
+                evidence_type=EvidenceType.statistical,
+                source="signal_reinforcement_engine",
+                description=(
+                    f"{state.signal_key} reinforced by compatible signals: "
+                    f"{', '.join(supporters)}"
+                ),
+                observed_at=as_of,
+                weight=weight,
+                confidence=confidence,
+                attributes={
+                    "signal_key": state.signal_key,
+                    "reinforced_by": supporters,
+                    "confidence_boost": round(boost, 6),
+                },
+            )
+            updated[state.signal_key] = state.model_copy(
+                update={
+                    # Do NOT overwrite a `weak` signal's status: a weak
+                    # signal that gets reinforced was previously
+                    # relabelled `reinforced` while `weak` stayed True,
+                    # and the reasoning graph publishes only
+                    # `status.value` — so the consumer lost the weakness
+                    # entirely. Reinforcement is recorded via the
+                    # `reinforced` flag either way.
+                    "status": (
+                        state.status
+                        if state.weak
+                        else SignalLifecycleStatus.reinforced
                     ),
-                    observed_at=as_of,
-                    weight=weight,
-                    confidence=confidence,
-                    attributes={
-                        "signal_key": state.signal_key,
-                        "reinforced_by": supporters,
-                        "confidence_boost": round(boost, 6),
-                    },
-                )
-                updated[state.signal_key] = state.model_copy(
-                    update={
-                        "status": SignalLifecycleStatus.reinforced,
-                        "reinforced": True,
-                        "reinforced_by": sorted(set([*state.reinforced_by, *supporters])),
-                        "effective_confidence": round(confidence, 6),
-                        "effective_weight": round(weight, 6),
-                        "signal_stability": _stability(
-                            confidence=confidence,
-                            coverage=float(state.metadata.get("coverage_ratio", 0.5)),
-                            source_count=int(state.metadata.get("source_count", 1)),
-                            conflict_penalty=0.0,
-                            expired=state.expired,
-                        ),
-                        "evidence": [evidence, *state.evidence],
-                    }
-                )
+                    "reinforced": True,
+                    "reinforced_by": sorted(set([*state.reinforced_by, *supporters])),
+                    "effective_confidence": round(confidence, 6),
+                    "effective_weight": round(weight, 6),
+                    "signal_stability": _stability(
+                        confidence=confidence,
+                        coverage=float(state.metadata.get("coverage_ratio", 0.5)),
+                        source_count=int(state.metadata.get("source_count", 1)),
+                        conflict_penalty=0.0,
+                        expired=state.expired,
+                    ),
+                    "evidence": [evidence, *state.evidence],
+                }
+            )
         return updated
 
     def _apply_conflicts(

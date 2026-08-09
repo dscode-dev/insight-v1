@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
 import statistics
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 from uuid import UUID, uuid5
+
+from atlas.ops_emitter import emitter as ops
+
+logger = logging.getLogger(__name__)
 
 INTELLIGENCE_NAMESPACE = UUID("3e26e2e7-c729-4bd2-a8bc-cce46a115aa2")
 COMPETITION_ALIASES = {
@@ -134,6 +140,25 @@ def load_dataset(matches_path: str, projection_path: str | None = None) -> Histo
     if projection_file.exists():
         for row in _jsonl(projection_file):
             projections[str(row.get("uid"))] = row
+    else:
+        # Every HistoricalRecord.features silently degrades to {} without
+        # this file — the whole similarity engine (v1 AND v2) would run
+        # on empty/default signals with no error anywhere. Make the
+        # degradation OBSERVABLE instead of silent; still return the
+        # (degraded) dataset rather than hard-fail every intelligence
+        # request over a missing side file.
+        logger.warning(
+            "atlas_historical_projection_missing",
+            extra={"matches_path": matches_path, "projection_path": str(projection_file)},
+        )
+        ops.open_ticket(
+            "historical_projection_missing",
+            severity="ERROR",
+            dataset=matches_path,
+            impact="every HistoricalRecord.features is empty — similarity engine runs on defaults only",
+            recommendation=f"generate {projection_file} (see scripts/atlas_similarity_dataset_build.py)",
+            dedup_key=f"atlas:historical:projection_missing:{matches_path}",
+        )
     records = []
     for match in _jsonl(matches_file):
         uid = str(match.get("uid"))

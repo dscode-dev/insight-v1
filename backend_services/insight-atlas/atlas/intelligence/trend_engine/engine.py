@@ -74,13 +74,28 @@ class HistoricalTrendEngine:
         metric: Callable[[list[HistoricalRecord]], float],
         material_delta: float,
     ) -> TrendInsight:
-        baseline = metric(rows)
-        options = []
-        for size in (5, 10):
-            if len(rows) >= size:
-                value = metric(rows[-size:])
-                options.append((abs(value - baseline), size, value))
-        _, size, recent = max(options)
+        # FIXED window, compared against the STRICTLY EARLIER remainder.
+        #
+        # Two compounding biases were removed here:
+        #   1. The window used to be chosen with `max()` over
+        #      `abs(value - baseline)` — i.e. whichever of the 5- and
+        #      10-match windows deviated MOST was selected. That is
+        #      systematic selection bias in favour of declaring
+        #      rising/falling and of inflating `strength`.
+        #   2. `baseline = metric(rows)` included the recent window
+        #      itself, so this was never "recent vs. earlier" but
+        #      "recent vs. recent+earlier" — damping the delta by an
+        #      amount that depended on the sample size.
+        size = min(5, len(rows))
+        if size == 0 or len(rows) <= size:
+            # Not enough history to separate a recent window from a
+            # prior baseline; report no movement rather than compare a
+            # window against itself.
+            baseline = metric(rows) if rows else 0.0
+            recent = baseline
+        else:
+            recent = metric(rows[-size:])
+            baseline = metric(rows[:-size])
         delta = recent - baseline
         if delta > material_delta:
             direction = TrendDirection.rising

@@ -116,15 +116,15 @@ func notificationToDTO(n *socialv1.Notification) Notification {
 	read := n.Status == socialv1.NotificationStatus_NOTIFICATION_STATUS_READ
 
 	out := Notification{
-		ID:        n.Id,
-		Type:      typeWire,
-		Priority:  priorityToWire(n.Priority),
-		Title:     n.Title,
-		Body:      n.Body,
-		Icon:      pres.icon,
-		Color:     pres.color,
-		DeepLink:  deeplink,
-		Read:      read,
+		ID:       n.Id,
+		Type:     typeWire,
+		Priority: priorityToWire(n.Priority),
+		Title:    n.Title,
+		Body:     n.Body,
+		Icon:     pres.icon,
+		Color:    pres.color,
+		DeepLink: deeplink,
+		Read:     read,
 		Capabilities: NotificationCaps{
 			CanOpen:     deeplink != "",
 			CanMarkRead: !read,

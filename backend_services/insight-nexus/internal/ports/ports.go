@@ -126,11 +126,47 @@ type PublicationRepository interface {
 	RecordCandidate(ctx context.Context, c PublicationCandidate) error
 }
 
+// QueuedDraft — one unit of publishing work, self-contained.
+//
+// It carries the draft AND the context and decision that produced it, so
+// the publish worker acts on exactly what the pipeline saw. Re-deriving the
+// context inside the worker would read memories at a later instant, and the
+// post would then be phrased from a story state the decision never
+// evaluated.
+type QueuedDraft struct {
+	Draft    draft.Draft                  `json:"draft"`
+	Context  draft.Context                `json:"context"`
+	Decision decision.PublicationDecision `json:"decision"`
+	Priority bool                         `json:"priority"`
+}
+
 // DraftQueue — the per-agent publishing queues
 // (insight:queue:nexus:{agent}). Atlas never knows these exist.
+//
+// WRITE SIDE. Enqueue is called by the trend pipeline; Depth backs the
+// "drafts waiting to publish" gauge.
 type DraftQueue interface {
-	Enqueue(ctx context.Context, queueName string, d draft.Draft, priority bool) error
+	Enqueue(ctx context.Context, queueName string, item QueuedDraft) error
 	Depth(ctx context.Context, queueName string) (int64, error)
+}
+
+// QueuedDraftHandler processes one dequeued item. Returning an error leaves
+// the entry unacknowledged so it is redelivered — the safe direction, since
+// the publisher records product outcomes (suppressed / invalid / ticketed)
+// as data rather than as errors.
+type QueuedDraftHandler func(ctx context.Context, item QueuedDraft) error
+
+// DraftQueueConsumer — the READ side of the publishing queues.
+//
+// This half did not exist. Enqueue wrote to a stream nothing ever read: the
+// queue grew until MaxLen silently trimmed the oldest drafts, the "active
+// jobs" gauge reported a number that could only rise, and publication really
+// happened inline in the trend consumer — where one slow LLM call stalled
+// every other agent and every later trend.
+type DraftQueueConsumer interface {
+	// Consume blocks until ctx is cancelled, dispatching entries from
+	// every queue in queueNames.
+	Consume(ctx context.Context, queueNames []string, handler QueuedDraftHandler) error
 }
 
 // ---- Sprint 4: publication engine ports ----

@@ -12,10 +12,11 @@ import (
 // recipient (ON CONFLICT DO NOTHING). Shape: "<verb>:<scope...>".
 //
 // Examples:
-//   reaction:discussion:842:user:18
-//   reply:discussion:842:comment:991
-//   mention:discussion:842:user:55
-//   join:community:12:user:7
+//
+//	reaction:discussion:842:user:18
+//	reply:discussion:842:comment:991
+//	mention:discussion:842:user:55
+//	join:community:12:user:7
 //
 // Parts are lowercased and joined by ':'; empty parts are dropped so callers
 // can't accidentally create ambiguous keys.

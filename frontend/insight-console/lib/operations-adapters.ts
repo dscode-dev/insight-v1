@@ -78,11 +78,9 @@ function transportOf(protocol: ServiceSnapshot["service"]["protocol"]): ServiceA
 
 function apiStyleOf(kind: AdapterKind): string {
   switch (kind) {
-    case "atlas": return "Atlas internal API";
+    case "control-plane": return "Insight Control Plane";
     case "explorer": return "Explorer API";
     case "gateway": return "Gateway platform-health";
-    case "robozao": return "Unified Operations Protocol";
-    case "nexus": return "Nexus authed API";
     default: return "not directly observed";
   }
 }

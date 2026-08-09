@@ -29,6 +29,18 @@ var (
 	ErrNotAuthor        = errors.New("not_the_author")
 	ErrMaxDepthExceeded = errors.New("max_comment_depth_exceeded")
 	ErrAgentInactive    = errors.New("agent_inactive") // CONSOLE-SOCIAL-B: deactivated agent may not publish
+	// A competition-scoped post that names no competition cannot appear in any
+	// rail — it would be published and then invisible in every filtered view.
+	ErrCompetitionRequired = errors.New("competition_required")
+	// The id does not match a registered competition. Competitions exist only
+	// once registered in the console; an unknown id is a rejection, not a value
+	// to store and reconcile later.
+	ErrCompetitionUnknown = errors.New("competition_unknown")
+	// A channel says where an EXTERNAL share went. On a repost it would be a
+	// value no reader can interpret, and the database refuses it too
+	// (post_shares_channel_scope_check).
+	ErrChannelOnRepost    = errors.New("channel_only_for_external_share")
+	ErrInvalidShareTarget = errors.New("invalid_share_target")
 )
 
 const (
@@ -71,6 +83,23 @@ type Post struct {
 	CreatedAt    time.Time
 	LikeCount    int64
 	CommentCount int64
+	ShareCount   int64
+
+	// The competition this post belongs to, when it belongs to one.
+	//
+	// The public feed is partitioned by competition — the app's rail under the
+	// header picks one and the feed narrows to it. nil means the post is
+	// platform-wide and shows whatever the viewer has selected.
+	//
+	// A UUID rather than the slug: the slug is editable from the console, and
+	// a post keyed on it would detach from its competition the moment an
+	// operator renamed one.
+	CompetitionID *uuid.UUID
+
+	// Filled on read for rendering the competition chip without a second call.
+	// Never accepted on write — Social derives them from CompetitionID.
+	CompetitionSlug string
+	CompetitionName string
 }
 
 // NewPost validates and constructs a fresh Post.
@@ -80,6 +109,7 @@ func NewPost(
 	content string,
 	metadata map[string]string,
 	visibility Visibility,
+	competitionID *uuid.UUID,
 ) (*Post, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -100,14 +130,28 @@ func NewPost(
 	if metadata == nil {
 		metadata = map[string]string{}
 	}
+	// Refused here as well as in the database. The CHECK constraint
+	// (posts_competition_scope_check) is what makes the rule true, but a
+	// constraint violation surfaces as a driver error the caller has to parse;
+	// this returns the reason as a domain error the API can map to a 400.
+	if visibility == VisibilityCompetition && competitionID == nil {
+		return nil, ErrCompetitionRequired
+	}
+	if competitionID != nil && *competitionID == uuid.Nil {
+		// The zero UUID passes a nil check and fails the foreign key, which
+		// would read as "competition does not exist" rather than "you sent an
+		// empty id".
+		return nil, ErrCompetitionRequired
+	}
 	return &Post{
-		ID:         uuid.New(),
-		AuthorID:   authorID,
-		AuthorType: authorType,
-		Content:    content,
-		Metadata:   metadata,
-		Visibility: visibility,
-		CreatedAt:  time.Now().UTC(),
+		ID:            uuid.New(),
+		AuthorID:      authorID,
+		AuthorType:    authorType,
+		Content:       content,
+		Metadata:      metadata,
+		Visibility:    visibility,
+		CompetitionID: competitionID,
+		CreatedAt:     time.Now().UTC(),
 	}, nil
 }
 
@@ -179,4 +223,24 @@ type Repository interface {
 	// Like / Unlike are idempotent at the DB level (re-like no-ops).
 	Like(ctx context.Context, postID, userID uuid.UUID) error
 	Unlike(ctx context.Context, postID, userID uuid.UUID) error
+
+	// Share returns whether a row was created — false when a repost already
+	// existed — and the post's resulting count. Unshare removes a repost only.
+	Share(ctx context.Context, postID, userID uuid.UUID, target, channel string) (bool, int64, error)
+	Unshare(ctx context.Context, postID, userID uuid.UUID) error
+}
+
+// Share targets. A repost is a STATE — one per user and post, toggled by a
+// button. An external share is an EVENT: the same person sends the same post
+// to two friends, and both count. They share a table and differ by this value.
+const (
+	ShareFeed     = "feed"
+	ShareExternal = "external"
+)
+
+// ValidShareTarget reports whether the value is one the database accepts.
+// Checked here so the caller gets a domain error instead of a constraint
+// violation it would have to parse.
+func ValidShareTarget(target string) bool {
+	return target == ShareFeed || target == ShareExternal
 }

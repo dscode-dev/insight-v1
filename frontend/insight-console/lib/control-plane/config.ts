@@ -38,22 +38,26 @@ const schema = z.object({
     .transform((v) => v.replace(/\/+$/, ""))
     .default("https://insight-api.konohalabs.com.br/v1"),
   ADMIN_API_INTERNAL_TOKEN: z.string().optional().default(""),
-  ATLAS_API_BASE_URL: urlOrEmpty,
-  ATLAS_INTERNAL_TOKEN: z.string().optional().default(""),
   EXPLORER_API_BASE_URL: urlOrEmpty,
   ROBOZAO_GATEWAY_URL: urlOrEmpty,
   // Nexus has no default: if unset, Nexus is a KNOWN service the Console cannot
   // directly reach (configured=false), never a guessed production host.
-  NEXUS_API_BASE_URL: urlOrEmpty,
   NODE_ENV: z.string().optional().default("development"),
 });
 
 export interface ControlPlaneConfig {
-  readonly gateway: UpstreamConfig; // cloud gateway (admin/console surface)
-  readonly atlas: UpstreamConfig; // robozão intelligence
-  readonly explorer: UpstreamConfig; // robozão data collection
-  readonly robozaoGateway: UpstreamConfig; // robozão operations protocol
-  readonly nexus: UpstreamConfig; // robozão publication engine
+  // Atlas, Nexus and the Node Agent are deliberately ABSENT.
+  //
+  // insight-context.md v2.0 routes every Intelligence-plane service
+  // through the Insight Control Plane, so the console has no business
+  // holding a base URL — let alone a service token — for any of them.
+  // Their entries were removed rather than left unused: a configured
+  // upstream nobody calls is an invitation to call it.
+  readonly gateway: UpstreamConfig; // cloud gateway (PRODUCT plane)
+  // Still direct, still to be migrated: `lib/data-intelligence.ts`
+  // talks to Explorer for the Data Intelligence screens.
+  readonly explorer: UpstreamConfig;
+  readonly robozaoGateway: UpstreamConfig; // legacy; unused by adapters
   readonly isProduction: boolean;
   /** Mandatory-config problems found at load. Reads may still degrade, not crash. */
   readonly configErrors: string[];
@@ -88,10 +92,8 @@ export function controlPlaneConfig(): ControlPlaneConfig {
 
   cached = {
     gateway: upstream(env.ADMIN_API_BASE_URL, env.ADMIN_API_INTERNAL_TOKEN || undefined),
-    atlas: upstream(env.ATLAS_API_BASE_URL, env.ATLAS_INTERNAL_TOKEN || undefined),
     explorer: upstream(env.EXPLORER_API_BASE_URL),
     robozaoGateway: upstream(env.ROBOZAO_GATEWAY_URL),
-    nexus: upstream(env.NEXUS_API_BASE_URL),
     isProduction,
     configErrors,
   };

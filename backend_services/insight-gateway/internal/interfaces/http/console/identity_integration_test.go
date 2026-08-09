@@ -403,12 +403,12 @@ func asDelCode(err error) DelegationErrorCode {
 
 func auditBody(capability, delegationID, idem string) string {
 	b, _ := json.Marshal(map[string]any{
-		"capability":     capability,
-		"status":         "COMPLETED",
-		"authorization":  map[string]string{"decision": "allow", "reason_code": "allowed_permission", "policy_source": "permission:feed.hide"},
+		"capability":      capability,
+		"status":          "COMPLETED",
+		"authorization":   map[string]string{"decision": "allow", "reason_code": "allowed_permission", "policy_source": "permission:feed.hide"},
 		"idempotency_key": idem,
-		"delegation_id":  delegationID,
-		"target":         map[string]string{},
+		"delegation_id":   delegationID,
+		"target":          map[string]string{},
 	})
 	return string(b)
 }

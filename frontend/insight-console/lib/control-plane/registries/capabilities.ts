@@ -42,9 +42,33 @@ const META: Record<string, CapMeta> = {
   "atlas.health.read": { evidence: "GET /health (atlas 1.0.0)" },
   "atlas.intelligence.read": { evidence: "GET /v1/internal/intelligence/* (atlas 1.0.0)" },
   "atlas.replay.read": { evidence: "GET /backtests (atlas 1.0.0)" },
+  // The human approval ATLAS_V1_FROZEN.md declares mandatory before any
+  // detector/heuristic change is promoted against the frozen baseline.
+  // High risk and approval-required for the same reason moderation is:
+  // it is an irreversible governance act, and the record of who made it
+  // is the only evidence the freeze was respected.
+  "atlas.replay.promote": {
+    evidence: "POST /backtests/{id}/decision (atlas 1.0.0)",
+    risk: "high",
+    approvalRequired: true,
+  },
   "explorer.health.read": { evidence: "GET /health (explorer)" },
   "explorer.missions.read": { evidence: "GET /explorer/missions (explorer)" },
   "explorer.datasets.read": { evidence: "GET /explorer/datasets (explorer)" },
+  // Human curation: a promote/reject verdict on a collected record.
+  // High risk because promotion appends the envelope to the VALIDATED
+  // lake layer, which Atlas's StrengthSyncWatcher consumes — a curator's
+  // decision propagates into Atlas's team ratings.
+  "explorer.curation.decide": {
+    evidence: "POST /explorer/review/{promote,reject} (explorer)",
+    risk: "high",
+    approvalRequired: true,
+  },
+  // Cancelling stops every running collection job, not one.
+  "explorer.scheduler.control": {
+    evidence: "POST /explorer/jobs/cancel (explorer)",
+    risk: "high",
+  },
   "robozao.operations.read": { evidence: "GET /operations/status (robozao-gateway)" },
   "nexus.publications.read": { evidence: "Nexus authed HTTP API (publication ops)" },
   "gateway.platform_health.read": { evidence: "GET /v1/console/platform/health (gateway)" },

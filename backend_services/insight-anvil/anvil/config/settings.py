@@ -18,6 +18,20 @@ class Settings(BaseSettings):
     derived_stream_base_key: str = Field(default="insight:stream:derived", alias="DERIVED_STREAM_BASE_KEY")
     stream_partitions: int = Field(default=8, alias="STREAM_PARTITIONS")
     derived_group_name: str = Field(default="insight:group:anvil:derived", alias="DERIVED_GROUP_NAME")
+
+    # --- historical stream (the Explorer's backfill) ----------------------
+    #
+    # Its OWN stream and group, deliberately. The derived stream carries
+    # Atlas's live match recalculations into tables keyed by state_version
+    # with a 90-day TTL; these records have neither. Sharing a group would
+    # also mean resetting one resets the other.
+    historical_stream_key: str = Field(
+        default="insight:stream:historical", alias="HISTORICAL_STREAM_KEY")
+    historical_group_name: str = Field(
+        default="insight:group:anvil:historical", alias="HISTORICAL_GROUP_NAME")
+    dlq_historical_key: str = Field(
+        default="insight:dlq:anvil:historical", alias="DLQ_HISTORICAL_KEY")
+    historical_enabled: bool = Field(default=True, alias="HISTORICAL_ENABLED")
     consumer_name: str = Field(default="anvil-1", alias="CONSUMER_NAME")
 
     # Consumer loop (knobs tuned for the analytics

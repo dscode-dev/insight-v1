@@ -16,7 +16,11 @@ def test_catalog_themes_and_durations_are_stable_taxonomies():
     catalog = build_catalog()
     assert catalog["themes"] == list(THEMES)
     assert catalog["durations"] == ["one-shot", "recurring", "custom"]
-    assert catalog["recommended"]["themes"] == ["fixtures"]
+    # Odds and stats joined fixtures once `build_envelope` stopped forcing
+    # entity_type="fixture" — Football-Data.co.uk carries all three in the CSV
+    # it was already fetching. Lineups and injuries have contracts and no
+    # producer, so they stay out of the recommendation.
+    assert catalog["recommended"]["themes"] == ["fixtures", "odds", "stats"]
 
 
 def test_catalog_competitions_cover_the_registry():
@@ -46,8 +50,11 @@ def test_resolve_seasons_cross_year_competition_format():
 
 
 def test_estimate_zero_when_no_collectible_theme():
+    # `lineups`, not `odds`: odds became collectible. The invariant under test
+    # is "a theme no adapter produces estimates to zero work", and it needs a
+    # theme that is actually still in that state.
     draft = {"sources": [{"name": "espn", "enabled": True}], "competitions": ["brasileirao_serie_a"],
-             "themes": ["odds"], "duration": {"mode": "one-shot"}}
+             "themes": ["lineups"], "duration": {"mode": "one-shot"}}
     result = estimate(draft)
     assert result["source_jobs"] == 0
     assert any("collectible" in w for w in result["warnings"])

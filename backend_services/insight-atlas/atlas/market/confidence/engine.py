@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 from atlas.market.consensus import consensus
 from atlas.market.fair_probability import (
+    FairProbabilities,
     book_fair_probs,
     fair_probabilities,
 )
@@ -87,16 +88,27 @@ def _decisiveness_points(history: list[OddsTick]) -> list[float]:
     return series
 
 
-def market_confidence(history: list[OddsTick]) -> ConfidenceResult | None:
+def market_confidence(
+    history: list[OddsTick],
+    *,
+    books: dict[str, dict[str, float]] | None = None,
+    fair: FairProbabilities | None = None,
+) -> ConfidenceResult | None:
     """Confidence + velocity over the odds history. None when the
-    market view can't be computed."""
-    fair = fair_probabilities(history)
+    market view can't be computed.
+
+    `books`/`fair` let a caller that already computed
+    `latest_fair_probs_by_book(history)`/`fair_probabilities(history)`
+    (`MarketStateEngine`) pass them straight through instead of
+    recomputing — same reuse seam as `consensus`/`divergence`.
+    """
+    fair = fair if fair is not None else fair_probabilities(history, books=books)
     if fair is None:
         return None
     decisiveness = _decisiveness(fair.as_dict())
     if decisiveness is None:
         return None
-    agreement = consensus(history)
+    agreement = consensus(history, books=books)
     consensus_part = agreement.score if agreement is not None else 0.5
     score = _clamp(0.7 * decisiveness + 0.3 * consensus_part)
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import time
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -9,7 +11,6 @@ from pydantic import BaseModel, Field
 
 from atlas.api.deps import AppContainer, get_container, require_internal_token
 from atlas.ingestion import AtlasIngestionBatch
-from atlas.intelligence_workspace import analyze, compare_models, knowledge
 from atlas.intelligence.historical import HistoricalScope, load_dataset
 from atlas.intelligence.orchestrator import (
     AtlasIntelligenceOrchestrator,
@@ -17,10 +18,13 @@ from atlas.intelligence.orchestrator import (
 )
 from atlas.intelligence.report_builder import HistoricalIntelligenceReportBuilder
 from atlas.intelligence.signal_state_engine import SignalStateEngine
+from atlas.intelligence_workspace import analyze, compare_models, knowledge
 from atlas.operational_events import event_bus
 from atlas.similarity import SimilarityFilters, SimilaritySearchRequest
 from atlas.similarity.contracts import TimeWindow
 from atlas.vector_memory import DeterministicEmbeddingEncoder
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/v1/internal/intelligence",
@@ -45,6 +49,23 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
     correlation_id = (
         f"runtime:{context.competition}:{context.home_team}:{context.away_team}"
     )
+    # ATLAS-SIM-A: live team-strength state (Elo/attack-defense/h2h/
+    # standings/rest) only needs team names + competition, so it's
+    # always wireable here. Odds-tick-derived market features additionally
+    # need the odds pipeline's stable match_id (atlas.odds_ticks.match_id,
+    # payload-scoped — distinct from canonical_match_id) resolved from
+    # (competition, home, away, kickoff); that identity-resolution lookup
+    # is out of scope for this pass, so the market fallback stays unwired
+    # here — the existing caller-supplied `context.odds` path (now also
+    # producing line_movement) remains the live market-features source.
+    strength_features = None
+    if container.strength is not None:
+        strength_features = await container.strength.features_for_match(
+            competition=context.competition,
+            home=context.home_team,
+            away=context.away_team,
+            as_of=context.as_of or datetime.now(timezone.utc),
+        )
     try:
         event_bus.emit(
             "reasoning_started",
@@ -65,7 +86,9 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
             metadata={"historical_data": context.historical_data},
         )
         signal_loading_started = time.perf_counter()
-        report = AtlasIntelligenceOrchestrator(dataset).execute(context)
+        report = AtlasIntelligenceOrchestrator(dataset).execute(
+            context, strength_features=strength_features
+        )
         event_bus.emit(
             "signal_loading_finished",
             current_state="loaded",
@@ -227,8 +250,15 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
         )
         enriched_report = report.model_copy(
             update={
-                "vector_contexts": vector.contexts,
-                "vector_neighbors": vector.neighbor_count,
+                # `matches`, not `contexts`; and neighbour_count lives on
+                # `confidence`. SimilarityContext (ATLAS-SIMILARITY-A) kept the
+                # SimilaritySearchResult surface — matches/confidence/filters —
+                # and these two call sites were never updated to it. Both
+                # raised AttributeError on the first real search, which nothing
+                # noticed because atlas_vector_memory was empty until the
+                # historical backfill populated it.
+                "vector_contexts": vector.matches,
+                "vector_neighbors": vector.confidence.neighbor_count,
                 "vector_confidence": vector.confidence,
                 "explorer_memory": memory["payload"] if memory else None,
                 "explorer_behaviors": [
@@ -312,6 +342,26 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
             else status.HTTP_422_UNPROCESSABLE_ENTITY
         )
         raise HTTPException(status_code=status_code, detail=detail) from exc
+    except Exception as exc:
+        # Any OTHER failure (e.g. Postgres/Redis instability inside
+        # container.similarity/container.ingestion) previously propagated
+        # with no terminal event at all — the correlation_id's last
+        # visible stage stayed whatever was emitted before the crash,
+        # forever, since nothing ever marked it "failed". Re-raised
+        # unchanged (still a 500) — this only adds the missing signal.
+        event_bus.emit(
+            "reasoning_failed",
+            severity="ERROR",
+            current_state="failed",
+            correlation_id=correlation_id,
+            metadata={
+                "competition": context.competition,
+                "home_team": context.home_team,
+                "away_team": context.away_team,
+                "error": str(exc),
+            },
+        )
+        raise
 
 
 @atlas_router.post("/intelligence")
@@ -351,14 +401,28 @@ async def validate_dataset(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _resolve_operator(x_operator: str | None, *, route: str) -> str:
+    """Falls back to a generic operator identity when X-Operator isn't
+    sent — kept (not made mandatory, which would break any existing
+    caller that omits it) but logged, so a mutation attributed to
+    "console-superadmin" is at least traceable to a specific call
+    instead of silently blending into every other unattributed request.
+    """
+    if x_operator:
+        return x_operator
+    logger.warning("dataset_register_missing_operator_header", extra={"route": route})
+    return "console-superadmin"
+
+
 @atlas_router.post("/datasets/register")
 async def register_dataset(
     body: dict = Body(...),
     x_operator: str | None = Header(default=None),
     container: AppContainer = Depends(get_container),
 ) -> dict:
+    operator = _resolve_operator(x_operator, route="register")
     try:
-        return await container.datasets.register(body, x_operator or "console-superadmin")
+        return await container.datasets.register(body, operator)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -369,10 +433,9 @@ async def register_explorer_dataset(
     x_operator: str | None = Header(default=None),
     container: AppContainer = Depends(get_container),
 ) -> dict:
+    operator = _resolve_operator(x_operator, route="register-explorer")
     try:
-        return await container.datasets.register_explorer(
-            body, x_operator or "console-superadmin"
-        )
+        return await container.datasets.register_explorer(body, operator)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

@@ -17,9 +17,9 @@ import (
 // (timestamp, uuid) only) because members pagination needs the role-priority
 // as the leading sort key.
 type MembersCursor struct {
-	P int       `json:"p"`  // role priority (0=owner … 3=member)
-	J time.Time `json:"j"`  // joined_at
-	U uuid.UUID `json:"u"`  // user_id (final tiebreak)
+	P int       `json:"p"` // role priority (0=owner … 3=member)
+	J time.Time `json:"j"` // joined_at
+	U uuid.UUID `json:"u"` // user_id (final tiebreak)
 }
 
 // EncodeMembersCursor produces the opaque cursor string for the last row.

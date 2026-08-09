@@ -35,29 +35,44 @@ const SEED: readonly Seed[] = [
   {
     id: "atlas", displayName: "Insight Atlas", domain: "intelligence",
     environmentId: "robozao", serviceType: "python/fastapi", ownership: "intelligence",
-    protocol: "http", adapterKind: "atlas", observable: true, mutable: false,
-    dependencies: ["postgres", "redis"], lifecycle: "frozen", endpointKey: "atlas",
-    capabilities: ["atlas.health.read", "atlas.intelligence.read", "atlas.replay.read"],
+    protocol: "http", adapterKind: "control-plane", observable: true, mutable: false,
+    dependencies: ["postgres", "redis"], lifecycle: "frozen", endpointKey: null,
+    capabilities: [
+      "atlas.health.read",
+      "atlas.intelligence.read",
+      "atlas.replay.read",
+      // Registry presence is a PRECONDITION for authorize(): a
+      // capability listed only in capabilities.ts META is not built
+      // into a descriptor, so isValidId() is false and every decision
+      // on it returns denied_capability_unsupported.
+      "atlas.replay.promote",
+    ],
   },
   {
     id: "explorer", displayName: "Insight Explorer", domain: "data",
     environmentId: "robozao", serviceType: "python/fastapi", ownership: "data",
     protocol: "http", adapterKind: "explorer", observable: true, mutable: false,
     dependencies: ["postgres", "redis", "atlas"], lifecycle: "active", endpointKey: "explorer",
-    capabilities: ["explorer.health.read", "explorer.missions.read", "explorer.datasets.read"],
+    capabilities: [
+      "explorer.health.read",
+      "explorer.missions.read",
+      "explorer.datasets.read",
+      "explorer.curation.decide",
+      "explorer.scheduler.control",
+    ],
   },
   {
     id: "robozao-gateway", displayName: "Robozão Gateway", domain: "gateway",
     environmentId: "robozao", serviceType: "go", ownership: "platform",
-    protocol: "gateway", adapterKind: "robozao", observable: true, mutable: false,
-    dependencies: ["explorer", "atlas"], lifecycle: "active", endpointKey: "robozaoGateway",
+    protocol: "gateway", adapterKind: "control-plane", observable: true, mutable: false,
+    dependencies: ["explorer", "atlas"], lifecycle: "active", endpointKey: null,
     capabilities: ["robozao.operations.read"],
   },
   {
     id: "nexus", displayName: "Insight Nexus", domain: "publication",
     environmentId: "robozao", serviceType: "go", ownership: "publication",
-    protocol: "http", adapterKind: "nexus", observable: true, mutable: false,
-    dependencies: ["qwen", "postgres"], lifecycle: "active", endpointKey: "nexus",
+    protocol: "http", adapterKind: "control-plane", observable: true, mutable: false,
+    dependencies: ["qwen", "postgres"], lifecycle: "active", endpointKey: null,
     capabilities: ["nexus.publications.read"],
   },
   {
@@ -153,8 +168,12 @@ const BY_ID = new Map<string, Seed>(SEED.map((s) => [s.id, s]));
 /** Is this service configured — i.e. does the Console have a usable endpoint? */
 export function isServiceConfigured(seed: Seed): boolean {
   if (seed.endpointKey === null) {
-    // Not directly reachable by the Console. "Observed via gateway" services are
-    // considered configured iff the gateway itself is configured.
+    // Not directly reachable by the Console — which for the whole
+    // Intelligence plane is now the intended state, not a gap.
+    // Reachability is the Control Plane's, and the console always has a
+    // route to it (it is the only service it is allowed to call).
+    if (seed.adapterKind === "control-plane") return true;
+    // "Observed via gateway" services are configured iff the gateway is.
     if (seed.adapterKind === "gateway") return controlPlaneConfig().gateway.configured;
     return false;
   }

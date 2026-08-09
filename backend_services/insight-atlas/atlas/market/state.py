@@ -21,7 +21,12 @@ from prometheus_client import Counter, Histogram
 from atlas.market.confidence import ConfidenceResult, market_confidence
 from atlas.market.consensus import ConsensusResult, consensus
 from atlas.market.divergence import DivergenceResult, divergence
-from atlas.market.fair_probability import FairProbabilities, fair_probabilities
+from atlas.market.fair_probability import (
+    FairProbabilities,
+    fair_prob_points,
+    fair_probabilities,
+    latest_fair_probs_by_book,
+)
 from atlas.market.sharp import SharpMovementResult, sharp_movement
 from atlas.market.volatility import VolatilityResult, volatility
 from atlas.odds.models import OddsTick
@@ -94,13 +99,22 @@ class MarketStateEngine:
         self._observe = observe_metrics
 
     def compute(self, history: list[OddsTick]) -> MarketState:
+        # Each of these two scans is O(n) over the tick history; every
+        # subengine below independently recomputed its own copy before
+        # (fair/consensus/divergence/confidence each called
+        # latest_fair_probs_by_book; volatility/sharp each called
+        # fair_prob_points) — up to 4x and 2x redundant per compute()
+        # call respectively. Compute once, pass through.
+        books = latest_fair_probs_by_book(history)
+        points = [v for _, v in fair_prob_points(history)]
+        fair = fair_probabilities(history, books=books)
         state = MarketState(
-            fair=fair_probabilities(history),
-            consensus=consensus(history),
-            divergence=divergence(history),
-            confidence=market_confidence(history),
-            volatility=volatility(history),
-            sharp=sharp_movement(history),
+            fair=fair,
+            consensus=consensus(history, books=books),
+            divergence=divergence(history, books=books),
+            confidence=market_confidence(history, books=books, fair=fair),
+            volatility=volatility(history, points=points),
+            sharp=sharp_movement(history, points=points),
             snapshots=len({t.captured_at for t in history}),
         )
         if self._observe:

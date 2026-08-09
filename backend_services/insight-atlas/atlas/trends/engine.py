@@ -11,6 +11,7 @@ it in a single anonymous engine — the Sprint 0 surface still works.
 
 from __future__ import annotations
 
+import logging
 import time
 
 from prometheus_client import Counter, Histogram
@@ -18,6 +19,27 @@ from prometheus_client import Counter, Histogram
 from atlas.event_aggregation.store import AggregationStore, now_seconds
 from atlas.trends.engines import BaseTrendEngine, TrendDetector, default_engines
 from atlas.trends.models import Trend, TrendInputs
+
+logger = logging.getLogger(__name__)
+
+# Evidence keys that identify WHICH subject a trend is about, for
+# detectors that legitimately emit several trends of the SAME type in
+# one tick (MarketAnomalyDetector: one per outlier bookmaker;
+# MetaTrendDetector: one per team). Without a discriminator the cooldown
+# key `trend:{match}:{type}` let only the first one through and silently
+# dropped the rest into trends_suppressed_total — indistinguishable from
+# the intended "same trend re-firing" suppression, and with no record of
+# which subject was lost. Order is fixed so the key is deterministic.
+_COOLDOWN_SUBJECT_KEYS: tuple[str, ...] = ("bookmaker", "team")
+
+
+def _cooldown_key(trend: Trend) -> str:
+    base = f"trend:{trend.canonical_match_id}:{trend.trend_type.value}"
+    for key in _COOLDOWN_SUBJECT_KEYS:
+        subject = trend.evidence.get(key)
+        if subject:
+            return f"{base}:{subject}"
+    return base
 
 TRENDS_GENERATED_TOTAL = Counter(
     "trends_generated_total",
@@ -79,10 +101,29 @@ class TrendEngine:
         kept: list[Trend] = []
         for trend in candidates:
             if self._cooldown is not None:
-                key = f"trend:{trend.canonical_match_id}:{trend.trend_type.value}"
-                allowed = await self._cooldown.allow_fire(
-                    key, now_seconds(), self._cooldown_seconds
-                )
+                key = _cooldown_key(trend)
+                try:
+                    allowed = await self._cooldown.allow_fire(
+                        key, now_seconds(), self._cooldown_seconds
+                    )
+                except Exception:
+                    # FAIL-OPEN. This method's contract is "Never raises"
+                    # and BaseTrendEngine already isolates detector
+                    # failures — but the cooldown call (Redis in
+                    # production) sat outside any try, so a transient
+                    # Redis blip propagated out of detect(), up through
+                    # pipeline.process(), and killed the entire tick:
+                    # lifecycle, persistence and publication of trends
+                    # that had ALREADY been detected. Letting the trend
+                    # through on a cooldown outage risks a duplicate
+                    # emission; swallowing the tick loses real
+                    # intelligence. Duplicates are the cheaper failure.
+                    logger.warning(
+                        "trend_cooldown_unavailable_failing_open",
+                        extra={"trend_type": trend.trend_type.value, "key": key},
+                        exc_info=True,
+                    )
+                    allowed = True
                 if not allowed:
                     TRENDS_SUPPRESSED_TOTAL.labels(
                         trend_type=trend.trend_type.value

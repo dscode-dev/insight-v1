@@ -30,12 +30,24 @@ func (s *PostServer) Create(ctx context.Context, req *socialv1.CreatePostRequest
 	if err != nil {
 		return nil, err
 	}
+	// Optional. Rejected when unparseable rather than dropped: a post silently
+	// published without the competition the author chose would be missing from
+	// the only rail they expect to find it in.
+	var competitionID *uuid.UUID
+	if raw := req.GetCompetitionId(); raw != "" {
+		parsed, perr := parseUUID(raw, "competition_id")
+		if perr != nil {
+			return nil, perr
+		}
+		competitionID = &parsed
+	}
 	p, err := s.svc.Create(ctx,
 		authorID,
 		authorTypeFromProto(req.GetAuthorType()),
 		req.GetContent(),
 		req.GetMetadata(),
 		visibilityFromProto(req.GetVisibility()),
+		competitionID,
 	)
 	if err != nil {
 		return nil, mapPostErr(err)
@@ -156,8 +168,19 @@ func mapPostErr(err error) error {
 		errors.Is(err, dompost.ErrContentTooLong),
 		errors.Is(err, dompost.ErrInvalidAuthor),
 		errors.Is(err, dompost.ErrInvalidVisible),
-		errors.Is(err, dompost.ErrMaxDepthExceeded):
+		errors.Is(err, dompost.ErrMaxDepthExceeded),
+		// Both say the CALLER sent something wrong and name which field.
+		// Falling through to Internal would answer "post operation failed" —
+		// a 500 that tells the client nothing it can act on.
+		errors.Is(err, dompost.ErrChannelOnRepost),
+		errors.Is(err, dompost.ErrInvalidShareTarget),
+		errors.Is(err, dompost.ErrCompetitionRequired):
 		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, dompost.ErrCompetitionUnknown):
+		// Distinct from the above: the field is well-formed and names a
+		// competition that is not registered. FailedPrecondition, because the
+		// fix is registering it, not correcting the request.
+		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, dompost.ErrNotAuthor):
 		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, dompost.ErrAgentInactive):
@@ -168,7 +191,7 @@ func mapPostErr(err error) error {
 }
 
 func postToProto(p *dompost.Post) *socialv1.Post {
-	return &socialv1.Post{
+	out := &socialv1.Post{
 		Id:           p.ID.String(),
 		AuthorId:     p.AuthorID.String(),
 		AuthorType:   authorTypeToProto(p.AuthorType),
@@ -178,7 +201,23 @@ func postToProto(p *dompost.Post) *socialv1.Post {
 		CreatedAt:    timestamppb.New(p.CreatedAt),
 		LikeCount:    p.LikeCount,
 		CommentCount: p.CommentCount,
+		ShareCount:   p.ShareCount,
 	}
+	if p.CompetitionID != nil {
+		id := p.CompetitionID.String()
+		out.CompetitionId = &id
+		// Only sent alongside the id — a slug or name without one would let a
+		// client render a chip that filters to nothing.
+		if p.CompetitionSlug != "" {
+			slug := p.CompetitionSlug
+			out.CompetitionSlug = &slug
+		}
+		if p.CompetitionName != "" {
+			name := p.CompetitionName
+			out.CompetitionName = &name
+		}
+	}
+	return out
 }
 
 func commentToProto(c *dompost.Comment) *socialv1.Comment {
@@ -246,5 +285,55 @@ func visibilityToProto(v dompost.Visibility) socialv1.PostVisibility {
 		return socialv1.PostVisibility_POST_VISIBILITY_PRIVATE
 	default:
 		return socialv1.PostVisibility_POST_VISIBILITY_UNSPECIFIED
+	}
+}
+
+func (s *PostServer) Share(
+	ctx context.Context, req *socialv1.SharePostRequest,
+) (*socialv1.SharePostResponse, error) {
+	postID, err := parseUUID(req.GetPostId(), "post_id")
+	if err != nil {
+		return nil, err
+	}
+	userID, err := parseUUID(req.GetUserId(), "user_id")
+	if err != nil {
+		return nil, err
+	}
+	created, count, err := s.svc.Share(ctx, postID, userID,
+		shareTargetFromProto(req.GetTarget()), req.GetChannel())
+	if err != nil {
+		return nil, mapPostErr(err)
+	}
+	return &socialv1.SharePostResponse{Created: created, ShareCount: count}, nil
+}
+
+func (s *PostServer) Unshare(
+	ctx context.Context, req *socialv1.UnsharePostRequest,
+) (*emptypb.Empty, error) {
+	postID, err := parseUUID(req.GetPostId(), "post_id")
+	if err != nil {
+		return nil, err
+	}
+	userID, err := parseUUID(req.GetUserId(), "user_id")
+	if err != nil {
+		return nil, err
+	}
+	if err := s.svc.Unshare(ctx, postID, userID); err != nil {
+		return nil, mapPostErr(err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// UNSPECIFIED maps to the empty string rather than defaulting to a target.
+// The service rejects it, so a client that forgot the field is told, instead
+// of silently getting a repost it never asked for.
+func shareTargetFromProto(t socialv1.ShareTarget) string {
+	switch t {
+	case socialv1.ShareTarget_SHARE_TARGET_FEED:
+		return dompost.ShareFeed
+	case socialv1.ShareTarget_SHARE_TARGET_EXTERNAL:
+		return dompost.ShareExternal
+	default:
+		return ""
 	}
 }

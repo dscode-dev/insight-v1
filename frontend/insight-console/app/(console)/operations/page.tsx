@@ -1,11 +1,7 @@
-import { OperationalCommandCenter } from "@/components/console/operational-command-center";
+import { PlatformDashboard } from "@/components/console/platform-dashboard";
 
 export const dynamic = "force-dynamic";
 
 export default function OperationsPage() {
-  return (
-    <div className="-m-3 w-[calc(100%+1.5rem)] max-w-none">
-      <OperationalCommandCenter />
-    </div>
-  );
+  return <PlatformDashboard />;
 }

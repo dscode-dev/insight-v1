@@ -22,7 +22,8 @@ introduce ahead of Anvil knowing about them.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from anvil.batch import BatchInserter
@@ -48,13 +49,23 @@ class HandlerStats:
 @dataclass
 class DerivedEventHandler:
     inserter: BatchInserter
-    stats: HandlerStats = None  # type: ignore[assignment]  # defaulted below
+    stats: HandlerStats = field(default_factory=HandlerStats)
 
-    def __post_init__(self) -> None:
-        if self.stats is None:
-            self.stats = HandlerStats()
+    async def handle(
+        self,
+        event: dict[str, Any],
+        ack: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
+        """Route one derived event into the batch buffer.
 
-    async def handle(self, event: dict[str, Any]) -> None:
+        OWNS the acknowledgement. A buffered row is not durable yet, so
+        `ack` is handed to the inserter and only fires once the insert
+        carrying that row succeeded. Events that produce no row are
+        acknowledged here, immediately — there is nothing to wait for.
+
+        Never acknowledging on an error path is deliberate: the message
+        stays pending and Redis redelivers it.
+        """
         event_type = event.get("event_type")
         payload = event.get("payload")
         if not isinstance(payload, dict):
@@ -64,7 +75,8 @@ class DerivedEventHandler:
         if event_type == "MARKET_SNAPSHOT":
             row = map_market_snapshot_row(payload)
             await self.inserter.add(
-                MARKET_SNAPSHOTS_TABLE, MARKET_SNAPSHOTS_COLUMNS, row
+                MARKET_SNAPSHOTS_TABLE, MARKET_SNAPSHOTS_COLUMNS, row,
+                on_flushed=ack,
             )
             self.stats.market_snapshots_buffered += 1
             return
@@ -72,7 +84,8 @@ class DerivedEventHandler:
         if event_type == "METRIC_TICK":
             row = map_metric_tick_row(payload)
             await self.inserter.add(
-                METRIC_TICKS_TABLE, METRIC_TICKS_COLUMNS, row
+                METRIC_TICKS_TABLE, METRIC_TICKS_COLUMNS, row,
+                on_flushed=ack,
             )
             self.stats.metric_ticks_buffered += 1
             return
@@ -89,3 +102,7 @@ class DerivedEventHandler:
                 "match_version": event.get("match_version"),
             },
         )
+        # Nothing was buffered, so nothing will ever flush this message.
+        # Without this it would sit pending and be redelivered forever.
+        if ack is not None:
+            await ack()

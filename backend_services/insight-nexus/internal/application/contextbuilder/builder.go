@@ -10,9 +10,8 @@ package contextbuilder
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/konoha-labs/insight-nexus/internal/domain/agent"
+	"github.com/konoha-labs/insight-nexus/internal/domain/draft"
 	"github.com/konoha-labs/insight-nexus/internal/domain/memory"
 	"github.com/konoha-labs/insight-nexus/internal/domain/trend"
 	"github.com/konoha-labs/insight-nexus/internal/ports"
@@ -22,36 +21,11 @@ import (
 const MemoryWindow = 10
 
 // DraftContext is the complete input to the draft generator.
-type DraftContext struct {
-	Agent agent.Agent
-	Trend trend.Event
-	// StreamPriority — Atlas's priority flag on the consumed stream
-	// entry (transport-level). The communication priority band lives
-	// in Priority below (decision-driven).
-	StreamPriority bool
-
-	// Memories — newest-first match-scoped continuity (≤ MemoryWindow).
-	Memories []memory.Memory
-	// Related — newest-first story-cluster continuity across matches
-	// (≤ MemoryWindow). Lets Oracle-style narratives reference
-	// previous encounters.
-	Related   []memory.Memory
-	MemoryHit bool
-
-	// ---- Sprint 3: communication-intelligence context (set by the
-	// pipeline after the decision/state/evolution engines ran).
-	ClusterID   uuid.UUID
-	ClusterType string
-	Action      string
-	// Priority — the decision engine's priority band
-	// (LOW/MEDIUM/HIGH/CRITICAL). Renamed from the temporary
-	// Priority2 in Sprint 3.5; the wire metadata key ("priority") is
-	// unchanged.
-	Priority   string
-	AgentState string
-	DraftType  string
-	Sequence   int
-}
+//
+// The struct itself now lives in the domain (`draft.Context`) so the
+// publishing queue can carry it across the process boundary — see the note
+// there. This alias keeps every existing caller and test unchanged.
+type DraftContext = draft.Context
 
 // MetricsRecorder — the builder's observability seam.
 type MetricsRecorder interface {

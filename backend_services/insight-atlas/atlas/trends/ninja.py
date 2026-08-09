@@ -32,9 +32,12 @@ def _consensus_prob_points(inputs: TrendInputs) -> list[tuple[datetime, float]]:
     """Timestamped consensus home implied-probability series: per
     snapshot instant, forward-fill each bookmaker's latest price and
     average the implied probabilities."""
+    # Composite sort key: `captured_at` alone left ties in whatever
+    # order the caller happened to supply, making the forward-fill
+    # order (and therefore the emitted series) non-deterministic.
     h2h = sorted(
         (t for t in inputs.odds_history if t.market == H2H),
-        key=lambda t: t.captured_at,
+        key=lambda t: (t.captured_at, t.bookmaker),
     )
     timestamps = sorted({t.captured_at for t in h2h})
     latest_by_book: dict[str, float] = {}

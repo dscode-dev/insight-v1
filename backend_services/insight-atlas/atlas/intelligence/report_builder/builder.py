@@ -27,7 +27,21 @@ class HistoricalIntelligenceReportBuilder:
         if not rows:
             raise ValueError("historical_scope_empty")
         query_record = self._query_record(rows, home_team, away_team)
-        rows = [row for row in rows if row.kickoff_at <= query_record.kickoff_at]
+        # STRICTLY prior, and never the analysed match itself. The old
+        # `<=` retained `query_record` (which is `rows[-1]`) in its own
+        # baseline, so every downstream engine described the match using
+        # that match's OWN result — while signal_engine labelled its
+        # evidence "leakage-safe form projection". Same policy the
+        # hierarchical memory already used
+        # (atlas/memory/retrieval_engine/engine.py): a fixture kicking
+        # off at the same instant hasn't resolved either, so `<` is the
+        # conservative cut.
+        rows = [
+            row
+            for row in rows
+            if row.uid != query_record.uid
+            and row.kickoff_at < query_record.kickoff_at
+        ]
         return self._orchestrator.execute_record(
             query_record,
             rows=rows,

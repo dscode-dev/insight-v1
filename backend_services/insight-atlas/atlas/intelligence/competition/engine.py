@@ -17,6 +17,7 @@ to one competition_id.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from prometheus_client import Counter
@@ -82,16 +83,28 @@ class CompetitionProfile:
 
 class CompetitionIntelligenceEngine:
     def __init__(
-        self, session_factory: async_sessionmaker[AsyncSession]
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        *,
+        window_days: int = 90,
     ) -> None:
         self._sf = session_factory
+        # This profile feeds RegimeEngine.classify — i.e. the
+        # competition's CURRENT regime. It previously aggregated the
+        # entire lifetime of the table with no time filter, so shares
+        # converged and the regime froze: a competition that turned
+        # volatile this month could never cross `volatile_min` because
+        # it was diluted by years of history. 90 days matches the window
+        # CrossMatchEngine and MetaTrendEngine already use.
+        self._window_days = window_days
 
     async def profile(
         self, competition_id: UUID
     ) -> CompetitionProfile | None:
-        """Deterministic competition aggregate. None when the
-        competition has produced no trends yet."""
+        """Deterministic competition aggregate over the recent window.
+        None when the competition has produced no trends in it."""
         t = TrendEventRow
+        since = datetime.now(timezone.utc) - timedelta(days=self._window_days)
         stmt = select(
             func.count(),
             func.count(func.distinct(t.canonical_match_id)),
@@ -100,26 +113,36 @@ class CompetitionIntelligenceEngine:
             func.sum(case((t.trend_type.in_(_FRAGMENTATION_TYPES), 1), else_=0)),
             func.sum(case((t.category == _MOMENTUM_CATEGORY, 1), else_=0)),
             func.sum(case((t.category == _EVENT_CATEGORY, 1), else_=0)),
-        ).where(t.competition_id == competition_id)
+        ).where(t.competition_id == competition_id, t.detected_at >= since)
         async with self._sf() as session:
             row = (await session.execute(stmt)).one()
             trends = int(row[0] or 0)
             if trends == 0:
                 return None
-            signal_total = 0
-            sig_rows = (await session.execute(
-                select(t.signals).where(t.competition_id == competition_id)
-            )).scalars().all()
-            for signals in sig_rows:
-                if isinstance(signals, list):
-                    signal_total += len(signals)
+            # Signal count used to stream EVERY trend's `signals` column
+            # into process memory just to sum len() — that is an
+            # aggregate, so let the database do it. The array-length
+            # function is dialect-specific: the column is JSONB on
+            # Postgres (migration 0006) but plain JSON on the SQLite
+            # used by tests, and calling the wrong one fails at runtime
+            # — so a naive `json_array_length` would have passed CI and
+            # broken production.
+            dialect = session.bind.dialect.name if session.bind is not None else ""
+            array_length = (
+                func.jsonb_array_length if dialect == "postgresql"
+                else func.json_array_length
+            )
+            signal_total = int((await session.execute(
+                select(func.coalesce(func.sum(array_length(t.signals)), 0))
+                .where(t.competition_id == competition_id, t.detected_at >= since)
+            )).scalar_one() or 0)
 
             o = TrendOutcomeRow
             outcome_row = (await session.execute(
                 select(
                     func.sum(case((o.outcome == "confirmed", 1), else_=0)),
                     func.sum(case((o.outcome == "failed", 1), else_=0)),
-                ).where(o.competition_id == competition_id)
+                ).where(o.competition_id == competition_id, o.closed_at >= since)
             )).one()
 
         matches = int(row[1] or 1)

@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from atlas.registry.models import (
@@ -18,6 +18,12 @@ from atlas.registry.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Fixed, stable mapping (not Python's hash() — randomized per-process by
+# PYTHONHASHSEED) for pg_advisory_xact_lock's bigint key, one per family.
+_FAMILY_LOCK_KEY: dict[ModelFamily, int] = {
+    family: index for index, family in enumerate(ModelFamily)
+}
 
 
 class ModelRegistry:
@@ -71,11 +77,37 @@ class ModelRegistry:
 
     async def promote(self, version_id: UUID) -> ModelVersion | None:
         """Move the given version to `active`. Archives whatever was
-        previously active for the same family. Idempotent."""
+        previously active for the same family. Idempotent.
+
+        Archive-then-activate is two statements, not one atomic step —
+        under READ COMMITTED, two concurrent promote() calls for the
+        SAME family can each observe "I'm the only active version" and
+        both end up `active` (the archive UPDATE's WHERE clause only
+        re-checks rows it already locked, never rows that became
+        `active` after its scan started — see the regression test for
+        the exact interleaving). A postgres advisory xact lock keyed on
+        the family serializes the whole critical section; the unique
+        partial index from migration 0019 is the database-level
+        backstop if this is ever bypassed (fails loud, not silently).
+        No-ops on sqlite (tests) — advisory locks are postgres-only, and
+        sqlite's own single-writer file locking already prevents this
+        specific interleaving for the sequential test suite.
+        """
         async with self._sf() as session:
             target = await session.get(ModelVersion, version_id)
             if target is None:
                 return None
+            if session.bind is not None and session.bind.dialect.name == "postgresql":
+                await session.execute(
+                    text("SELECT pg_advisory_xact_lock(:key)"),
+                    {"key": _FAMILY_LOCK_KEY[target.family]},
+                )
+                # session.get() above is identity-map cached — it would
+                # NOT re-query even if called again. Force a fresh read
+                # of `target`'s current state now that the lock is held,
+                # so a concurrent promote() that ran (and committed)
+                # while we were waiting on the lock is actually observed.
+                await session.refresh(target)
             if target.stage == ModelStage.active:
                 return target
             # Archive prior active.

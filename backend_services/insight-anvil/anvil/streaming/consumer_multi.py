@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
@@ -117,7 +117,21 @@ class MultiStreamConsumer:
         pending_quota: int,
         new_quota: int,
         max_payload_bytes: int,
+        parser: Callable[[dict], dict] | None = None,
     ):
+        """`parser` turns raw Redis fields into the event the handler gets.
+
+        Defaults to the DERIVED-stream envelope (event_id, match_id,
+        region_code, event_type, match_version, ts_ingest, payload). That
+        shape was the only one this consumer had ever carried, so it was
+        hardcoded — and reusing the consumer for the historical stream failed
+        every message with `missing_required_field field=event_id`, because a
+        five-year-old fixture has no match version and no region.
+
+        Making it injectable, rather than adding optional fields to the
+        derived parser, keeps the live path strict: a derived event that
+        genuinely lost its event_id must still fail loudly.
+        """
         if not stream_keys:
             raise ValueError("stream_keys must not be empty")
         if max_payload_bytes <= 0:
@@ -127,6 +141,7 @@ class MultiStreamConsumer:
         self._streams = stream_keys
         self._group = group_name
         self._consumer = consumer_name
+        self._parser = parser
 
         self._block_ms = block_ms
         self._read_count = read_count
@@ -327,7 +342,30 @@ class MultiStreamConsumer:
     ) -> None:
         try:
             event = self._parse(raw_fields)
-            await handler(event)
+
+            # The handler OWNS the acknowledgement.
+            #
+            # Anvil's handler only buffers the row; it becomes durable on
+            # a later batch flush. ACKing here — as this consumer used to
+            # — marked messages delivered while their rows were still in
+            # memory, so a crash or a redeploy dropped them silently.
+            # Passing the ack through lets the handler fire it after the
+            # flush that carried the row.
+            #
+            # An un-acked message stays pending and Redis redelivers it
+            # via XAUTOCLAIM: at-least-once, which ReplacingMergeTree
+            # reconciles. Failing to ack is therefore the safe direction.
+            acked = False
+
+            async def ack() -> None:
+                nonlocal acked
+                if acked:
+                    return
+                acked = True
+                await self._r.xack(stream, self._group, msg_id)
+                await self._retry.clear(stream, self._group, msg_id_str)
+
+            await handler(event, ack)
 
             handler_elapsed = time.perf_counter() - handler_t0
             event_type = event.get("event_type") or "unknown"
@@ -349,17 +387,16 @@ class MultiStreamConsumer:
             except Exception:
                 pass
 
-            # ACK only here (handler guaranteed CAS + publish before returning).
-            await self._r.xack(stream, self._group, msg_id)
-            await self._retry.clear(stream, self._group, msg_id_str)
-
             events_processed_total.labels(
                 stream=stream, group=self._group, event_type=event_type, source=source
             ).inc()
 
             logger.info(
-                "event_acked",
+                "event_handled",
                 extra={
+                    # False means the row is buffered and the ack fires
+                    # on the next flush — not a failure.
+                    "acked_inline": acked,
                     "source": source,
                     "stream": stream,
                     "group": self._group,
@@ -455,6 +492,8 @@ class MultiStreamConsumer:
                 )
 
     def _parse(self, raw_fields: dict) -> dict:
+        if self._parser is not None:
+            return self._parser(raw_fields)
         payload_raw = self._required_bytes(raw_fields, b"payload")
         payload_size = len(payload_raw)
         if payload_size > self._max_payload_bytes:

@@ -1,0 +1,81 @@
+# The Insight Control Plane's route into Social.
+#
+# WHY SOCIAL NEEDS AN INGRESS AT ALL. Per insight-context.md v2.0 the Console
+# administers Social, and the Console reaches nothing directly — everything
+# goes through the Insight Control Plane. The Control Plane runs on the
+# Robozão, outside this cluster, so it needs a way in. Until now that way was
+# the public Gateway, which the same document says is not responsible for
+# administration, operators or the console.
+#
+# WHAT THIS DELIBERATELY IS NOT. It is not a second public API. It exposes one
+# path prefix, `/console/social/`, and nothing else: no feed, no auth, no
+# gRPC. The app's traffic keeps going through the Gateway, as the Product
+# Plane diagram says.
+#
+# FOUR INDEPENDENT CONTROLS, because any one of them can be misconfigured:
+#
+#   1. Path      — only /console/social/ is routed here.
+#   2. TLS       — cert-manager, public issuer; the Robozão is on the internet.
+#   3. Source IP — allow-listed to the Robozão's egress address.
+#   4. Token     — every route requires SOCIAL_OPS_TOKEN, reads included.
+#
+# The token is the one that actually protects the data. The first three narrow
+# who may knock; only the token decides who is answered. That ordering matters
+# because the IP allow-list is the control most likely to drift — a home or
+# office egress address changes, and the temptation is to widen it.
+#
+# UNTIL THE VPN EXISTS. insight-context.md requires server-to-server traffic to
+# run over a private network (WireGuard/Tailscale) with mTLS. Neither is
+# deployed yet — verified on the Robozão: no wg/tailscale interface, neither
+# binary installed. This ingress is what makes the correct topology reachable
+# in the meantime, and it is the piece to delete once the tunnel exists: at
+# that point the Control Plane dials the ClusterIP service and Social stops
+# being on the public internet at all.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: insight-social-console
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+
+    # The Robozão's egress address. A single /32 — this is not a range to
+    # widen casually, and a change here is a change to who can administer the
+    # social network.
+    #
+    # REPLACE with the real egress IP before applying. Left as a placeholder
+    # on purpose: a wrong-but-plausible address would look configured and
+    # allow the wrong network, which is worse than an ingress that visibly
+    # refuses everything until someone fills it in.
+    nginx.ingress.kubernetes.io/whitelist-source-range: "REPLACE_WITH_ROBOZAO_EGRESS_IP/32"
+
+    # Administrative traffic is a handful of requests per operator action.
+    # This bounds a leaked token to something an operator would notice rather
+    # than a full export of the platform's data.
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "3"
+
+    # Console reads can page through large tables; the default 60s is fine
+    # for the reads and generous for the writes.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+spec:
+  tls:
+    - hosts:
+        - social-console.konohalabs.com.br
+      secretName: insight-social-console-public-tls
+  rules:
+    - host: social-console.konohalabs.com.br
+      http:
+        paths:
+          # Prefix, not the root. Everything else on port 8080 — /healthz,
+          # /metrics, /search/*, /posts/*, the interaction endpoints that
+          # trust X-User-Id with no authentication of their own — stays
+          # unreachable from outside the cluster.
+          - path: /console/social/
+            pathType: Prefix
+            backend:
+              service:
+                name: insight-social
+                port:
+                  number: 8080

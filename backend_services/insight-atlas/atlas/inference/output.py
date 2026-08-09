@@ -28,54 +28,26 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from atlas.contracts import FeatureWindowOrigin, SourceRef
+from atlas.contracts.no_prediction import (
+    FORBIDDEN_METRIC_PATTERNS,
+    assert_no_prediction_keys,
+)
 
 # ---------------------------------------------------------------------------
 # Anti-prediction deny-list
 # ---------------------------------------------------------------------------
 #
-# Matches any metric key whose name suggests a betting recommendation,
-# probability of a match outcome, or guaranteed return. Case-insensitive,
-# matched against the full key (not substrings — `expected_lineup` would
-# NOT match `expected_return`).
-#
-# When extending: add the exact terms, NOT regex shortcuts. The list is
-# meant to be auditable in code review; cleverness here is a liability.
+# The rule itself now lives in `atlas/contracts/no_prediction.py` — it is
+# shared with the trend wire contract and the intelligence report, which
+# are Atlas's REAL public surfaces and were previously unguarded (this
+# module only ever protected ContextOutput). Re-exported here under the
+# original private names so existing callers/tests keep working.
 
-_FORBIDDEN_METRIC_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(p, re.IGNORECASE) for p in (
-        r"^win_probability$",
-        r"^home_win_pct$",
-        r"^draw_win_pct$",
-        r"^away_win_pct$",
-        r"^outcome_probability$",
-        r"^bet_value$",
-        r"^bet_recommendation$",
-        r"^pick$",
-        r"^picks$",
-        r"^recommendation$",
-        r"^recommended_odds$",
-        r"^expected_return$",
-        r"^expected_value$",
-        r"^ev_percent$",
-        r"^safe_signal$",
-        r"^guaranteed.*$",
-        r"^tip(_.*)?$",
-        r"^tipster.*$",
-    )
-)
+_FORBIDDEN_METRIC_PATTERNS = FORBIDDEN_METRIC_PATTERNS
 
 
 def _assert_no_prediction_keys(metrics: dict[str, Any]) -> None:
-    for key in metrics:
-        for pattern in _FORBIDDEN_METRIC_PATTERNS:
-            if pattern.match(key):
-                raise ValueError(
-                    f"metric key {key!r} matches the anti-prediction "
-                    f"deny-list. Atlas outputs are CONTEXTUAL — adding "
-                    f"prediction/recommendation keys requires changing "
-                    f"the deny-list in atlas/inference/output.py and "
-                    f"reviewing the product/legal posture."
-                )
+    assert_no_prediction_keys(metrics, where="ContextOutput.metrics")
 
 
 class Factor(BaseModel):

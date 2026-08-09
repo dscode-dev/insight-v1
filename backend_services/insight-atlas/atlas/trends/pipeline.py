@@ -22,10 +22,10 @@ publish score and publication tier.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -45,7 +45,6 @@ from atlas.trends.lifecycle.models import TrendInstance, TrendLifecycleState
 from atlas.trends.lifecycle.repository import TrendLifecycleRepository
 from atlas.trends.models import Trend, TrendInputs
 from atlas.trends.publisher import TrendPublisher
-from atlas.trends.similarity_probe import OnlineSimilarityProbe
 from atlas.trends.repository import TrendRepository
 from atlas.trends.scoring.engine import (
     PRIORITY_TRENDS_TOTAL,
@@ -53,6 +52,7 @@ from atlas.trends.scoring.engine import (
     PublishScore,
     PublishScoreEngine,
 )
+from atlas.trends.similarity_probe import OnlineSimilarityProbe
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +111,40 @@ class TrendIntelligencePipeline:
         # leaves similarity None and the detector simply emits nothing.
         if self._similarity_probe is not None and inputs.similarity is None:
             try:
-                inputs.similarity = await self._similarity_probe.probe(inputs)
-            except Exception:  # noqa: BLE001 — probe isolation, never break detection
+                probed = await self._similarity_probe.probe(inputs)
+            except Exception:
+                # Probe isolation: an infrastructure failure (pgvector
+                # down, timeout, bad row) must never break detection.
+                #
+                # BROAD ON PURPOSE. An earlier revision narrowed this to
+                # (OSError, RuntimeError, ValueError, TimeoutError) to
+                # stop it masking the frozen-dataclass bug described
+                # below — but SQLAlchemy/asyncpg errors derive straight
+                # from Exception and match NONE of those, so the narrow
+                # form let a real database outage escape and kill the
+                # whole tick. That is precisely the failure this handler
+                # exists to prevent, so breadth wins here.
+                #
+                # The bug the narrowing was aimed at: `TrendInputs` is a
+                # frozen dataclass, so `inputs.similarity = ...` raised
+                # FrozenInstanceError (an AttributeError subclass), was
+                # swallowed here, and left similarity ALWAYS None —
+                # OracleSimilarityDetector returned [] on its first line
+                # and historical_similarity/historical_pattern were
+                # never emitted in production, while the pgvector query
+                # was still paid for on every tick. That class of bug is
+                # now prevented BY CONSTRUCTION (`dataclasses.replace`
+                # below) and guarded by
+                # tests/test_pipeline_similarity_probe.py — which is
+                # where programming errors belong, not in an except
+                # clause that also has to survive an outage.
                 logger.exception(
                     "similarity_probe_failed",
                     extra={"canonical_match_id": str(inputs.canonical_match_id)},
                 )
+            else:
+                # Rebind the local — frozen dataclasses are replaced, not mutated.
+                inputs = dataclasses.replace(inputs, similarity=probed)
 
         # 1. Detect.
         detected = await self._engine.detect(inputs)
@@ -140,15 +168,34 @@ class TrendIntelligencePipeline:
 
         # 2b. Pattern memory (A3): fold every terminal instance into the
         # recurrence counters so future ticks can cite history.
+        # Isolated: these are OPTIONAL enrichment seams (both are
+        # `| None` constructor args). A failure here must never abort
+        # the tick before steps 5/6 persist and publish the trends that
+        # were already detected — the same isolation every other
+        # optional seam in this pipeline already had.
         if self._patterns is not None:
             for inst in touched:
                 if inst.current_state.terminal:
-                    await self._patterns.record_outcome(inst, inputs.competition_id)
+                    try:
+                        await self._patterns.record_outcome(
+                            inst, inputs.competition_id
+                        )
+                    except Exception:
+                        logger.exception(
+                            "pattern_memory_record_failed",
+                            extra={"instance_id": str(inst.instance_id)},
+                        )
 
         # 2c. Market memory (Maturity 1.5): the same closures land in
         # the append-only outcome log (insert-once; replay-safe).
         if self._enricher is not None:
-            await self._enricher.record_closures(touched, inputs.competition_id)
+            try:
+                await self._enricher.record_closures(touched, inputs.competition_id)
+            except Exception:
+                logger.exception(
+                    "market_memory_record_closures_failed",
+                    extra={"canonical_match_id": str(inputs.canonical_match_id)},
+                )
 
         # 3. Correlation: fusion trends become first-class members of
         # this tick's trend set; member trends learn their correlation ids.

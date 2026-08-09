@@ -428,12 +428,20 @@ def _context_labels(rows: list[HistoricalRecord]) -> tuple[list[str], list[str]]
         if len(rows) > 1
         else 0.0
     )
-    trends = [
+    # These three labels are behaviour classifications; `trends` is a
+    # misnomer kept for contract compatibility. Both return values are
+    # DELIBERATELY the same list — `HeadToHeadMemory.trends` and
+    # `.behaviors` therefore always carry identical content. They are
+    # NOT two independent signals, and a consumer must not treat
+    # agreement between them as corroboration. Collapsing them into one
+    # field is a breaking contract change, so it waits for the next
+    # contract version rather than being done silently here.
+    labels = [
         "high_draw_tendency" if draw_rate >= 0.30 else "draw_resistance",
         "low_scoring" if goals <= 2.5 else "high_scoring",
         "stable" if volatility <= 1.5 else "volatile",
     ]
-    return trends, list(trends)
+    return labels, list(labels)
 
 
 def _unique(evidence):

@@ -62,10 +62,15 @@ def _book_home_steps(history: list[OddsTick]) -> dict[str, float]:
     }
 
 
-def sharp_movement(history: list[OddsTick]) -> SharpMovementResult | None:
+def sharp_movement(
+    history: list[OddsTick], *, points: list[float] | None = None,
+) -> SharpMovementResult | None:
     """Sharp-movement assessment of the latest consensus step. None
-    with < 3 consensus points."""
-    points = [v for _, v in fair_prob_points(history)]
+    with < 3 consensus points.
+
+    `points` — see `volatility`'s docstring; same reuse seam.
+    """
+    points = points if points is not None else [v for _, v in fair_prob_points(history)]
     if len(points) < 3:
         return None
     deltas = [points[i] - points[i - 1] for i in range(1, len(points))]

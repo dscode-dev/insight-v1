@@ -28,11 +28,21 @@ from atlas.vector_memory.contracts import EMBEDDING_VERSION
 
 
 def _ctx(n: int = 4, agreement: float = 0.85) -> SimilarityContext:
+    # The neighbourhood must MATCH the requested agreement: the Oracle
+    # detector re-scores the set it accepted (and SimilarityService
+    # always derives confidence from these same matches), so a tight
+    # cluster paired with a low `agreement` field is a state production
+    # cannot produce. Low agreement = genuinely wide distance spread.
+    sim_values = (
+        [0.9 - 0.01 * i for i in range(n)]
+        if agreement >= 0.4
+        else [0.95 if i < n // 2 else 0.50 for i in range(n)]
+    )
     matches = [
-        SimilarityMatch(vector_id=uuid4(), match_id=f"m{i}", similarity=0.9 - 0.01 * i,
-                        distance=round(0.1 + 0.01 * i, 6), embedding_version=EMBEDDING_VERSION,
+        SimilarityMatch(vector_id=uuid4(), match_id=f"m{i}", similarity=sim,
+                        distance=round(1 - sim, 6), embedding_version=EMBEDDING_VERSION,
                         feature_schema_version="feature_schema_v2", competition="Serie A")
-        for i in range(n)
+        for i, sim in enumerate(sim_values)
     ]
     sims = [m.similarity for m in matches]
     return SimilarityContext(

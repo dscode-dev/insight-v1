@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	rtconfig "github.com/konoha-labs/insight-runtime-go/pkg/config"
@@ -24,6 +25,13 @@ type Settings struct {
 	ConsumerName  string
 	QueueMaxLen   int64
 
+	// Publishing queues — their OWN consumer group, deliberately not the
+	// trend group. Resetting one must never reset the other, and the two
+	// streams retry on very different timescales (a trend is cheap to
+	// reprocess; a publication costs an LLM call and can reach Social).
+	PublishConsumerGroup string
+	PublishConsumerName  string
+
 	QueueDepthPollSeconds int
 
 	// Sprint 3.5 — pending recovery + DLQ.
@@ -31,9 +39,21 @@ type Settings struct {
 	ClaimerMinIdleSec    int
 	ClaimerIntervalSec   int
 	ClaimerMaxDeliveries int
-	DLQStream            string
-	// GatewayIdentityURL is Insight Gateway's operator-session introspection
-	// endpoint. Nexus owns no users, sessions, JWT secrets or RBAC.
+	// ClaimerMinIdleDerived records that validate() raised MinIdle to the
+	// safe floor, so the boot log can say so instead of the operator
+	// wondering why the configured value is not the one in effect.
+	ClaimerMinIdleDerived bool
+	DLQStream             string
+
+	// ControlPlaneToken — shared secret with the Insight Control Plane,
+	// the administrative authority per insight-context.md v2.0. Set, it
+	// unlocks the admin API and the Gateway is never contacted.
+	ControlPlaneToken string
+	// GatewayIdentityURL is the LEGACY operator-session introspection
+	// endpoint on Insight Gateway. Kept so a deployment that has not been
+	// given a Control Plane token yet keeps working; ignored once
+	// ControlPlaneToken is set. Nexus owns no users, sessions, JWT
+	// secrets or RBAC either way.
 	GatewayIdentityURL string
 
 	// Sprint 3.5 — narrative lifecycle.
@@ -98,6 +118,10 @@ func Load() (*Settings, error) {
 		return nil, fmt.Errorf("NEXUS_QUEUE_MAX_LEN: %w", err)
 	}
 	s.QueueMaxLen = int64(maxLen)
+	s.PublishConsumerGroup = rtconfig.String(
+		"NEXUS_PUBLISH_CONSUMER_GROUP", "insight-nexus-publish")
+	s.PublishConsumerName = rtconfig.String(
+		"NEXUS_PUBLISH_CONSUMER_NAME", "publisher-1")
 	if s.QueueDepthPollSeconds, err = rtconfig.Int("NEXUS_QUEUE_DEPTH_POLL_SECONDS", 30); err != nil {
 		return nil, fmt.Errorf("NEXUS_QUEUE_DEPTH_POLL_SECONDS: %w", err)
 	}
@@ -114,6 +138,8 @@ func Load() (*Settings, error) {
 		return nil, fmt.Errorf("NEXUS_CLAIMER_MAX_DELIVERIES: %w", err)
 	}
 	s.DLQStream = rtconfig.String("NEXUS_DLQ_STREAM", "insight:dlq:nexus")
+	s.ControlPlaneToken = strings.TrimSpace(
+		rtconfig.String("NEXUS_CONTROL_PLANE_TOKEN", ""))
 	s.GatewayIdentityURL = rtconfig.String("NEXUS_GATEWAY_IDENTITY_URL", "")
 
 	// ---- Sprint 4 — publication engine ----
@@ -160,7 +186,60 @@ func Load() (*Settings, error) {
 	if s.ClusterExpireMinutes, err = rtconfig.Int("NEXUS_CLUSTER_EXPIRE_MINUTES", 90); err != nil {
 		return nil, fmt.Errorf("NEXUS_CLUSTER_EXPIRE_MINUTES: %w", err)
 	}
+	if err := s.validate(); err != nil {
+		return nil, err
+	}
 	return s, nil
+}
+
+// validate rejects combinations that boot successfully and then fail one
+// request at a time. Each of these used to be discoverable only by watching
+// the service misbehave.
+func (s *Settings) validate() error {
+	if s.PublisherEnabled {
+		// A publisher with no provider reaches ErrAllProvidersFailed on
+		// EVERY draft and opens a ticket for each one. That is a
+		// misconfiguration wearing the costume of a workload.
+		if !s.EnableAnthropic && !s.EnableOpenAI && !s.EnableGemini {
+			return fmt.Errorf(
+				"NEXUS_PUBLISHER_ENABLED=true with no provider enabled: " +
+					"set NEXUS_ENABLE_ANTHROPIC / _OPENAI / _GEMINI, " +
+					"or leave the publisher off")
+		}
+		if strings.TrimSpace(s.SocialGrpcAddr) == "" {
+			return fmt.Errorf(
+				"NEXUS_PUBLISHER_ENABLED=true requires NEXUS_SOCIAL_GRPC_ADDR")
+		}
+	}
+	// The claim pass hands a pending entry to a SECOND consumer once it
+	// has been idle this long. If that can happen while the first consumer
+	// is still inside the handler, both publish — the same agent post
+	// twice. The handler's worst case is one LLM timeout per provider, so
+	// that product is the floor.
+	//
+	// The floor is DERIVED rather than a constant: raising
+	// NEXUS_LLM_TIMEOUT without noticing it invalidated a hand-picked
+	// MinIdle is exactly how this becomes a duplicate-post incident.
+	if s.ClaimerEnabled && s.PublisherEnabled {
+		floor := s.LLMTimeoutSec * len(s.ProviderOrder)
+		switch {
+		case os.Getenv("NEXUS_CLAIMER_MIN_IDLE") == "":
+			// Not chosen by anyone — derive it instead of shipping a
+			// default that is wrong for this configuration.
+			if s.ClaimerMinIdleSec < floor {
+				s.ClaimerMinIdleSec = floor
+				s.ClaimerMinIdleDerived = true
+			}
+		case s.ClaimerMinIdleSec < floor:
+			return fmt.Errorf(
+				"NEXUS_CLAIMER_MIN_IDLE=%ds is below the %ds worst-case handler "+
+					"duration (NEXUS_LLM_TIMEOUT=%ds x %d providers): a second "+
+					"consumer would reclaim an in-flight trend and publish the "+
+					"same agent post twice",
+				s.ClaimerMinIdleSec, floor, s.LLMTimeoutSec, len(s.ProviderOrder))
+		}
+	}
+	return nil
 }
 
 func modelEnv(primary, legacy, fallback string) string {

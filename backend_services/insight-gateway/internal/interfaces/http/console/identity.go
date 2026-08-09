@@ -74,9 +74,9 @@ func (h *Handlers) resolveIdentity(ctx context.Context, operatorID, delegationID
 // row-level share lock on the grant so a concurrent revoke cannot slip in between
 // resolution and a same-transaction persistence (closes the avoidable window).
 //
-//   delegationID == ""        → self (identity == operator).
-//   delegationID valid+live   → delegated identity.
-//   delegationID invalid      → *delegationError (NEVER self).
+//	delegationID == ""        → self (identity == operator).
+//	delegationID valid+live   → delegated identity.
+//	delegationID invalid      → *delegationError (NEVER self).
 //
 // Invalid = malformed / not found / foreign operator / revoked / expired /
 // incompatible subject / any state that does not allow active use.
@@ -319,7 +319,7 @@ SELECT id::text, subject_type, subject_id, mode, reason, public_actor, issued_at
 		items = append(items, map[string]any{
 			"delegation_id": id, "subject_type": subjectType, "subject_id": subjectID, "mode": mode,
 			"reason": reason, "public_actor": derefPtr(publicActor), "active": active,
-			"issued_at": issuedAt.UTC().Format(time.RFC3339Nano),
+			"issued_at":  issuedAt.UTC().Format(time.RFC3339Nano),
 			"expires_at": tsPtr(expiresAt), "revoked_at": tsPtr(revokedAt),
 		})
 	}

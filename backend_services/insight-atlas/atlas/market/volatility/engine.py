@@ -37,10 +37,18 @@ def _clamp(v: float) -> float:
     return max(0.0, min(1.0, v))
 
 
-def volatility(history: list[OddsTick]) -> VolatilityResult | None:
+def volatility(
+    history: list[OddsTick], *, points: list[float] | None = None,
+) -> VolatilityResult | None:
     """Market restlessness over the window. None with < 3 consensus
-    points (no movement to measure)."""
-    points = [v for _, v in fair_prob_points(history)]
+    points (no movement to measure).
+
+    `points` lets a caller that already computed
+    `fair_prob_points(history)` (an O(n) scan over the timeline —
+    `MarketStateEngine` otherwise redoes it once here and again in
+    `sharp_movement`) pass the values straight through.
+    """
+    points = points if points is not None else [v for _, v in fair_prob_points(history)]
     if len(points) < 3:
         return None
     deltas = [points[i] - points[i - 1] for i in range(1, len(points))]

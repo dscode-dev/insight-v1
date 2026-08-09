@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -194,11 +195,19 @@ func (h *FoundationHandlers) serveFeed(
 	h.metrics.feedRead(kind)
 
 	limit, cursor := pageParams(r)
-	resp, err := call(r.Context(), &socialv1.FeedRequest{
+	// `?competition_id=` is the rail selection under the header. Absent means
+	// "todos", the rail's default. Passed through as-is: Social validates it
+	// and answers InvalidArgument, so the Gateway does not need a second
+	// opinion about what a competition id looks like.
+	req := &socialv1.FeedRequest{
 		UserId: userID,
 		Limit:  &limit,
 		Cursor: cursor,
-	})
+	}
+	if competition := strings.TrimSpace(r.URL.Query().Get("competition_id")); competition != "" {
+		req.CompetitionId = &competition
+	}
+	resp, err := call(r.Context(), req)
 	if err != nil {
 		writeGrpcError(w, r, err)
 		return
@@ -354,6 +363,10 @@ type createPostBody struct {
 	Content    string            `json:"content"`
 	Metadata   map[string]string `json:"metadata"`
 	Visibility string            `json:"visibility"`
+	// Optional. Required by Social when visibility is "competition"; sending
+	// it on a public post is how that post reaches a competition's rail while
+	// staying visible everywhere.
+	CompetitionID string `json:"competition_id"`
 }
 
 func (h *FoundationHandlers) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -381,6 +394,14 @@ func (h *FoundationHandlers) CreatePost(w http.ResponseWriter, r *http.Request) 
 		Content:    body.Content,
 		Metadata:   body.Metadata,
 		Visibility: visibilityFromString(body.Visibility),
+		CompetitionId: func() *string {
+			// Empty means absent. Forwarding "" would make Social parse it as
+			// an id and reject the post with a confusing InvalidArgument.
+			if c := strings.TrimSpace(body.CompetitionID); c != "" {
+				return &c
+			}
+			return nil
+		}(),
 	})
 	if err != nil {
 		writeGrpcError(w, r, err)
@@ -551,6 +572,98 @@ func (h *FoundationHandlers) toggleLike(w http.ResponseWriter, r *http.Request, 
 	// Idempotent + optimistic-update ready: the echo confirms the
 	// final state regardless of whether the toggle was a no-op.
 	writeJSON(w, r, http.StatusOK, PostReactionDTO{PostID: postID, Liked: like})
+}
+
+type sharePostBody struct {
+	// "feed" (repost) or "external". Absent is rejected rather than defaulted:
+	// a client that forgot the field would otherwise get a repost it never
+	// asked for, published to its followers.
+	Target string `json:"target"`
+	// Where an external share went ("whatsapp", "copy_link"). Optional — the
+	// client often cannot tell.
+	Channel string `json:"channel"`
+}
+
+// SharePost — POST /v1/posts/{postId}/share
+func (h *FoundationHandlers) SharePost(w http.ResponseWriter, r *http.Request) {
+	userID, cancel, err := h.userCtx(r)
+	if err != nil {
+		writeGrpcError(w, r, err)
+		return
+	}
+	defer cancel()
+	// Sharing amplifies a post to other people, so it is a participation
+	// mutation — a banned or suspended user must not be able to do it. Same
+	// gate as liking, and for the same reason.
+	if !h.ensureCanAct(w, r) {
+		return
+	}
+
+	var body sharePostBody
+	if !decodeBody(w, r, &body) {
+		return
+	}
+	target, ok := shareTargetFromString(body.Target)
+	if !ok {
+		writeJSON(w, r, http.StatusBadRequest, map[string]any{
+			"error": "invalid_target", "allowed": []string{"feed", "external"},
+		})
+		return
+	}
+
+	h.metrics.reaction("share")
+	req := &socialv1.SharePostRequest{
+		PostId: chi.URLParam(r, "postId"), UserId: userID, Target: target,
+	}
+	if channel := strings.TrimSpace(body.Channel); channel != "" {
+		req.Channel = &channel
+	}
+	resp, err := h.posts.Share(r.Context(), req)
+	if err != nil {
+		writeGrpcError(w, r, err)
+		return
+	}
+	// `created` distinguishes a fresh repost from one that already existed;
+	// the count is the post's total afterwards, both kinds summed.
+	writeJSON(w, r, http.StatusOK, map[string]any{
+		"post_id":     chi.URLParam(r, "postId"),
+		"created":     resp.GetCreated(),
+		"share_count": resp.GetShareCount(),
+	})
+}
+
+// UnsharePost — DELETE /v1/posts/{postId}/share. Removes a repost only.
+func (h *FoundationHandlers) UnsharePost(w http.ResponseWriter, r *http.Request) {
+	userID, cancel, err := h.userCtx(r)
+	if err != nil {
+		writeGrpcError(w, r, err)
+		return
+	}
+	defer cancel()
+	// No ensureCanAct: removing your own repost is reductive, and a suspended
+	// user must still be able to withdraw what they amplified. Same reasoning
+	// as unliking.
+	h.metrics.reaction("unshare")
+	if _, err := h.posts.Unshare(r.Context(), &socialv1.UnsharePostRequest{
+		PostId: chi.URLParam(r, "postId"), UserId: userID,
+	}); err != nil {
+		writeGrpcError(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusOK, map[string]any{
+		"post_id": chi.URLParam(r, "postId"), "shared": false,
+	})
+}
+
+func shareTargetFromString(value string) (socialv1.ShareTarget, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "feed":
+		return socialv1.ShareTarget_SHARE_TARGET_FEED, true
+	case "external":
+		return socialv1.ShareTarget_SHARE_TARGET_EXTERNAL, true
+	default:
+		return socialv1.ShareTarget_SHARE_TARGET_UNSPECIFIED, false
+	}
 }
 
 // ---- Parts 8 + 9: follow + mute ------------------------------------------------------

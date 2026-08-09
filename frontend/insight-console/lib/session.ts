@@ -1,19 +1,26 @@
 // Console session consumer.
 //
-// Gateway owns operator authentication, sessions, roles and permissions.
-// The Console stores only the opaque Gateway operator session token in an
-// HttpOnly cookie and resolves the current operator through Gateway.
+// The INSIGHT CONTROL PLANE owns operator authentication, sessions,
+// roles and permissions (insight-context.md v2.0). The Console stores
+// only the opaque session token in an HttpOnly cookie and resolves the
+// current operator through the Control Plane.
+//
+// This used to resolve against the Insight Gateway, which the
+// architecture explicitly excludes from "Administração, Operadores,
+// Console, Auditoria administrativa" — it put administrative identity
+// in the Product Plane and made the Intelligence plane unable to
+// authenticate anyone without reaching the public internet.
 
-import { cookies } from "next/headers";
-
-import { adminFetch } from "@/lib/admin-api";
+import { controlPlaneFetch } from "@/lib/control-plane/adapters/console-api";
 import { basePath } from "@/lib/base-path";
+import { SESSION_COOKIE, readSessionCookie } from "@/lib/session-cookie";
+
+export { SESSION_COOKIE, readSessionCookie };
 import type { ConsoleOperator, Permission, Role } from "@/types/auth";
 
-export const SESSION_COOKIE = "insight_console_session";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 8;
 
-interface GatewayOperatorDTO {
+interface OperatorDTO {
   id: string;
   username?: string;
   email?: string;
@@ -22,7 +29,7 @@ interface GatewayOperatorDTO {
   permissions: Permission[];
 }
 
-function toOperator(dto: GatewayOperatorDTO): ConsoleOperator {
+function toOperator(dto: OperatorDTO): ConsoleOperator {
   return {
     id: dto.id,
     displayName: dto.display_name ?? dto.username ?? "operator",
@@ -35,20 +42,16 @@ function toOperator(dto: GatewayOperatorDTO): ConsoleOperator {
   };
 }
 
-export function readSessionCookie(): string | null {
-  return cookies().get(SESSION_COOKIE)?.value ?? null;
-}
-
 export async function currentOperator(): Promise<ConsoleOperator | null> {
   const token = readSessionCookie();
   if (!token) return null;
   try {
-    const res = await adminFetch("/v1/operator/auth/me", {
-      operatorToken: token,
+    const res = await controlPlaneFetch("/v1/operator/auth/me", {
+      token,
       timeoutMs: 5000,
     });
     if (!res.ok) return null;
-    const body = (await res.json()) as { operator?: GatewayOperatorDTO };
+    const body = (await res.json()) as { operator?: OperatorDTO };
     if (!body.operator) return null;
     return toOperator(body.operator);
   } catch {

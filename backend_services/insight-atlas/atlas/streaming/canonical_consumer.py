@@ -41,13 +41,14 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable
+from typing import Any
 from uuid import UUID
 
-from prometheus_client import Counter, Histogram
 import redis.asyncio as redis_asyncio
+from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ class CanonicalEnvelope:
     published_at: datetime
 
     @classmethod
-    def from_payload(cls, raw: bytes | str) -> "CanonicalEnvelope":
+    def from_payload(cls, raw: bytes | str) -> CanonicalEnvelope:
         """Decode and validate the JSON payload field."""
         if raw in (b"", ""):
             raise MalformedEnvelopeError("payload field is missing or empty")
@@ -189,7 +190,17 @@ EnvelopeHandler = Callable[[CanonicalEnvelope], Awaitable[None]]
 
 
 class ProcessedEventStore:
-    """Redis-backed idempotency ledger keyed by canonical event_id."""
+    """Redis-backed idempotency ledger keyed by canonical event_id.
+
+    `claim()`/`release()` replace the earlier `seen()`-then-later-
+    `mark_processed()` pair, which was check-then-act: under multiple
+    consumer replicas (or the same event delivered twice via
+    `_reclaim_pending`'s XCLAIM racing the main XREADGROUP loop), two
+    dispatches could both observe `seen() == False` before either
+    marked the key, and both would run the handler — silent duplicate
+    processing. `claim()` is atomic (`SET NX`); only the dispatch that
+    wins the claim proceeds.
+    """
 
     def __init__(
         self,
@@ -205,15 +216,22 @@ class ProcessedEventStore:
     def _key(self, event_id: str) -> str:
         return f"{self._prefix}{event_id}"
 
-    async def seen(self, event_id: str) -> bool:
-        return bool(await self._client.exists(self._key(event_id)))
-
-    async def mark_processed(self, event_id: str) -> None:
+    async def claim(self, event_id: str) -> bool:
+        """Atomically claim `event_id` for processing. True = this call
+        won the claim (proceed with the handler); False = another
+        dispatch already holds it (treat as a duplicate delivery)."""
         key = self._key(event_id)
         if self._ttl is None:
-            await self._client.set(key, "processed")
+            claimed = await self._client.set(key, "processed", nx=True)
         else:
-            await self._client.set(key, "processed", ex=self._ttl)
+            claimed = await self._client.set(key, "processed", nx=True, ex=self._ttl)
+        return bool(claimed)
+
+    async def release(self, event_id: str) -> None:
+        """Undo a claim after a failed handler, so a retry (attempt
+        counter still below the limit) or a later XCLAIM reclaim can
+        legitimately re-claim and re-process this event_id."""
+        await self._client.delete(self._key(event_id))
 
 
 # --- Consumer --------------------------------------------------------------
@@ -287,6 +305,21 @@ class CanonicalConsumer:
             self._client = None
         logger.info("atlas_canonical_consumer_closed")
 
+    async def reconnect(self) -> None:
+        """Drop and re-open the Redis connection WITHOUT setting `_stop`
+        — unlike `close()` (final shutdown), this is for a supervisor
+        that wants `run()` to be callable again afterwards. Used when
+        `run()` exits unexpectedly (a bug, a fatal connection error) and
+        the caller wants to restart it (see `app.py`'s consumer
+        supervisor loop)."""
+        if self._client is not None:
+            try:
+                await self._client.aclose()
+            except Exception:
+                logger.warning("atlas_consumer_reconnect_close_failed", exc_info=True)
+            self._client = None
+        await self.connect()
+
     # -- main loop ----------------------------------------------------------
 
     async def run(self, handler: EnvelopeHandler) -> None:
@@ -347,11 +380,41 @@ class CanonicalConsumer:
         fields: dict[bytes, bytes],
         handler: EnvelopeHandler,
     ) -> None:
+        """Safety net around `_dispatch_body`.
+
+        Before this existed, any exception `_dispatch_body` didn't
+        already handle via one of its specific `except` clauses
+        (typically a transient RedisError from `xack`/`xadd`/the
+        idempotency ledger, or a bad-encoding payload — see `_utf8`)
+        propagated all the way out of `run()`'s loop with no supervisor
+        to restart it: one bad event permanently killed ingestion for
+        the whole process, silently (health checks weren't wired to
+        this either — see the app.py health-check fix). Anything caught
+        here is logged + counted and the entry is deliberately left
+        un-ACKed (not assumed to be a poison message) so XCLAIM retries
+        it once whatever broke recovers.
+        """
+        stream = _utf8(stream_key)
+        eid = _utf8(entry_id)
+        try:
+            await self._dispatch_body(stream, eid, fields, handler)
+        except Exception as exc:
+            EVENTS_FAILED_TOTAL.labels(reason="dispatch_crash").inc()
+            logger.exception(
+                "atlas_dispatch_crashed",
+                extra={"stream": stream, "entry_id": eid, "err": str(exc)},
+            )
+
+    async def _dispatch_body(
+        self,
+        stream: str,
+        eid: str,
+        fields: dict[bytes, bytes],
+        handler: EnvelopeHandler,
+    ) -> None:
         assert self._client is not None
         self.consumed_total += 1
         EVENTS_RECEIVED_TOTAL.inc()
-        stream = _utf8(stream_key)
-        eid = _utf8(entry_id)
         payload = fields.get(self.cfg.payload_field.encode(), b"")
         started = time.perf_counter()
         try:
@@ -391,7 +454,11 @@ class CanonicalConsumer:
 
         assert hasattr(self, "_processed")
         event_id = str(envelope.event["event_id"])
-        if await self._processed.seen(event_id):
+        # Atomic claim (SET NX), not check-then-act: two dispatches
+        # racing the same event_id (multi-replica consumers, or XCLAIM
+        # reclaiming an entry the original consumer is still slowly
+        # working) must not both proceed past this point.
+        if not await self._processed.claim(event_id):
             self.duplicate_total += 1
             EVENTS_DUPLICATE_TOTAL.inc()
             await self._client.xack(stream, self.cfg.group, eid)
@@ -408,9 +475,12 @@ class CanonicalConsumer:
 
         try:
             await handler(envelope)
-        except Exception as exc:  # noqa: BLE001 — handler is user code
+        except Exception as exc:
             self.failed_handler += 1
             EVENTS_FAILED_TOTAL.labels(reason="handler").inc()
+            # Undo the claim — a failed attempt must not permanently
+            # block a later retry/reclaim from re-processing this event.
+            await self._processed.release(event_id)
             attempts = await self._record_handler_failure(event_id)
             logger.warning(
                 "atlas_envelope_handler_failed",
@@ -438,7 +508,6 @@ class CanonicalConsumer:
             # remains pending for bounded retry/reclaim.
             return
 
-        await self._processed.mark_processed(event_id)
         await self._clear_handler_failures(event_id)
         await self._client.xack(stream, self.cfg.group, eid)
         self.acked_total += 1
@@ -528,7 +597,15 @@ class CanonicalConsumer:
 
 
 def _utf8(value: bytes | str) -> str:
-    return value.decode("utf-8") if isinstance(value, bytes) else value
+    """Never raises: a non-UTF-8 payload must still be logged/DLQ'd, not
+    crash the very error path meant to record it (mirrors
+    `atlas/runtime/logging.py::_safe`'s bytes handling)."""
+    if not isinstance(value, bytes):
+        return value
+    try:
+        return value.decode("utf-8")
+    except UnicodeDecodeError:
+        return value.hex()
 
 
 def _validate_canonical_event(

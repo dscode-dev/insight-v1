@@ -30,7 +30,14 @@ RUN pip install \
       "langgraph>=0.2,<1" \
       "ollama>=0.3,<1" \
       "crewai>=0.51,<1" \
-      "pynvml>=11.5,<13"
+      "pynvml>=11.5,<13" \
+      "redis>=5.0,<7"
+
+# redis is NOT optional despite being imported lazily. Both publishers
+# (realtime signals, historical backfill) do `import redis` inside a method,
+# so a missing package fails at call time rather than at boot — and the
+# historical publisher was reached for the first time only after
+# EXPLORER_REDIS_URL was set, which is when the gap surfaced.
 
 # Application code + bundled contracts + vendored club registry.
 COPY insight-explorer/explorer/ /app/explorer/

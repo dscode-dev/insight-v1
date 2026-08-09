@@ -11,11 +11,12 @@ async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "superadmin_required" }, { status: 403 });
   }
   const body = mutation ? await req.json() : undefined;
+  // No actor argument: the Control Plane derives the operator from the
+  // session it already resolved and forwards it to Atlas as X-Operator.
   const upstream = await atlasIntelligenceCall(
     `datasets/${path}${url.search}`,
     req.method,
     body,
-    operator.username ?? operator.displayName,
   );
   const headers = new Headers(upstream.headers);
   headers.set("cache-control", "no-store");

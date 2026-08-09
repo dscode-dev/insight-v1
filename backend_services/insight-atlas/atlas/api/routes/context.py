@@ -88,9 +88,15 @@ async def get_match_context(
     if cached is not None:
         try:
             return MatchContextResponse.model_validate(cached)
-        except Exception:
+        except Exception as exc:
             # Stale schema in cache — fall through to fresh inference.
-            pass
+            # Logged (not silently swallowed): if this starts firing on
+            # every request it means the cache is effectively disabled
+            # and nobody would otherwise notice.
+            logger.warning(
+                "context_cache_validation_failed",
+                extra={"match_id": str(match_id), "err": str(exc)},
+            )
 
     response = await container.engine.context_for(snap)
     await container.inference_cache.put(

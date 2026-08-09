@@ -87,8 +87,10 @@ func (f *fakeRels) Unmute(_ context.Context, in *socialv1.UnmuteRequest, _ ...gr
 }
 
 type fakePosts struct {
-	created *socialv1.CreatePostRequest
-	getErr  error
+	lastShare   *socialv1.SharePostRequest
+	lastUnshare *socialv1.UnsharePostRequest
+	created     *socialv1.CreatePostRequest
+	getErr      error
 }
 
 func (f *fakePosts) Create(_ context.Context, in *socialv1.CreatePostRequest, _ ...grpc.CallOption) (*socialv1.Post, error) {
@@ -134,6 +136,18 @@ func (f *fakePosts) Like(_ context.Context, _ *socialv1.LikePostRequest, _ ...gr
 }
 
 func (f *fakePosts) Unlike(_ context.Context, _ *socialv1.UnlikePostRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
+// Records what the handler forwarded, so a test can assert the target and
+// channel survived the translation from JSON body to proto enum.
+func (f *fakePosts) Share(_ context.Context, in *socialv1.SharePostRequest, _ ...grpc.CallOption) (*socialv1.SharePostResponse, error) {
+	f.lastShare = in
+	return &socialv1.SharePostResponse{Created: true, ShareCount: 1}, nil
+}
+
+func (f *fakePosts) Unshare(_ context.Context, in *socialv1.UnsharePostRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.lastUnshare = in
 	return &emptypb.Empty{}, nil
 }
 

@@ -43,6 +43,11 @@ class JobRecord:
     records_rejected: int = 0
     records_review: int = 0
     duplicates_removed: int = 0
+    # How many validated records reached the analytical stream (Anvil).
+    # Distinct from records_validated: the lake write always happens, the
+    # publish is best-effort, and a gap between the two is exactly the
+    # backlog a backfill has to close.
+    records_published: int = 0
     duration_ms: int = 0
     job_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     started_at: str = ""
@@ -56,12 +61,34 @@ class JobRecord:
 
 class JobRunner:
     def __init__(self, lake: DataLake | None = None, tickets: TicketStore | None = None,
-                 use_ai: bool = True, crew: Crew | None = None) -> None:
+                 use_ai: bool = True, crew: Crew | None = None,
+                 historical_publisher: Any = None) -> None:
         self.lake = lake or DataLake()
         self.tickets = tickets or TicketStore(self.lake.root)
         self.use_ai = use_ai
         self.crew = crew or Crew()
         self.log = get_logger("explorer.job")
+        # Constructed lazily on first use so a runner in a test or a
+        # Redis-less environment never touches the network.
+        self._historical_publisher = historical_publisher
+
+    def _publish_historical(self, envelopes: list, competition: str, season: str,
+                            source: str, rec: "JobRecord") -> None:
+        from explorer.config import EXPLORER_REDIS_URL
+
+        if not EXPLORER_REDIS_URL and self._historical_publisher is None:
+            # Not configured is not a failure. Saying so once, at info, is
+            # more useful than a ticket per season telling an operator about
+            # a feature they have not enabled.
+            self.log.info("historical_publish_skipped", reason="no_redis_url",
+                          source=source, competition=competition, season=season)
+            return
+        if self._historical_publisher is None:
+            from explorer.datalake.historical_publisher import HistoricalPublisher
+
+            self._historical_publisher = HistoricalPublisher()
+        _publish_historical_impl(self._historical_publisher, envelopes, competition,
+                                 season, source, rec, self.tickets)
 
     def run(self, adapter: SourceAdapter, competition: str, season: str,
             execution_id: str = "") -> JobRecord:
@@ -115,9 +142,16 @@ class JobRunner:
         for art in artifacts:
             metrics.records_collected_total.labels(
                 competition=competition, source=adapter.name, entity_type=art.entity_type).inc()
-        if artifacts:
-            self.lake.append("raw", competition, season, adapter.name, "fixture",
-                             ({"_checksum": _cs(a.raw), **_raw_record(a)} for a in artifacts))
+        # Grouped by the artifact's OWN entity_type, not a literal "fixture".
+        #
+        # Every artifact used to land under .../fixture/ regardless of what it
+        # was. An adapter fetching odds wrote them into the fixture partition,
+        # where the reconciler — which reads exactly that partition — would
+        # then compare odds rows against fixture rows. Fixtures were the only
+        # thing anything collected, so the bug had nothing to surface on.
+        for kind, group in _by_entity_type(artifacts).items():
+            self.lake.append("raw", competition, season, adapter.name, kind,
+                             ({"_checksum": _cs(a.raw), **_raw_record(a)} for a in group))
         log.info("collected", records=rec.records_collected)
 
         # 4. AI-orchestrated quality pipeline
@@ -134,7 +168,14 @@ class JobRunner:
 
         # 5. write validated + preserve rejected/review (never drop)
         if state.validated:
-            self.lake.append("validated", competition, season, adapter.name, "fixture", state.validated)
+            for kind, rows in _envelopes_by_entity_type(state.validated).items():
+                self.lake.append("validated", competition, season, adapter.name, kind, rows)
+            # Hand the validated records to Anvil for analytical persistence.
+            #
+            # AFTER the lake write, and best-effort. The lake is the durable
+            # copy; Redis being down must not cost a season that was already
+            # collected, and the backfill command re-publishes from the lake.
+            self._publish_historical(state.validated, competition, season, adapter.name, rec)
         if state.rejected:
             self.lake.append_report_lines(
                 "rejected", competition, season, adapter.name, f"{rec.job_id}.jsonl",
@@ -205,3 +246,40 @@ def _safe_health(adapter: SourceAdapter) -> bool:
 
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _publish_historical_impl(publisher, envelopes, competition, season, source, rec, tickets):
+    """Shared body — kept a function so the method stays short and testable."""
+    try:
+        published = publisher.publish_many(envelopes)
+        rec.records_published = published
+        log = get_logger("explorer.job")
+        log.info("historical_published", source=source, competition=competition,
+                 season=season, published=published)
+    except Exception as exc:  # noqa: BLE001 - never fail a collected season
+        rec.records_published = 0
+        tickets.open(
+            error_type="historical_publish_failed", source=source,
+            competition=competition, season=season, entity_type="fixture",
+            severity="medium",
+            sample_payload={"error": str(exc)[:300],
+                            "hint": "records are in the lake; re-run the backfill"})
+        get_logger("explorer.job").error(
+            "historical_publish_failed", source=source, competition=competition,
+            season=season, error=str(exc))
+
+
+def _by_entity_type(artifacts: list) -> dict[str, list]:
+    """Partition raw artifacts by what they actually are."""
+    out: dict[str, list] = {}
+    for art in artifacts:
+        out.setdefault(art.entity_type or "fixture", []).append(art)
+    return out
+
+
+def _envelopes_by_entity_type(envelopes: list[dict]) -> dict[str, list[dict]]:
+    """Same for validated envelopes, read off the envelope's own field."""
+    out: dict[str, list[dict]] = {}
+    for env in envelopes:
+        out.setdefault(env.get("entity_type") or "fixture", []).append(env)
+    return out

@@ -19,7 +19,12 @@ running alongside this detector in the same historical engine.
 
 from __future__ import annotations
 
-from atlas.similarity.contracts import SimilarityContext, SimilarityMatch
+from atlas.similarity.contracts import (
+    SimilarityConfidence,
+    SimilarityContext,
+    SimilarityMatch,
+)
+from atlas.similarity.scoring import confidence_for_matches
 from atlas.trends.models import Trend, TrendCategory, TrendInputs, TrendType
 
 
@@ -68,7 +73,19 @@ class OracleSimilarityDetector:
         if not compatible:
             return []
 
-        confidence = result.confidence
+        # Score the neighbourhood the detector ACTUALLY accepted.
+        # `result.confidence` was computed by the similarity service over
+        # ALL returned matches, including the ones just filtered out —
+        # so with 20 neighbours returned and 4 surviving, the emitted
+        # trend's strength, confidence and evidence described a
+        # 20-neighbour set the detector had itself rejected. The
+        # published payload even contradicted itself:
+        # evidence["neighbor_count"]=20 next to 4 matched_event_ids.
+        # `confidence_for_matches` is the same pure function the service
+        # uses, so this is a re-scope, not a different metric.
+        confidence = confidence_for_matches(
+            compatible, minimum_neighbors=result.confidence.minimum_neighbors
+        )
         best_similarity = max(m.similarity for m in compatible)
         neighbor_count = len(compatible)
 
@@ -87,6 +104,7 @@ class OracleSimilarityDetector:
                 compatible,
                 trend_type=TrendType.historical_similarity,
                 best_similarity=best_similarity,
+                confidence=confidence,
             )
         ]
 
@@ -102,6 +120,7 @@ class OracleSimilarityDetector:
                     compatible,
                     trend_type=TrendType.historical_pattern,
                     best_similarity=best_similarity,
+                    confidence=confidence,
                 )
             )
         return trends
@@ -136,8 +155,8 @@ class OracleSimilarityDetector:
         *,
         trend_type: TrendType,
         best_similarity: float,
+        confidence: SimilarityConfidence,
     ) -> Trend:
-        confidence = result.confidence
         is_pattern = trend_type == TrendType.historical_pattern
         return Trend(
             trend_type=trend_type,
@@ -152,7 +171,9 @@ class OracleSimilarityDetector:
             ),
             confidence=_clamp(confidence.confidence),
             direction=0,  # historical resemblance has no market direction
-            evidence=self._evidence(result, matches, best_similarity, trend_type),
+            evidence=self._evidence(
+                result, matches, best_similarity, trend_type, confidence
+            ),
         )
 
     def _evidence(
@@ -161,8 +182,8 @@ class OracleSimilarityDetector:
         matches: list[SimilarityMatch],
         best_similarity: float,
         trend_type: TrendType,
+        confidence: SimilarityConfidence,
     ) -> dict:
-        confidence = result.confidence
         filters = result.filters
         top = matches[: self._top_neighbors]
         kind = "pattern" if trend_type == TrendType.historical_pattern else "resemblance"

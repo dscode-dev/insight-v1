@@ -53,6 +53,7 @@ import (
 	"github.com/konoha-labs/insight-gateway/internal/interfaces/http/competitions"
 	httpconsole "github.com/konoha-labs/insight-gateway/internal/interfaces/http/console"
 	"github.com/konoha-labs/insight-gateway/internal/interfaces/http/consolemw"
+	"github.com/konoha-labs/insight-gateway/internal/interfaces/http/edgelimit"
 	httpevents "github.com/konoha-labs/insight-gateway/internal/interfaces/http/events"
 	"github.com/konoha-labs/insight-gateway/internal/interfaces/http/interactions"
 	httpmoderation "github.com/konoha-labs/insight-gateway/internal/interfaces/http/moderation"
@@ -325,15 +326,27 @@ func main() {
 		requireConsoleSvc(http.HandlerFunc(consoleHandlers.DelegationGrant)))
 	strangler.Native(http.MethodDelete, "/v1/console/identity/delegations/{id}",
 		requireConsoleSvc(http.HandlerFunc(consoleHandlers.DelegationRevoke)))
-	// ---- Social read plane (CONSOLE-SOCIAL-A1): operator-authed read proxy ----
-	for _, sub := range []string{
-		"overview", "activity", "users", "users/{id}", "agents", "agents/{id}", "posts", "posts/{id}",
-		// CONSOLE-SOCIAL-A2 investigation plane:
-		"comments", "comments/{id}", "communities", "communities/{id}", "relationships", "boosts", "timeline",
-	} {
-		strangler.Native(http.MethodGet, "/v1/console/social/"+sub,
-			http.HandlerFunc(consoleHandlers.SocialConsoleProxy))
-	}
+	// ---- Social read plane: REMOVED ------------------------------------
+	//
+	// Fifteen GET routes here were a pure proxy: they authenticated an
+	// operator and forwarded to Social's own /console/social/* surface. Per
+	// insight-context.md v2.0 the Gateway is not responsible for
+	// administration, operators or the console, and the Insight Control Plane
+	// is the service that talks to the rest of the platform. The Gateway was
+	// a third party in a two-party conversation, and holding SOCIAL_OPS_TOKEN
+	// to play it.
+	//
+	// The Console now reaches those reads as
+	//   Console -> Control Plane -> Social  (src/social/ in insight-console-api)
+	// with Social requiring its ops token on every route, reads included —
+	// they previously required nothing, because the cluster boundary was the
+	// whole protection.
+	//
+	// The POST enforcement routes below did NOT move, and the difference is
+	// ownership, not effort: they mutate moderation state this service owns
+	// (migrations/00004_moderation.sql). Moving them is a data migration into
+	// Social, which the same document says owns Moderação and Enforcement.
+	// See docs/adr/0001-social-administration-path.md.
 	// ---- Social Enforcement Plane (CONSOLE-SOCIAL-B): operator-driven mutations ----
 	// Every command: service-token (consolemw) + verified operator session (handler)
 	// + capability authorization + canonical audit intent→outcome. Operator identity
@@ -658,12 +671,26 @@ func main() {
 			route(http.MethodGet, "/v1/posts/{postId}/comments", "comments_list", foundation.ListComments)
 			route(http.MethodPost, "/v1/posts/{postId}/like", "like", foundation.LikePost)
 			route(http.MethodDelete, "/v1/posts/{postId}/like", "unlike", foundation.UnlikePost)
+			// Compartilhamento. POST carries the target in the body — repost
+			// or external — because the two are the same action with different
+			// meanings, and two routes would suggest otherwise. DELETE removes
+			// a repost; an external share is an event with nothing to undo.
+			route(http.MethodPost, "/v1/posts/{postId}/share", "share", foundation.SharePost)
+			route(http.MethodDelete, "/v1/posts/{postId}/share", "unshare", foundation.UnsharePost)
 			// AZTECA-SOCIAL-A — Saved Posts + Boosts (proxied to social).
 			route(http.MethodPost, "/v1/posts/{postId}/save", "save", interactionsHandler.Save)
 			route(http.MethodDelete, "/v1/posts/{postId}/save", "unsave", interactionsHandler.Unsave)
 			route(http.MethodPost, "/v1/posts/{postId}/boost", "boost", interactionsHandler.Boost)
 			route(http.MethodDelete, "/v1/posts/{postId}/boost", "unboost", interactionsHandler.Unboost)
 			route(http.MethodGet, "/v1/posts/interaction-states", "interaction_states", interactionsHandler.InteractionStates)
+			// Explorar. BOTH require a bearer token: `route()` wraps every
+			// endpoint it registers in the auth middleware, so there is no
+			// open read here even though the trending list is the same for
+			// every viewer. For the view batch that is what we want anyway —
+			// an unauthenticated write feeding a ranking is a way to promote
+			// a post from a script.
+			route(http.MethodGet, "/v1/explore/trending", "explore_trending", interactionsHandler.Trending)
+			route(http.MethodPost, "/v1/explore/views", "explore_views", interactionsHandler.RecordViews)
 			route(http.MethodGet, "/v1/me/saved-posts", "saved_posts", interactionsHandler.SavedPosts)
 			// AZTECA-IDENTITY-B — enriched Sports Profile (identity + grouped stats).
 			route(http.MethodGet, "/v1/users/{userId}/sports-profile", "sports_profile", interactionsHandler.SportsProfile)
@@ -760,13 +787,20 @@ func main() {
 		logger.Warn().Msg("auth_service_unavailable_auth_routes_unregistered")
 	}
 
+	// Rate limiting is a declared Gateway responsibility (insight-context.md
+	// v2.0) that had no implementation at the edge — the only throttling in
+	// the service lived inside two BFF handlers, so the endpoints nobody had
+	// thought about were the unprotected ones. Auth paths get a much tighter
+	// bucket: each OTP request costs a real SMS, and the per-phone cooldown
+	// does nothing against an attacker rotating numbers.
+	limiter := edgelimit.New(edgelimit.DefaultLimits())
 	handler := middleware.Recovery()(
 		middleware.RequestID()(
 			middleware.BodyLimit(settings.BodyMaxBytes)(
 				middleware.SecurityHeaders(middleware.SecurityHeadersConfig{
 					EnableHSTS: settings.EnableHSTS,
 					CSP:        settings.CSP,
-				})(strangler),
+				})(limiter.Middleware(strangler)),
 			),
 		),
 	)

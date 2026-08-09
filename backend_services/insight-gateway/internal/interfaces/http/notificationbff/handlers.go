@@ -3,10 +3,10 @@
 // Endpoint matrix (all requireAuth; the viewer is the VERIFIED session identity
 // from authmw, never client-supplied):
 //
-//   GET   /v1/notifications                 → ListResponse (cursor + has_more + unread_count)
-//   GET   /v1/notifications/unread-count     → UnreadCountResponse (cached a few seconds)
-//   PATCH /v1/notifications/{id}/read        → MarkReadResponse (updated notif + unread_count)
-//   PATCH /v1/notifications/read-all         → MarkAllReadResponse (marked + unread_count)
+//	GET   /v1/notifications                 → ListResponse (cursor + has_more + unread_count)
+//	GET   /v1/notifications/unread-count     → UnreadCountResponse (cached a few seconds)
+//	PATCH /v1/notifications/{id}/read        → MarkReadResponse (updated notif + unread_count)
+//	PATCH /v1/notifications/read-all         → MarkAllReadResponse (marked + unread_count)
 package notificationbff
 
 import (

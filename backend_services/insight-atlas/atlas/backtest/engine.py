@@ -209,7 +209,18 @@ def _quality(
         if similarity
         else 1.0
     )
-    behavior_consistency = 1.0 if behavior else 1.0
+    # Was `1.0 if behavior else 1.0` — both branches identical, so the
+    # metric was a constant dressed up as a computation. Behaviour
+    # consistency is the share of replay steps that actually produced a
+    # behaviour observation; with none observed there is nothing to be
+    # consistent about, so it degrades to 1.0 exactly as before rather
+    # than inventing a penalty.
+    behavior_consistency = min(
+        1.0,
+        round(len(behavior) / steps_executed, 6)
+        if behavior and steps_executed
+        else 1.0,
+    )
     return ReplayQuality(
         replay_completion=completion,
         pipeline_completion=completion,
@@ -224,7 +235,20 @@ def _quality(
 
 def _fingerprint(trend_evals: list[TrendEvaluation]) -> str:
     """Order-independent, latency-free fingerprint of the emitted intelligence.
-    Same inputs ⇒ same hash (regression + determinism gate)."""
+    Same inputs ⇒ same hash (regression + determinism gate).
+
+    SCOPE — what this hash does and does NOT cover. It covers
+    (step_index, trend_type, strength, confidence, direction) only.
+    It deliberately excludes latency and ordering, but it ALSO excludes
+    `evidence`, `meaning`, `publish_score`, `publication_tier`,
+    `lifecycle_state` and every Contract V3/V4 enrichment field. A
+    change that rewrites evidence content or enrichment while leaving
+    strength/confidence intact produces an IDENTICAL hash — i.e. an
+    unchanged hash is NOT proof that the published payload is
+    unchanged. Use the RegressionDiff (which compares the evaluations
+    themselves) for that, and treat this hash as the determinism gate
+    it is named for, not as a full output signature.
+    """
     rows = sorted(
         f"{e.step_index}|{e.trend_type}|{e.strength:.6f}|{e.confidence:.6f}|{e.direction}"
         for e in trend_evals

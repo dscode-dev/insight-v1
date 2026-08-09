@@ -17,11 +17,19 @@ export type ServiceDomain =
 
 /** Which typed adapter (if any) the Console uses to observe a service. */
 export type AdapterKind =
-  | "atlas"
-  | "explorer"
+  /**
+   * Observed THROUGH the Insight Control Plane. Every Intelligence-plane
+   * service is this now: insight-context.md v2.0 routes the console's
+   * access to Atlas, Explorer, Nexus, Anvil and the Node Agent through
+   * the Control Plane, so the console holds no endpoint of its own for
+   * them.
+   */
+  | "control-plane"
+  /** Observed through the cloud Gateway (Product plane). */
   | "gateway"
-  | "robozao"
-  | "nexus"
+  /** Console has a direct upstream — being migrated away. */
+  | "explorer"
+  /** No probe at all; health is honestly unknown. */
   | "none";
 
 /** Health is a distinct axis from configured/available. `unknown` ≠ healthy. */

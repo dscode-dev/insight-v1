@@ -19,7 +19,20 @@ def build_envelope(
     confidence: float,
     payload: dict[str, Any],
     competition_external_id: str | None = None,
+    entity_type: str | None = None,
 ) -> dict[str, Any]:
+    """`entity_type` selects the payload schema (explorer.<entity_type>.v1).
+
+    It used to be hardcoded to "fixture" here. Every contract for odds, stats,
+    lineups and injuries already existed and was unreachable: a normalizer
+    could build an odds payload and this function would still label it a
+    fixture, so validation compared an odds body against the fixture schema
+    and rejected it. Collecting anything but fixtures was impossible one
+    layer below where anyone was looking.
+
+    Defaults to the artifact's own entity_type, so an adapter that already
+    declares what it is fetching needs no second declaration here.
+    """
     comp_def = COMPETITIONS.get(artifact.competition_key)
     return {
         "schema_version": "explorer.envelope.v1",
@@ -29,7 +42,7 @@ def build_envelope(
         "trust_level": artifact.trust_level,
         "confidence": confidence,
         "captured_at": artifact.retrieved_at,
-        "entity_type": "fixture",
+        "entity_type": entity_type or artifact.entity_type or "fixture",
         "external_id": artifact.external_id,
         "canonical_match_id": None,
         "competition": {

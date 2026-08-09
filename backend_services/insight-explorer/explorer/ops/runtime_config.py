@@ -22,9 +22,17 @@ class RuntimeConfig:
     disabled_sources: list[str] = field(default_factory=list)
     scheduler_paused: bool = False
     use_ai: bool = True
+    # Operator-set collection priority per source name. Absent = default.
+    # Lower number = higher priority, matching the usual scheduling
+    # convention. `load()` already drops unknown keys, so adding this
+    # field cannot disturb an existing on-disk config.
+    source_priority: dict[str, int] = field(default_factory=dict)
 
     def source_enabled(self, name: str) -> bool:
         return name not in self.disabled_sources
+
+    def priority_for(self, name: str, default: int = 100) -> int:
+        return self.source_priority.get(name, default)
 
 
 def _path(root: Path | str = DATA_LAKE_ROOT) -> Path:

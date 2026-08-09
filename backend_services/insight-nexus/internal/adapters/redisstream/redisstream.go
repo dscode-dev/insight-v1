@@ -14,13 +14,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"github.com/konoha-labs/insight-nexus/internal/domain/draft"
 	"github.com/konoha-labs/insight-nexus/internal/domain/trend"
+	"github.com/konoha-labs/insight-nexus/internal/ports"
 )
 
 // ---- trend consumer ---------------------------------------------------------
@@ -156,48 +157,78 @@ func isBusyGroup(err error) bool {
 // ---- per-agent publishing queues ---------------------------------------------
 
 type Queue struct {
-	client *goredis.Client
-	maxLen int64
+	client   *goredis.Client
+	maxLen   int64
+	group    string
+	consumer string
+	logger   zerolog.Logger
+}
+
+// QueueConfig — the publishing queues' connection and consumer identity.
+type QueueConfig struct {
+	Addr     string
+	Password string
+	DB       int
+	MaxLen   int64
+	// Group / Consumer name the read side. They are separate from the
+	// trend consumer's group: the two streams have different retry
+	// characteristics, and sharing a group name would make a reset of one
+	// silently reset the other.
+	Group    string
+	Consumer string
 }
 
 // NewQueue reuses the caller's client config; queues are plain streams.
-func NewQueue(ctx context.Context, addr, password string, db int, maxLen int64) (*Queue, error) {
-	client := goredis.NewClient(&goredis.Options{Addr: addr, Password: password, DB: db})
+func NewQueue(ctx context.Context, cfg QueueConfig, logger zerolog.Logger) (*Queue, error) {
+	client := goredis.NewClient(&goredis.Options{
+		Addr: cfg.Addr, Password: cfg.Password, DB: cfg.DB,
+	})
 	if err := client.Ping(ctx).Err(); err != nil {
 		_ = client.Close()
 		return nil, fmt.Errorf("redisstream: queue ping: %w", err)
 	}
-	if maxLen <= 0 {
-		maxLen = 50_000
+	if cfg.MaxLen <= 0 {
+		cfg.MaxLen = 50_000
 	}
-	return &Queue{client: client, maxLen: maxLen}, nil
+	if cfg.Group == "" {
+		cfg.Group = "insight-nexus-publish"
+	}
+	if cfg.Consumer == "" {
+		cfg.Consumer = "publisher-1"
+	}
+	return &Queue{
+		client:   client,
+		maxLen:   cfg.MaxLen,
+		group:    cfg.Group,
+		consumer: cfg.Consumer,
+		logger:   logger,
+	}, nil
 }
 
-func (q *Queue) Enqueue(ctx context.Context, queueName string, d draft.Draft, priority bool) error {
-	body, err := json.Marshal(map[string]any{
-		"draft_id":   d.ID.String(),
-		"agent_id":   d.AgentID.String(),
-		"trend_id":   d.TrendID,
-		"match_id":   d.MatchID,
-		"title":      d.Title,
-		"summary":    d.Summary,
-		"highlights": d.Highlights,
-		"charts":     d.Charts,
-		"metadata":   d.Metadata,
-		"priority":   priority,
-		"created_at": d.CreatedAt.Format(time.RFC3339),
-	})
+func (q *Queue) Enqueue(ctx context.Context, queueName string, item ports.QueuedDraft) error {
+	body, err := json.Marshal(item)
 	if err != nil {
-		return fmt.Errorf("redisstream: marshal draft: %w", err)
+		return fmt.Errorf("redisstream: marshal queued draft: %w", err)
 	}
+	// MaxLen is NOT applied here.
+	//
+	// It used to be, with Approx, which trims the OLDEST entries — and the
+	// oldest entry on a publishing queue is a draft that has waited longest
+	// to be published. Capping the queue therefore discarded exactly the
+	// work that was most overdue, silently. A backlog is a problem to
+	// alarm on (queueDepth), not one to hide by deleting its head.
+	//
+	// The bound that does exist is the consumer group: unacked entries are
+	// redelivered, and the DLQ absorbs what repeatedly fails.
 	return q.client.XAdd(ctx, &goredis.XAddArgs{
 		Stream: queueName,
-		MaxLen: q.maxLen,
-		Approx: true,
 		Values: map[string]any{
-			"draft_id": d.ID.String(),
-			"priority": fmt.Sprintf("%t", priority),
-			"payload":  body,
+			"draft_id": item.Draft.ID.String(),
+			"agent_id": item.Draft.AgentID.String(),
+			"priority": fmt.Sprintf("%t", item.Priority),
+			"queued_at": time.Now().UTC().
+				Format(time.RFC3339),
+			"payload": body,
 		},
 	}).Err()
 }
@@ -206,4 +237,112 @@ func (q *Queue) Depth(ctx context.Context, queueName string) (int64, error) {
 	return q.client.XLen(ctx, queueName).Result()
 }
 
+// MaxLen reports the configured cap, which is now advisory: it bounds
+// nothing, and exists so the depth gauge can be compared against the value
+// the operator believed was in force.
+func (q *Queue) MaxLen() int64 { return q.maxLen }
+
 func (q *Queue) Close() error { return q.client.Close() }
+
+// ---- publishing queue consumer ------------------------------------------
+
+// Consume drains every per-agent queue through one consumer group each.
+//
+// One goroutine per queue, so a slow agent (an LLM that always times out for
+// its persona) delays only its own backlog. Sharing a goroutine would let
+// that one agent block every other agent's posts — the failure mode the
+// inline publisher had, just moved.
+func (q *Queue) Consume(
+	ctx context.Context, queueNames []string, handler ports.QueuedDraftHandler,
+) error {
+	if len(queueNames) == 0 {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	var wg sync.WaitGroup
+	for _, name := range queueNames {
+		if err := q.ensureGroup(ctx, name); err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(queueName string) {
+			defer wg.Done()
+			q.consumeOne(ctx, queueName, handler)
+		}(name)
+	}
+	wg.Wait()
+	return ctx.Err()
+}
+
+func (q *Queue) ensureGroup(ctx context.Context, queueName string) error {
+	// "0" and not "$": a group created at "$" skips everything already
+	// waiting, so enabling the worker would abandon the existing backlog.
+	err := q.client.XGroupCreateMkStream(ctx, queueName, q.group, "0").Err()
+	if err != nil && !isBusyGroup(err) {
+		return fmt.Errorf("redisstream: queue group %s: %w", queueName, err)
+	}
+	return nil
+}
+
+func (q *Queue) consumeOne(
+	ctx context.Context, queueName string, handler ports.QueuedDraftHandler,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		streams, err := q.client.XReadGroup(ctx, &goredis.XReadGroupArgs{
+			Group:    q.group,
+			Consumer: q.consumer,
+			Streams:  []string{queueName, ">"},
+			Count:    1, // one draft at a time: each is an LLM call.
+			Block:    5 * time.Second,
+		}).Result()
+		if err != nil {
+			if err == goredis.Nil || ctx.Err() != nil {
+				continue
+			}
+			q.logger.Warn().Err(err).
+				Str("queue", queueName).
+				Msg("nexus_publish_queue_read_error")
+			time.Sleep(time.Second)
+			continue
+		}
+		for _, stream := range streams {
+			for _, msg := range stream.Messages {
+				q.dispatchQueued(ctx, queueName, msg, handler)
+			}
+		}
+	}
+}
+
+func (q *Queue) dispatchQueued(
+	ctx context.Context, queueName string, msg goredis.XMessage,
+	handler ports.QueuedDraftHandler,
+) {
+	payload, _ := msg.Values["payload"].(string)
+	var item ports.QueuedDraft
+	if err := json.Unmarshal([]byte(payload), &item); err != nil {
+		// Undecodable: it can never succeed on redelivery, so ACK it
+		// rather than let it block the queue head forever. It is logged
+		// with the entry id so the payload stays recoverable from the
+		// stream until trimmed.
+		q.logger.Error().Err(err).
+			Str("queue", queueName).
+			Str("entry_id", msg.ID).
+			Msg("nexus_publish_queue_undecodable_entry")
+		_ = q.client.XAck(ctx, queueName, q.group, msg.ID).Err()
+		return
+	}
+	if err := handler(ctx, item); err != nil {
+		q.logger.Error().Err(err).
+			Str("queue", queueName).
+			Str("entry_id", msg.ID).
+			Str("draft_id", item.Draft.ID.String()).
+			Msg("nexus_publish_failed_entry_stays_pending")
+		return // no ACK — redelivered.
+	}
+	_ = q.client.XAck(ctx, queueName, q.group, msg.ID).Err()
+}
