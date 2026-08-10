@@ -3,7 +3,7 @@
 // SidebarNav (rendering). Icons are lucide components.
 
 import {
-  Activity, AlertOctagon, ServerCog,
+  Activity, AlertOctagon, BellRing, ServerCog,
   Newspaper, BarChart3,
   Brain, BookOpen, Database, GitBranch, Radio, Server, Ticket,
   ScrollText, ShieldCheck, ShieldAlert, ClipboardList,
@@ -116,6 +116,10 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Governança",
     items: [
       { href: "/audit", key: "audit", label: "Auditoria", icon: ScrollText, permission: "audit.read" },
+      // Prazos operacionais. Em Governança e não em Visão geral porque o
+      // que a tela guarda são compromissos — validade do par mTLS,
+      // rotação dos tokens do Cloudflare — e não estado do sistema.
+      { href: "/reminders", key: "reminders", label: "Lembretes", icon: BellRing, permission: "config.read" },
       { href: "/administration/operators", key: "operators", label: "Operadores", icon: UserCog, permission: "user.read" },
       { href: "/administration/sessions", key: "sessions", label: "Sessões", icon: KeyRound, permission: "user.read" },
     ],

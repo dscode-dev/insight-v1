@@ -85,7 +85,7 @@ describe("PlatformSnapshotService", () => {
     const snap = await PlatformSnapshotService.generate(ctx);
     expect(snap.partial).toBe(false);
     expect(snap.environments).toHaveLength(2);
-    expect(snap.services).toHaveLength(16);
+    expect(snap.services).toHaveLength(17);
     expect(svc(snap.services, "atlas")?.health).toBe("healthy");
     expect(svc(snap.services, "social")?.health).toBe("healthy");
     // Unprobed service is honestly unknown, never healthy.

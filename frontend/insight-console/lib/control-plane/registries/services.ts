@@ -6,7 +6,7 @@
 // benefit for V1. `configured` is derived from validated env (config.ts); the
 // public read model strips all endpoints/tokens.
 //
-// The seed is EXACTLY the CONSOLE-ARCHITECTURE-A confirmed live topology (16
+// The seed is EXACTLY the CONSOLE-ARCHITECTURE-A confirmed live topology (17
 // containers across 2 environments). No invented services.
 
 import { controlPlaneConfig } from "@/lib/control-plane/config";
@@ -31,6 +31,18 @@ const SEED: readonly Seed[] = [
     protocol: "http", adapterKind: "none", observable: true, mutable: false,
     dependencies: ["gateway", "atlas", "explorer", "robozao-gateway"],
     lifecycle: "active", endpointKey: null, capabilities: [],
+  },
+  // O backend do console (NestJS). Entrou aqui porque passou a deter
+  // estado próprio que se muta pelo console — os lembretes operacionais —
+  // e uma capability só é autorizável se o serviço que a executa existir
+  // no registro. `observable: false`: ninguém sonda a saúde dele por aqui;
+  // o navegador só o alcança através do servidor Next.
+  {
+    id: "console-api", displayName: "Insight Control Plane (API)", domain: "platform",
+    environmentId: "robozao", serviceType: "nestjs", ownership: "platform",
+    protocol: "http", adapterKind: "none", observable: false, mutable: true,
+    dependencies: ["postgres"], lifecycle: "active", endpointKey: null,
+    capabilities: ["controlplane.reminder.mute"],
   },
   {
     id: "atlas", displayName: "Insight Atlas", domain: "intelligence",

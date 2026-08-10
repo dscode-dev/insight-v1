@@ -53,8 +53,15 @@ class PoliteFetcher:
 
     def _headers(self, accept: str) -> dict[str, str]:
         headers = {"User-Agent": self._ua(), "Accept": accept}
-        # RFC 9110 §10.1.2 — who to contact about this traffic. Kept out of
-        # the User-Agent because ESPN refuses a non-browser UA with 403.
+        # RFC 9110 §10.1.2 — who to contact about this traffic.
+        #
+        # Kept out of the User-Agent, which is the other standard place for
+        # it. The reason originally given was "ESPN refuses a non-browser UA
+        # with 403" — see explorer/config.py, where that claim is corrected:
+        # measurement contradicts it, and the underlying behaviour looks like
+        # throttling rather than a header rule. The `From` header is worth
+        # sending on its own merits, so the placement stands even though the
+        # justification did not.
         if getattr(self.config, "contact", ""):
             headers["From"] = self.config.contact
         return headers

@@ -296,3 +296,27 @@ func (h *Handler) RecordViews(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	h.forward(w, req)
 }
+
+// Radar — GET /v1/radar. Proxies Social's read side; the filters (competition,
+// kind, paging) pass through untouched, and Social names what it refuses.
+func (h *Handler) Radar(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if h.socialBase == "" {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"items":[],"detail":"social_http_not_configured"}`))
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
+	defer cancel()
+
+	upstream := h.socialBase + "/radar"
+	if raw := r.URL.RawQuery; raw != "" {
+		upstream += "?" + raw
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, upstream, nil)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "request_build_failed")
+		return
+	}
+	h.forward(w, req)
+}

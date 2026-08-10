@@ -118,4 +118,31 @@ describe('classify', () => {
       });
     });
   });
+
+  describe('vector memory refresh', () => {
+    // The button an operator presses after a collection finishes. Routed to
+    // the runtime router, where the effect lives — the internal read router
+    // would 404 and the console would report "not found" for an action that
+    // exists.
+    it('routes the refresh to the runtime router', () => {
+      expect(classify('atlas/vector-memory/refresh', 'POST')).toMatchObject({
+        kind: 'allow',
+        upstream: 'atlas',
+        path: 'atlas/vector-memory/refresh',
+      });
+    });
+
+    it('carries the force flag path unchanged', () => {
+      // `force` travels as a query string, which the controller forwards
+      // separately; the classifier must not see or alter it.
+      expect(classify('atlas/vector-memory/refresh', 'POST')).toMatchObject({
+        path: 'atlas/vector-memory/refresh',
+      });
+    });
+
+    it('refuses a sibling nobody implemented', () => {
+      const decision = classify('atlas/vector-memory/../../etc/passwd', 'POST');
+      expect(decision.kind).toBe('refuse');
+    });
+  });
 });

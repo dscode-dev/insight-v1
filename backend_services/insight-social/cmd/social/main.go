@@ -330,6 +330,10 @@ func main() {
 	// for everyone — and the view batch deliberately does not record WHO
 	// viewed, only how many did.
 	httpMux.HandleFunc("GET /explore/trending", httpapi.ExploreTrending(pgPool))
+	// Radar's read side. User plane like Explorar: the stream is the same for
+	// everyone, and it carries no personal data — only what subscribed
+	// providers published.
+	httpMux.HandleFunc("GET /radar", httpapi.RadarFeed(pgPool))
 	httpMux.HandleFunc("POST /explore/views", httpapi.RecordPostViews(pgPool))
 
 	httpMux.HandleFunc("GET /console/social/competitions",

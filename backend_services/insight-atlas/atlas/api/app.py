@@ -400,7 +400,8 @@ def build_app() -> FastAPI:
     # chain were scripts, neither ran, and the vector table stayed empty
     # while ClickHouse filled. Nothing reported that: an empty vector search
     # returns zero neighbours and low confidence, not an error.
-    watcher_registry.register(build_vector_refresher(settings, session_factory))
+    vector_refresher = build_vector_refresher(settings, session_factory)
+    watcher_registry.register(vector_refresher)
     watcher_scheduler = WatcherScheduler(
         watcher_registry,
         ObservationSink(trends_pipeline),
@@ -475,6 +476,10 @@ def build_app() -> FastAPI:
         strength=strength_repository,
         approvals=PromotionDecisionRepository(session_factory),
     )
+    # Attached after construction so the console can trigger a refresh on
+    # demand: when a collection finishes, an operator should not have to wait
+    # for the next scheduled tick to learn whether it reached the vectors.
+    container.vector_refresher = vector_refresher
 
     # Sprint 5.1 — canonical-event consumer. Reads Hub-published
     # CanonicalSportsEvent envelopes off Redis Streams and refreshes

@@ -13,6 +13,7 @@ import { PlatformModule } from './platform/platform.module';
 import { ProductPlaneModule } from './product-plane/product-plane.module';
 import { QualityGateModule } from './quality-gate/quality-gate.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { UpstreamModule } from './upstream/upstream.module';
 
 /**
@@ -37,6 +38,7 @@ import { UpstreamModule } from './upstream/upstream.module';
     ProductPlaneModule,
     QualityGateModule,
     RealtimeModule,
+    RemindersModule,
     UpstreamModule,
   ],
   controllers: [HealthController],

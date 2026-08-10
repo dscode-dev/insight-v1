@@ -60,6 +60,10 @@ const ATLAS_RUNTIME_ROOTS = new Set([
   'ingestion',
   'intelligence-graph',
   'reasoning',
+  // Applying a finished collection to Atlas: rebuilds the similarity corpus
+  // and re-encodes it into pgvector. On the runtime router, not the internal
+  // read one — it is an action with an effect, not a projection.
+  'vector-memory',
 ]);
 
 function firstSegment(path: string): string {

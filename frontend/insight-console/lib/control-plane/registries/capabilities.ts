@@ -52,6 +52,18 @@ const META: Record<string, CapMeta> = {
     risk: "high",
     approvalRequired: true,
   },
+  // Silenciar um lembrete operacional. Não move o prazo — muda quem fica
+  // sabendo dele. Os lembretes semeados cobrem o par mTLS entre Gateway e
+  // Social e as rotações de token do Cloudflare, então um lembrete
+  // silenciado é uma credencial vencendo sem ninguém olhando. Médio e não
+  // alto: é reversível e limitado no tempo (a data-limite é obrigatória),
+  // mas exige registro, porque é a única ação aqui que não deixa rastro
+  // na própria linha depois que expira.
+  "controlplane.reminder.mute": {
+    evidence: "POST /reminders/{slug}/mute (console-api 1.10.x)",
+    risk: "medium",
+    approvalRequired: true,
+  },
   "explorer.health.read": { evidence: "GET /health (explorer)" },
   "explorer.missions.read": { evidence: "GET /explorer/missions (explorer)" },
   "explorer.datasets.read": { evidence: "GET /explorer/datasets (explorer)" },

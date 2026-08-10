@@ -3,9 +3,10 @@
  *
  *   node dist/cli.js migrate      apply migrations/*.sql
  *   node dist/cli.js seed         create the first operator from env
+ *   node dist/cli.js reminders:report <slug> <expiry> [detail]
  *
  * The image has no shell and no psql, so these ship as commands rather
- * than scripts. Both are idempotent and safe to re-run on every deploy.
+ * than scripts. All are idempotent and safe to re-run on every deploy.
  */
 import { join } from 'node:path';
 
@@ -18,6 +19,7 @@ import { DatabaseService } from './db/database.service';
 import { OperatorRepository } from './identity/operator.repository';
 import { WeakPasswordError } from './identity/password';
 import { isRole, Role } from './identity/rbac';
+import { parseInstant, RemindersService } from './reminders/reminders.service';
 
 const logger = new Logger('cli');
 
@@ -114,6 +116,63 @@ async function seed(): Promise<void> {
   }
 }
 
+/**
+ * Report an artefact's real expiry into a derived reminder.
+ *
+ * This is the automated half of the reminders page. The caller reads the
+ * date from the artefact — `openssl x509 -enddate -noout -in social.crt`
+ * — and hands it over; nothing here invents or parses a certificate,
+ * because the console should not need to learn a new file format every
+ * time a new kind of deadline appears.
+ *
+ * Runs INSIDE this image, against this database, so no new credential and
+ * no new network path are involved. On a host that cannot reach the
+ * Control Plane's database, use POST /reminders/{slug}/observed instead.
+ */
+async function reportReminder(): Promise<void> {
+  const [slug, expiry, ...rest] = process.argv.slice(3);
+  if (!slug || !expiry) {
+    throw new Error(
+      'usage: reminders:report <slug> <expiry-iso-8601> [detail]',
+    );
+  }
+  const expiresAt = parseInstant(expiry);
+  if (expiresAt === null) {
+    throw new Error(
+      `${expiry} is not ISO-8601 with an offset — ` +
+        'openssl gives "Nov 10 04:12:31 2028 GMT", which must be converted ' +
+        '(date -u -d "..." +%Y-%m-%dT%H:%M:%SZ) rather than passed through',
+    );
+  }
+
+  const db = new DatabaseService();
+  try {
+    const reminders = new RemindersService(db);
+    const updated = await reminders.report(
+      slug,
+      expiresAt,
+      rest.length > 0 ? rest.join(' ') : null,
+    );
+    if (updated === null) {
+      // Louder than a no-op: a reporter whose slug drifted would
+      // otherwise run green forever while the reminder it was meant to
+      // keep fresh silently stops being updated.
+      const existing = await reminders.findBySlug(slug);
+      throw new Error(
+        existing === null
+          ? `no reminder with slug ${slug}`
+          : `reminder ${slug} is '${existing.kind}' — only 'derived' takes reports`,
+      );
+    }
+    logger.log(
+      `${updated.slug}: expires ${updated.dueAt} (${updated.status}` +
+        `${updated.daysRemaining === null ? '' : `, ${updated.daysRemaining}d`})`,
+    );
+  } finally {
+    await db.onModuleDestroy();
+  }
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2];
   switch (command) {
@@ -123,8 +182,13 @@ async function main(): Promise<void> {
     case 'seed':
       await seed();
       return;
+    case 'reminders:report':
+      await reportReminder();
+      return;
     default:
-      throw new Error(`unknown command ${command ?? '(none)'} — use migrate|seed`);
+      throw new Error(
+        `unknown command ${command ?? '(none)'} — use migrate|seed|reminders:report`,
+      );
   }
 }
 

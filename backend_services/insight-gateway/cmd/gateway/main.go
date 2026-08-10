@@ -690,6 +690,10 @@ func main() {
 			// an unauthenticated write feeding a ranking is a way to promote
 			// a post from a script.
 			route(http.MethodGet, "/v1/explore/trending", "explore_trending", interactionsHandler.Trending)
+			// Radar. Authenticated like everything route() registers — the
+			// stream carries no personal data, but opening it would mean
+			// changing how routes are registered, not this one.
+			route(http.MethodGet, "/v1/radar", "radar_feed", interactionsHandler.Radar)
 			route(http.MethodPost, "/v1/explore/views", "explore_views", interactionsHandler.RecordViews)
 			route(http.MethodGet, "/v1/me/saved-posts", "saved_posts", interactionsHandler.SavedPosts)
 			// AZTECA-IDENTITY-B — enriched Sports Profile (identity + grouped stats).

@@ -1,8 +1,21 @@
 {
   "version": "1.0.0",
   "generated_by": "scripts/club_logo_crawler +ml-c-conmebol +ml-c-conmebol +ml-c-conmebol",
-  "count": 220,
+  "count": 299,
   "clubs": [
+    {
+      "club_id": "1_fc_union_berlin",
+      "name": "1. FC Union Berlin",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "1. FC Union Berlin"
+      ]
+    },
     {
       "club_id": "ac_milan",
       "name": "AC Milan",
@@ -36,6 +49,19 @@
       ]
     },
     {
+      "club_id": "afc_bournemouth",
+      "name": "AFC Bournemouth",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "AFC Bournemouth"
+      ]
+    },
+    {
       "club_id": "aguilas_doradas",
       "name": "Águilas Doradas",
       "short_name": "AGU",
@@ -53,6 +79,32 @@
       ]
     },
     {
+      "club_id": "ajax_amsterdam",
+      "name": "Ajax Amsterdam",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Ajax Amsterdam"
+      ]
+    },
+    {
+      "club_id": "alaves",
+      "name": "Alavés",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Alavés"
+      ]
+    },
+    {
       "club_id": "alianza_lima",
       "name": "Alianza Lima",
       "short_name": "ALI",
@@ -65,6 +117,19 @@
       "logo_path": "/clubs/alianza_lima.png",
       "aliases": [
         "Alianza Lima"
+      ]
+    },
+    {
+      "club_id": "almeria",
+      "name": "Almería",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Almería"
       ]
     },
     {
@@ -127,6 +192,19 @@
         "America Mineiro",
         "América Mineiro",
         "América-MG"
+      ]
+    },
+    {
+      "club_id": "antwerp",
+      "name": "Antwerp",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Antwerp"
       ]
     },
     {
@@ -279,6 +357,32 @@
         "Athletico Paranaense",
         "Athletico-PR",
         "Furacão"
+      ]
+    },
+    {
+      "club_id": "atletico_bucaramanga",
+      "name": "Atlético Bucaramanga",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Atlético Bucaramanga"
+      ]
+    },
+    {
+      "club_id": "atletico_goianiense",
+      "name": "Atlético Goianiense",
+      "country": null,
+      "competition": "brasileirao",
+      "competitions": [
+        "brasileirao"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Atlético Goianiense"
       ]
     },
     {
@@ -534,6 +638,32 @@
       ]
     },
     {
+      "club_id": "benfica",
+      "name": "Benfica",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Benfica"
+      ]
+    },
+    {
+      "club_id": "besiktas",
+      "name": "Besiktas",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Besiktas"
+      ]
+    },
+    {
       "club_id": "binacional",
       "name": "Deportivo Binacional",
       "short_name": "BIN",
@@ -547,6 +677,19 @@
       "aliases": [
         "Deportivo Binacional",
         "Binacional"
+      ]
+    },
+    {
+      "club_id": "blooming",
+      "name": "Blooming",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Blooming"
       ]
     },
     {
@@ -688,6 +831,19 @@
       ]
     },
     {
+      "club_id": "braga",
+      "name": "Braga",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Braga"
+      ]
+    },
+    {
       "club_id": "bragantino",
       "name": "Bragantino",
       "short_name": "RBB",
@@ -735,6 +891,19 @@
       ]
     },
     {
+      "club_id": "brest",
+      "name": "Brest",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Brest"
+      ]
+    },
+    {
       "club_id": "brighton_hove_albion",
       "name": "Brighton & Hove Albion",
       "short_name": "BHA",
@@ -750,6 +919,19 @@
       ]
     },
     {
+      "club_id": "burnley",
+      "name": "Burnley",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Burnley"
+      ]
+    },
+    {
       "club_id": "ca_nt",
       "name": "Canada",
       "short_name": "CAN",
@@ -761,6 +943,19 @@
       "logo_path": "/clubs/ca_nt.png",
       "aliases": [
         "Canada"
+      ]
+    },
+    {
+      "club_id": "cadiz",
+      "name": "Cádiz",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Cádiz"
       ]
     },
     {
@@ -809,6 +1004,46 @@
         "Ceara",
         "Ceará",
         "Ceará SC"
+      ]
+    },
+    {
+      "club_id": "celta_vigo",
+      "name": "Celta Vigo",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Celta Vigo"
+      ]
+    },
+    {
+      "club_id": "celtic",
+      "name": "Celtic",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Celtic"
+      ]
+    },
+    {
+      "club_id": "central_cordoba_santiago_del_estero",
+      "name": "Central Córdoba (Santiago del Estero)",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Central Córdoba",
+        "Central Córdoba (Santiago del Estero)"
       ]
     },
     {
@@ -916,6 +1151,19 @@
       ]
     },
     {
+      "club_id": "club_brugge",
+      "name": "Club Brugge",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Club Brugge"
+      ]
+    },
+    {
       "club_id": "cm_nt",
       "name": "Cameroon",
       "short_name": "CAM",
@@ -973,6 +1221,20 @@
       "aliases": [
         "Colo Colo",
         "Colo-Colo"
+      ]
+    },
+    {
+      "club_id": "colon_santa_fe",
+      "name": "Colón (Santa Fe)",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Colón",
+        "Colón (Santa Fe)"
       ]
     },
     {
@@ -1174,6 +1436,19 @@
       ]
     },
     {
+      "club_id": "deportes_iquique",
+      "name": "Deportes Iquique",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Deportes Iquique"
+      ]
+    },
+    {
       "club_id": "deportes_tolima",
       "name": "Deportes Tolima",
       "short_name": "TOL",
@@ -1186,6 +1461,32 @@
       "logo_path": "/clubs/deportes_tolima.png",
       "aliases": [
         "Deportes Tolima"
+      ]
+    },
+    {
+      "club_id": "deportivo_cali",
+      "name": "Deportivo Cali",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Deportivo Cali"
+      ]
+    },
+    {
+      "club_id": "deportivo_la_guaira",
+      "name": "Deportivo La Guaira",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Deportivo La Guaira"
       ]
     },
     {
@@ -1249,6 +1550,19 @@
       ]
     },
     {
+      "club_id": "dinamo_zagreb",
+      "name": "Dinamo Zagreb",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Dinamo Zagreb"
+      ]
+    },
+    {
       "club_id": "dk_nt",
       "name": "Denmark",
       "short_name": "DEN",
@@ -1263,6 +1577,19 @@
       ]
     },
     {
+      "club_id": "dynamo_kyiv",
+      "name": "Dynamo Kyiv",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Dynamo Kyiv"
+      ]
+    },
+    {
       "club_id": "ec_nt",
       "name": "Ecuador",
       "short_name": "ECU",
@@ -1274,6 +1601,19 @@
       "logo_path": "/clubs/ec_nt.png",
       "aliases": [
         "Ecuador"
+      ]
+    },
+    {
+      "club_id": "eibar",
+      "name": "Eibar",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Eibar"
       ]
     },
     {
@@ -1305,6 +1645,32 @@
       "aliases": [
         "El Nacional",
         "CD El Nacional"
+      ]
+    },
+    {
+      "club_id": "elche",
+      "name": "Elche",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Elche"
+      ]
+    },
+    {
+      "club_id": "emelec",
+      "name": "Emelec",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Emelec"
       ]
     },
     {
@@ -1397,6 +1763,71 @@
       "aliases": [
         "Everton",
         "Everton FC"
+      ]
+    },
+    {
+      "club_id": "f_c_k_benhavn",
+      "name": "F.C. København",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "F.C. København"
+      ]
+    },
+    {
+      "club_id": "fc_midtjylland",
+      "name": "FC Midtjylland",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "FC Midtjylland"
+      ]
+    },
+    {
+      "club_id": "fc_porto",
+      "name": "FC Porto",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "FC Porto"
+      ]
+    },
+    {
+      "club_id": "ferencvaros",
+      "name": "Ferencvaros",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Ferencvaros"
+      ]
+    },
+    {
+      "club_id": "feyenoord_rotterdam",
+      "name": "Feyenoord Rotterdam",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Feyenoord Rotterdam"
       ]
     },
     {
@@ -1506,6 +1937,19 @@
       ]
     },
     {
+      "club_id": "galatasaray",
+      "name": "Galatasaray",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Galatasaray"
+      ]
+    },
+    {
       "club_id": "germany",
       "name": "Germany",
       "short_name": "GER",
@@ -1519,6 +1963,19 @@
         "Deutschland",
         "Die Mannschaft",
         "Germany"
+      ]
+    },
+    {
+      "club_id": "getafe",
+      "name": "Getafe",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Getafe"
       ]
     },
     {
@@ -1580,6 +2037,19 @@
         "Goias",
         "Goiás",
         "Goiás EC"
+      ]
+    },
+    {
+      "club_id": "granada",
+      "name": "Granada",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Granada"
       ]
     },
     {
@@ -1646,6 +2116,19 @@
       ]
     },
     {
+      "club_id": "huesca",
+      "name": "Huesca",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Huesca"
+      ]
+    },
+    {
       "club_id": "huracan",
       "name": "Huracán",
       "short_name": "HUR",
@@ -1695,6 +2178,32 @@
       ]
     },
     {
+      "club_id": "independiente_petrolero",
+      "name": "Independiente Petrolero",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Independiente Petrolero"
+      ]
+    },
+    {
+      "club_id": "independiente_santa_fe",
+      "name": "Independiente Santa Fe",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Independiente Santa Fe"
+      ]
+    },
+    {
       "club_id": "inter_milan",
       "name": "Inter Milan",
       "short_name": "INT",
@@ -1727,6 +2236,19 @@
       ]
     },
     {
+      "club_id": "ipswich_town",
+      "name": "Ipswich Town",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Ipswich Town"
+      ]
+    },
+    {
       "club_id": "ir_nt",
       "name": "Iran",
       "short_name": "IRA",
@@ -1738,6 +2260,19 @@
       "logo_path": "/clubs/ir_nt.png",
       "aliases": [
         "Iran"
+      ]
+    },
+    {
+      "club_id": "istanbul_basaksehir",
+      "name": "Istanbul Basaksehir",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Istanbul Basaksehir"
       ]
     },
     {
@@ -1879,6 +2414,32 @@
       ]
     },
     {
+      "club_id": "krasnodar",
+      "name": "Krasnodar",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Krasnodar"
+      ]
+    },
+    {
+      "club_id": "las_palmas",
+      "name": "Las Palmas",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Las Palmas"
+      ]
+    },
+    {
       "club_id": "lazio",
       "name": "Lazio",
       "short_name": "LAZ",
@@ -1912,6 +2473,45 @@
       ]
     },
     {
+      "club_id": "leeds_united",
+      "name": "Leeds United",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Leeds United"
+      ]
+    },
+    {
+      "club_id": "leganes",
+      "name": "Leganés",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Leganés"
+      ]
+    },
+    {
+      "club_id": "leicester_city",
+      "name": "Leicester City",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Leicester City"
+      ]
+    },
+    {
       "club_id": "lens",
       "name": "Lens",
       "short_name": "LEN",
@@ -1924,6 +2524,19 @@
       "aliases": [
         "Lens",
         "RC Lens"
+      ]
+    },
+    {
+      "club_id": "levante",
+      "name": "Levante",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Levante"
       ]
     },
     {
@@ -1973,6 +2586,32 @@
       ]
     },
     {
+      "club_id": "lokomotiv_moscow",
+      "name": "Lokomotiv Moscow",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Lokomotiv Moscow"
+      ]
+    },
+    {
+      "club_id": "luton_town",
+      "name": "Luton Town",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Luton Town"
+      ]
+    },
+    {
       "club_id": "ma_nt",
       "name": "Morocco",
       "short_name": "MOR",
@@ -2003,6 +2642,19 @@
       ]
     },
     {
+      "club_id": "maccabi_haifa",
+      "name": "Maccabi Haifa",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Maccabi Haifa"
+      ]
+    },
+    {
       "club_id": "magallanes",
       "name": "Magallanes",
       "short_name": "MAG",
@@ -2015,6 +2667,32 @@
       "logo_path": "/clubs/magallanes.png",
       "aliases": [
         "Magallanes"
+      ]
+    },
+    {
+      "club_id": "mallorca",
+      "name": "Mallorca",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Mallorca"
+      ]
+    },
+    {
+      "club_id": "malmo_ff",
+      "name": "Malmö FF",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Malmö FF"
       ]
     },
     {
@@ -2345,6 +3023,19 @@
       ]
     },
     {
+      "club_id": "norwich_city",
+      "name": "Norwich City",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Norwich City"
+      ]
+    },
+    {
       "club_id": "nottingham_forest",
       "name": "Nottingham Forest",
       "short_name": "NFO",
@@ -2410,6 +3101,19 @@
       ]
     },
     {
+      "club_id": "olympiacos",
+      "name": "Olympiacos",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Olympiacos"
+      ]
+    },
+    {
       "club_id": "olympique_de_marseille",
       "name": "Olympique de Marseille",
       "short_name": "OM",
@@ -2453,6 +3157,19 @@
         "Operario",
         "Operário",
         "Operário Ferroviário"
+      ]
+    },
+    {
+      "club_id": "osasuna",
+      "name": "Osasuna",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Osasuna"
       ]
     },
     {
@@ -2625,6 +3342,19 @@
       ]
     },
     {
+      "club_id": "psv_eindhoven",
+      "name": "PSV Eindhoven",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "PSV Eindhoven"
+      ]
+    },
+    {
       "club_id": "pt_nt",
       "name": "Portugal",
       "short_name": "POR",
@@ -2684,6 +3414,32 @@
       ]
     },
     {
+      "club_id": "rangers",
+      "name": "Rangers",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Rangers"
+      ]
+    },
+    {
+      "club_id": "rayo_vallecano",
+      "name": "Rayo Vallecano",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Rayo Vallecano"
+      ]
+    },
+    {
       "club_id": "rb_leipzig",
       "name": "RB Leipzig",
       "short_name": "RBL",
@@ -2696,6 +3452,19 @@
       "aliases": [
         "Leipzig",
         "RB Leipzig"
+      ]
+    },
+    {
+      "club_id": "rb_salzburg",
+      "name": "RB Salzburg",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "RB Salzburg"
       ]
     },
     {
@@ -2744,6 +3513,32 @@
       ]
     },
     {
+      "club_id": "real_valladolid",
+      "name": "Real Valladolid",
+      "country": null,
+      "competition": "la_liga",
+      "competitions": [
+        "la_liga"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Real Valladolid"
+      ]
+    },
+    {
+      "club_id": "red_star_belgrade",
+      "name": "Red Star Belgrade",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Red Star Belgrade"
+      ]
+    },
+    {
       "club_id": "rennes",
       "name": "Rennes",
       "short_name": "REN",
@@ -2756,6 +3551,19 @@
       "aliases": [
         "Rennes",
         "Stade Rennais"
+      ]
+    },
+    {
+      "club_id": "rentistas",
+      "name": "Rentistas",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Rentistas"
       ]
     },
     {
@@ -2833,6 +3641,32 @@
       ]
     },
     {
+      "club_id": "san_antonio_bulo_bulo",
+      "name": "San Antonio Bulo Bulo",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "San Antonio Bulo Bulo"
+      ]
+    },
+    {
+      "club_id": "san_lorenzo",
+      "name": "San Lorenzo",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "San Lorenzo"
+      ]
+    },
+    {
       "club_id": "santos",
       "name": "Santos",
       "short_name": "SAN",
@@ -2881,6 +3715,71 @@
       ]
     },
     {
+      "club_id": "shakhtar_donetsk",
+      "name": "Shakhtar Donetsk",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Shakhtar Donetsk"
+      ]
+    },
+    {
+      "club_id": "sheffield_united",
+      "name": "Sheffield United",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Sheffield United"
+      ]
+    },
+    {
+      "club_id": "sheriff_tiraspol",
+      "name": "Sheriff Tiraspol",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Sheriff Tiraspol"
+      ]
+    },
+    {
+      "club_id": "sk_sturm_graz",
+      "name": "SK Sturm Graz",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "SK Sturm Graz"
+      ]
+    },
+    {
+      "club_id": "slovan_bratislava",
+      "name": "Slovan Bratislava",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Slovan Bratislava"
+      ]
+    },
+    {
       "club_id": "sn_nt",
       "name": "Senegal",
       "short_name": "SEN",
@@ -2892,6 +3791,19 @@
       "logo_path": "/clubs/sn_nt.png",
       "aliases": [
         "Senegal"
+      ]
+    },
+    {
+      "club_id": "southampton",
+      "name": "Southampton",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Southampton"
       ]
     },
     {
@@ -2911,6 +3823,19 @@
       ]
     },
     {
+      "club_id": "sparta_prague",
+      "name": "Sparta Prague",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Sparta Prague"
+      ]
+    },
+    {
       "club_id": "sport_recife",
       "name": "Sport Recife",
       "short_name": "SPT",
@@ -2924,6 +3849,19 @@
         "Sport",
         "Sport Club do Recife",
         "Sport Recife"
+      ]
+    },
+    {
+      "club_id": "sporting_cp",
+      "name": "Sporting CP",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Sporting CP"
       ]
     },
     {
@@ -3052,6 +3990,19 @@
       ]
     },
     {
+      "club_id": "ucv_fc",
+      "name": "UCV FC",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "UCV FC"
+      ]
+    },
+    {
       "club_id": "union_espanola",
       "name": "Unión Española",
       "short_name": "UES",
@@ -3065,6 +4016,19 @@
       "aliases": [
         "Unión Española",
         "Union Espanola"
+      ]
+    },
+    {
+      "club_id": "union_la_calera",
+      "name": "Unión La Calera",
+      "country": null,
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Unión La Calera"
       ]
     },
     {
@@ -3285,6 +4249,19 @@
       ]
     },
     {
+      "club_id": "viktoria_plzen",
+      "name": "Viktoria Plzen",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Viktoria Plzen"
+      ]
+    },
+    {
       "club_id": "vila_nova",
       "name": "Vila Nova",
       "short_name": "VNO",
@@ -3345,6 +4322,32 @@
       ]
     },
     {
+      "club_id": "watford",
+      "name": "Watford",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Watford"
+      ]
+    },
+    {
+      "club_id": "west_bromwich_albion",
+      "name": "West Bromwich Albion",
+      "country": null,
+      "competition": "premier_league",
+      "competitions": [
+        "premier_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "West Bromwich Albion"
+      ]
+    },
+    {
       "club_id": "west_ham_united",
       "name": "West Ham United",
       "short_name": "WHU",
@@ -3376,6 +4379,19 @@
       ]
     },
     {
+      "club_id": "young_boys",
+      "name": "Young Boys",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Young Boys"
+      ]
+    },
+    {
       "club_id": "zamora",
       "name": "Zamora FC",
       "short_name": "ZAM",
@@ -3389,6 +4405,19 @@
       "aliases": [
         "Zamora FC",
         "Zamora"
+      ]
+    },
+    {
+      "club_id": "zenit_st_petersburg",
+      "name": "Zenit St Petersburg",
+      "country": null,
+      "competition": "champions_league",
+      "competitions": [
+        "champions_league"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Zenit St Petersburg"
       ]
     }
   ]

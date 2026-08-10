@@ -68,24 +68,40 @@ class CollectorConfig:
     polite_delay_s: float = 1.0  # between requests to the same source
     user_agents: tuple[str, ...] = field(
         default_factory=lambda: (
-            # Browser-shaped, deliberately.
+            # Browser-shaped — and the reason recorded here was WRONG, so
+            # read this before trusting it.
             #
-            # The first entry used to be the self-identifying
-            # "InsightExplorer/0.1 (+https://konohalabs.com.br; research)".
-            # Identifying yourself is the polite convention, and ESPN answers
-            # it with 403 — verified by controlling for request order, since
-            # ESPN also rate-limits by IP and the two look identical if you
-            # only compare consecutive calls.
+            # THE CLAIM THAT USED TO BE HERE: "identifying yourself politely
+            # gets 403 from ESPN, verified by controlling for request order".
+            # That is why the self-identifying
+            # "InsightExplorer/0.1 (+https://konohalabs.com.br; research)"
+            # was replaced by these three.
             #
-            # Because the fetcher picks a UA at random, roughly one request in
-            # three was refused. 403 is not retryable here, so it fell through
-            # to the generic retry and a season fetch — 365 requests — hit
-            # enough hard failures to raise FetchError and abandon the season.
-            # ESPN had collected nothing, and the reason was in this tuple.
+            # WHAT MEASUREMENT ON 2026-08-08 ACTUALLY SHOWED, against
+            # site.api.espn.com from two different hosts:
             #
-            # Contact information now travels in the `From` header (RFC 9110),
-            # which is the other standard place for it and is not inspected by
-            # the block.
+            #     curl/8.0              -> 200
+            #     Python-urllib/3.11    -> 200
+            #     Chrome 124 (below)    -> 403
+            #     no User-Agent at all  -> 200, then 403 two minutes later
+            #
+            # The last line is the important one. The SAME request answered
+            # differently minutes apart, which no User-Agent rule can explain.
+            # ESPN is throttling, and every "UA X is blocked" reading — the
+            # original one and the inverse — is a snapshot of a moving target.
+            #
+            # WHY THESE ARE STILL BROWSER-SHAPED. Not because the old reason
+            # holds, but because FBRef genuinely does serve HTML behind an
+            # anti-scraping edge, and this tuple is shared by every source.
+            # Changing it to fix ESPN would be the same mistake in the other
+            # direction: a global change justified by one source, unverified
+            # against the rest.
+            #
+            # WHAT WOULD SETTLE IT: a per-source User-Agent, in the shape
+            # SOURCE_POLITE_DELAY_S already uses below, decided by N spaced
+            # requests per candidate rather than by a handful of consecutive
+            # ones. Until someone runs that, this comment describes an open
+            # question, not a rule.
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",

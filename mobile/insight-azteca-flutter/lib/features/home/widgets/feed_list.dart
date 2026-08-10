@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../providers/feed_provider.dart';
 import '../../../providers/moderation_provider.dart';
+import '../../../services/services_providers.dart';
 import '../../../shared/extensions/build_context_x.dart';
 import '../../../shared/strings/pt_br.dart';
 import '../../../widgets/empty_state.dart';
@@ -38,6 +39,8 @@ class FeedList extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Null in mock mode — there is no backend to receive the batch.
+    final views = ref.watch(postViewServiceProvider);
     final asyncState = ref.watch(feedProvider);
 
     // End-of-list detection: when the user scrolls to within ~600px of the
@@ -134,6 +137,17 @@ class FeedList extends HookConsumerWidget {
                     }
                     return trailingInset;
                   }
+                  // The impression. itemBuilder runs when the item is built
+                  // for the viewport, which is the closest thing a Sliver list
+                  // gives us to "was seen" without attaching a visibility
+                  // detector to every row — and a detector on each item would
+                  // cost more than the signal is worth.
+                  //
+                  // It over-counts slightly: an item built just off-screen may
+                  // never be looked at. That bias is uniform across posts, so
+                  // it does not change their ORDER, which is all Explorar uses
+                  // the number for.
+                  views?.seen(items[i].id);
                   return FeedItem(
                     post: items[i],
                     onOpenMatch: onOpenMatch,

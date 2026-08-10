@@ -61,8 +61,11 @@ describe("ServiceRegistry", () => {
 
   it("never invents services and never serializes endpoints", () => {
     const ids = ServiceRegistry.list().map((s) => s.id);
-    // Exactly the confirmed live topology (16 services).
-    expect(ids).toHaveLength(16);
+    // Exactly the confirmed live topology (17 services). Went from 16 to
+    // 17 when insight-console-api entered the registry — a container that
+    // had been running since the NestJS backend shipped, but had no
+    // descriptor until it needed one to own a governed capability.
+    expect(ids).toHaveLength(17);
     expect(ServiceRegistry.get("made-up-service")).toBeNull();
     expect(JSON.stringify(ServiceRegistry.list())).not.toMatch(/8085|8090|8095|baseUrl|endpointKey|token/);
   });

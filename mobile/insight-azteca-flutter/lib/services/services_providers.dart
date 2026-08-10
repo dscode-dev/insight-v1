@@ -5,6 +5,7 @@ import '../mock/feed_mock.dart';
 import 'gateway_client.dart';
 import 'auth_service.dart';
 import 'avatar_service.dart';
+import 'post_view_service.dart';
 import 'moderation_service.dart';
 import 'discussion_service.dart';
 import 'feed_service.dart';
@@ -57,6 +58,19 @@ final liveServiceProvider = Provider<LiveService>((ref) {
     return GatewayLiveService(ref.watch(gatewayDioProvider));
   }
   return MockLiveService();
+});
+
+/// Impression recorder for Explorar's "em alta".
+///
+/// Only in live mode: in mock mode there is no backend to receive the batch,
+/// and a no-op keeps the feed's build path identical in both. Kept alive for
+/// the app's lifetime — the buffer must survive navigating away from the feed
+/// and back, or every short visit would be discarded on dispose.
+final postViewServiceProvider = Provider<PostViewService?>((ref) {
+  if (!ref.watch(apiModeProvider).isLive) return null;
+  final service = PostViewService(ref.watch(gatewayDioProvider));
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final radarServiceProvider = Provider<RadarService>((ref) {

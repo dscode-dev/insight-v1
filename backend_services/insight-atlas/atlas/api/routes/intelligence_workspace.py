@@ -364,6 +364,64 @@ async def _runtime_report(container: AppContainer, context: AtlasRuntimeContext)
         raise
 
 
+@atlas_router.post("/vector-memory/refresh")
+async def refresh_vector_memory(
+    force: bool = Query(
+        False,
+        description=(
+            "Rebuild even when the lake fingerprint has not moved. Use after "
+            "a change that alters how the corpus is BUILT — a club-registry "
+            "correction, a dedup fix — where the lake is unchanged but the "
+            "result would differ."
+        ),
+    ),
+    container: AppContainer = Depends(get_container),
+) -> dict:
+    """Rebuild the similarity corpus and re-encode it into pgvector.
+
+    WHY THIS IS A ROUTE AND NOT ONLY A SCHEDULE. Collection finishes at an
+    unpredictable moment, and the operator who ran it needs to know whether it
+    reached the hot path — not on the next 30-minute tick, and not by opening
+    a database. The scheduled pass still exists; this is the same code, asked
+    for on demand.
+
+    THE FAILURE IS THE POINT. A refresh that fails must say why: an empty lake
+    and an unreachable database are different problems with different fixes,
+    and `{"status": "error"}` sends the operator to read logs on a host they
+    may not have. The reason travels in the response.
+    """
+    refresher = getattr(container, "vector_refresher", None)
+    if refresher is None:
+        # Distinct from a failure: this deployment has no refresher wired, so
+        # there is nothing to retry and nothing broken.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="vector_refresh_not_configured",
+        )
+    try:
+        result = await refresher.refresh(force=force)
+    except Exception as exc:  # noqa: BLE001 — the reason is the deliverable
+        logger.exception("vector_refresh_failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "vector_refresh_failed",
+                # The exception type separates "the lake is missing" from "the
+                # database refused the write" without the operator needing the
+                # logs to tell them apart.
+                "kind": type(exc).__name__,
+                "reason": str(exc)[:500],
+            },
+        ) from exc
+
+    payload = result.as_dict()
+    # An empty build is not an error — the lake may hold no finished matches
+    # yet — but it is also not success, and a caller that saw only HTTP 200
+    # would report "applied" for a corpus that was never replaced.
+    payload["applied"] = result.status == "written"
+    return payload
+
+
 @atlas_router.post("/intelligence")
 async def runtime_intelligence(
     body: AtlasRuntimeContext,
