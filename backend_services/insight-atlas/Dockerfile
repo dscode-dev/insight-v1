@@ -36,6 +36,14 @@ COPY insight-atlas/pyproject.toml insight-atlas/poetry.lock ./
 COPY insight-atlas/atlas ./atlas
 COPY insight-atlas/migrations ./migrations
 COPY insight-protos/gen/py /opt/insight-protos/gen/py
+# O registro de 299 clubes, na sua localizacao canonica compartilhada. O
+# contrato atlas.match.v1 recusa um club_id que nao esteja aqui: um id
+# desconhecido passa na checagem de formato e depois nunca se junta ao
+# historico do clube — foi assim que `Ath Madrid` virou `athletic_bilbao`
+# em 76 partidas. Copiado do insight-protos, e nao duplicado no Atlas,
+# para que Explorer e Atlas nao possam divergir sobre quem existe.
+COPY insight-protos/contracts/clubs/club_registry.json \
+     /opt/insight-protos/contracts/clubs/club_registry.json
 
 RUN poetry install --only main
 

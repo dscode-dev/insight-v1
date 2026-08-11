@@ -25,13 +25,11 @@ from __future__ import annotations
 
 import glob
 import json
-import uuid
 from datetime import datetime
 
 from atlas.intelligence.historical import normalize_competition
+from atlas.match_identity import match_uid_from
 from atlas.strength.models import MatchResult
-
-_NS = uuid.UUID("00000000-0000-0000-0000-0000a71a5dee")  # matches atlas/outcome/train.py's _NS
 
 
 def iter_match_results(lake_dir: str) -> list[MatchResult]:
@@ -65,12 +63,21 @@ def _parse_line(line: str) -> MatchResult | None:
         return None
     raw_competition = (envelope.get("competition") or {}).get("competition_key") or ""
     competition = normalize_competition(raw_competition) if raw_competition else ""
-    external_id = envelope.get("external_id")
+    season = str(envelope.get("season") or "")
+    kickoff = _parse_time(scheduled_at)
     return MatchResult(
-        uid=str(uuid.uuid5(_NS, str(external_id))),
+        # THE RAW KEY, NOT THE NORMALISED ONE. `normalize_competition` maps
+        # `brasileirao` onto `brasileirao_serie_a`, so hashing the normalised
+        # value here would give the same match a different uid than the
+        # corpus does — reintroducing the split this change exists to close.
+        # The normalised name is still what the row is FILED under below;
+        # only the identity uses the raw key.
+        uid=match_uid_from(
+            raw_competition, season, str(home), str(away), kickoff
+        ),
         competition=competition,
-        season=str(envelope.get("season") or ""),
-        kickoff_at=_parse_time(scheduled_at),
+        season=season,
+        kickoff_at=kickoff,
         home=str(home),
         away=str(away),
         home_score=int(score["home"]),

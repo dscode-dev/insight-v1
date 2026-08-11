@@ -25,7 +25,15 @@ import argparse
 import asyncio
 
 from atlas.registry import build_engine, build_session_factory
-from atlas.strength import StrengthRepository, StrengthSyncWatcher
+from atlas.strength import StrengthRepository
+
+# From the module, not the package: `atlas.strength.__init__` does not
+# re-export the watcher, so `from atlas.strength import StrengthSyncWatcher`
+# raised ImportError — this script had not been runnable for as long as that
+# was true. It is the documented remedy for a corrupted replay order, so it
+# being broken is why nobody replayed. `atlas/api/app.py` already imports it
+# this way.
+from atlas.strength.sync_watcher import StrengthSyncWatcher
 
 
 async def run(args) -> None:

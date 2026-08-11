@@ -30,40 +30,21 @@ from __future__ import annotations
 
 import glob
 import json
-import uuid
 from dataclasses import replace
 from datetime import date, datetime
 
+from atlas.match_identity import match_uid
 from atlas.outcome.labels import result_label
 from atlas.outcome.projection import HistoricalMatch
 from atlas.outcome.projection_v3 import HistoricalProjectionV3
 from atlas.strength.formulas import h2h_advantage, unit_strength_ratio
 
-_NS = uuid.UUID("00000000-0000-0000-0000-0000a71a5dee")  # matches atlas/outcome/train.py's _NS
-
-
-# A source's own id names a source's ROW, not the match. Football-Data calls
-# the 2020-11-07 Barcelona–Betis `fd-2021-SP1-0075`, openfootball calls it
-# `of-es.1-2020-21-0075`, StatsBomb `sb-3773477` — one match, three ids, and
-# keying the uid on them put the same 90 minutes into the corpus three times.
-# That is not merely redundant: `project()` replays matches in kickoff order
-# and updates Elo, attack/defense and h2h as it goes, so a triplicated match
-# moved every rating three times for one real game, and similarity returned it
-# as three independent neighbours — inflating agreement by construction.
-#
-# WHY THE DATE AND NOT THE FULL KICKOFF. The sources agree on the day and
-# disagree on the clock: Football-Data publishes no time and the normalizer
-# writes 2023-08-13T00:00:00Z, openfootball carries the real
-# 2023-08-13T19:30:00Z. Truncating to the UTC date makes those one match
-# without needing a tolerance window.
-#
-# WHY NOT DROP THE DATE ENTIRELY. A league season plays each ordered pair
-# once, which would make (competition, season, home, away) sufficient — but
-# not every competition is a league. A Champions League side can host the
-# same opponent in the group stage and again in a semi-final within one
-# season: same ordered pair, two different matches. The date separates them.
-def _match_uid(competition: str, season: str, home: str, away: str, day: str) -> str:
-    return str(uuid.uuid5(_NS, f"{competition}|{season}|{home}|{away}|{day}"))
+# The identity rule now lives in `atlas.match_identity`, shared with
+# `atlas.strength.lake`. It used to live only here, which is precisely how
+# the strength engine went on counting the same match three times for months
+# after the corpus stopped: a rule about what makes two records the same
+# thing cannot be correct in one copy and wrong in another.
+_match_uid = match_uid
 
 
 # Applied only where sources disagree on the same field. StatsBomb is

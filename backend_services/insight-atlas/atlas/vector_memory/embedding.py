@@ -321,6 +321,59 @@ class DeterministicEmbeddingEncoder:
         )
 
 
+def layout_v1() -> tuple[str, ...]:
+    """The name of each of the 32 positions, in order."""
+    names = ["?"] * 32
+    for regime, index in _REGIME_INDEX.items():
+        # Several regimes share slot 3 (knockout/high_volatility/
+        # low_information); the join keeps that visible instead of letting
+        # the last one silently win.
+        names[index] = (
+            f"{names[index]}+{regime.value}" if names[index] != "?" else f"regime:{regime.value}"
+        )
+    for position, name in enumerate(
+        ("elo_delta", "home_form", "away_form", "draw_tendency", "volatility",
+         "uncertainty", "market_pressure", "flag:market"), start=4,
+    ):
+        names[position] = name
+    for name, index in _BEHAVIOR_INDEX.items():
+        names[index] = f"beh:{name}"
+    for name, index in _TREND_INDEX.items():
+        names[index] = f"trend:{name}"
+    for name, index in _SIGNAL_INDEX.items():
+        names[index] = f"sig:{name}"
+    names[31] = "bias"
+    return tuple(names)
+
+
+def layout_v2() -> tuple[str, ...]:
+    """The name of each of the 37 positions, in order.
+
+    BUILT FROM THE SAME INDEX CONSTANTS THE ENCODER WRITES THROUGH, never
+    typed out again. A diagnostic that carries its own copy of the layout
+    stops describing the encoder the first time the encoder changes — and
+    it does so silently, which is the failure mode a diagnostic exists to
+    prevent.
+    """
+    names = ["?"] * 37
+    for regime, index in _REGIME_INDEX_V2.items():
+        names[index] = (
+            f"{names[index]}+{regime.value}" if names[index] != "?" else f"regime:{regime.value}"
+        )
+    for name, index in _CORE_SIGNAL_INDEX_V2.items():
+        names[index] = name
+    names[_MARKET_AVAILABLE_INDEX_V2] = "flag:market"
+    names[_H2H_AVAILABLE_INDEX_V2] = "flag:h2h"
+    names[_REST_AVAILABLE_INDEX_V2] = "flag:rest"
+    names[_LINE_MOVEMENT_AVAILABLE_INDEX_V2] = "flag:line_movement"
+    for name, index in _BEHAVIOR_INDEX_V2.items():
+        names[index] = f"beh:{name}"
+    for name, index in _TREND_INDEX_V2.items():
+        names[index] = f"trend:{name}"
+    names[_BIAS_INDEX_V2] = "bias"
+    return tuple(names)
+
+
 def cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     return max(0.0, min(1.0, sum(a * b for a, b in zip(left, right))))
 
