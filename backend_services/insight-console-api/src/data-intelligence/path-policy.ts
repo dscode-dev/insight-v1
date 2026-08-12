@@ -66,6 +66,31 @@ const ATLAS_RUNTIME_ROOTS = new Set([
   'vector-memory',
 ]);
 
+/**
+ * Atlas's ingestion surface, which lives under `/v1/intake/*` — a third
+ * prefix, alongside `/atlas/*` and `/v1/internal/intelligence/*`.
+ *
+ * Listed rather than pattern-matched for the same reason the other two lists
+ * are: this is an allow-list, and a prefix rule would let a path nobody
+ * reviewed through the moment Atlas grows a route under /v1/intake.
+ */
+const ATLAS_QUERY_ROOTS = new Set([
+  '',            // POST — a consulta em si
+  'categorias',  // GET  — as cinco lentes e a pergunta de cada uma
+  // GET — quanto cada lente vale EM CADA COMPETIÇÃO, e onde nunca foi medida.
+  // Separado de `categorias` porque a validade não é propriedade da lente:
+  // `gols` mede +5,8% na Premier League e −5,8% no Brasileirão.
+  'validacao',
+]);
+
+const ATLAS_INTAKE_ROOTS = new Set([
+  'matches',     // POST — ingere um lote (aceita ?simular=true)
+  'contract',    // GET  — o contrato vigente e um exemplo válido
+  'coverage',    // GET  — o que o Atlas tem, por competição e temporada
+  'rejections',  // GET  — as últimas recusas, com o motivo
+  'conflicts',   // GET  — desacordos entre fontes sobre o mesmo fato
+]);
+
 function firstSegment(path: string): string {
   return path.split('/')[0] ?? '';
 }
@@ -90,6 +115,31 @@ export function classify(rawPath: string, method: string): PathDecision {
       return { kind: 'refuse', reason: 'empty_atlas_path' };
     }
     const root = firstSegment(rest);
+
+    // `atlas/query/*` -> `v1/query/*`. Terceiro prefixo do Atlas, ao lado
+    // de /atlas/* e /v1/internal/intelligence/*; mesmo motivo do intake.
+    if (root === 'query') {
+      const leaf = firstSegment(rest.slice('query'.length).replace(/^\/+/, ''));
+      if (!ATLAS_QUERY_ROOTS.has(leaf)) {
+        return { kind: 'refuse', reason: 'unknown_atlas_query_path' };
+      }
+      return {
+        kind: 'allow',
+        upstream: 'atlas',
+        path: leaf ? `v1/query/${leaf}` : 'v1/query',
+      };
+    }
+
+    // `atlas/intake/*` -> `v1/intake/*`. Checked before the two-way split
+    // below because the ingestion surface is neither of those routers.
+    if (root === 'intake') {
+      const leaf = firstSegment(rest.slice('intake/'.length));
+      if (!ATLAS_INTAKE_ROOTS.has(leaf)) {
+        return { kind: 'refuse', reason: 'unknown_atlas_intake_path' };
+      }
+      return { kind: 'allow', upstream: 'atlas', path: `v1/intake/${leaf}` };
+    }
+
     // `intelligence` exists on BOTH Atlas routers and is disambiguated
     // only by method: POST /atlas/intelligence (runtime execution) vs
     // GET /v1/internal/intelligence/intelligence (historical read).

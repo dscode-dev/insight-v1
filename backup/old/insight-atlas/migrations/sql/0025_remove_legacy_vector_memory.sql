@@ -1,0 +1,38 @@
+-- Apaga `atlas.atlas_vector_memory` — 14.522 linhas, e o último leitor saiu.
+--
+-- POR QUE ELA SOBREVIVEU À LIMPEZA ANTERIOR. Não era código morto: a sonda de
+-- similaridade da pipeline de trends buscava nela a cada tick ao vivo. A
+-- dependência era real; o que estava errado era o que ela fazia.
+--
+-- O QUE A SONDA FAZIA. Montava um vetor de 32 dimensões a partir do estado EM
+-- JOGO do tick — pressão em campo, momento, densidade de sinal — e procurava
+-- vizinhos num corpus que descreve o PRÉ-JOGO. O docstring dela chamava isso
+-- de "lacuna semântica conhecida": a dimensão 10 é pressão de MERCADO no
+-- corpus e recebia pressão em CAMPO ali; a 28 é tendência de gols lá e
+-- recebia densidade de sinal aqui.
+--
+-- E A CAUSA DISSO NÃO ERA DESLEIXO. Os dois lados não têm chave em comum: o
+-- caminho ao vivo fala `canonical_match_id`, um UUID de `atlas.identity` cuja
+-- tabela tem zero linhas; o corpus fala `match_uid`, derivado de competição,
+-- temporada, clubes e dia. Sem nada ligando um ao outro, casar por estado em
+-- jogo era o único caminho que restava — e ele descrevia a coisa errada.
+--
+-- O QUE MUDOU. A sonda passou a PEDIR a identidade da partida pelo nome. Não
+-- tendo, devolve nada e diz o que faltou. Como o contexto do tick ainda não a
+-- carrega, ela está inerte — que é a verdade do sistema, e é melhor que
+-- devolver vizinhos tirados do espaço errado.
+--
+-- Com isso, nada mais lê esta tabela. As 14.522 linhas eram duas versões de
+-- embedding (32 e 37 dimensões) da mesma partida, das quais 14 colunas eram
+-- constantes e 2 duplicadas. `atlas.match_vector` as substitui com 25
+-- dimensões, nenhuma constante, e a escala padronizada.
+--
+-- IDEMPOTENTE. A tabela foi apagada à mão em produção em 2026-08-11, fora do
+-- fluxo de migration — esta migration existe para que um banco novo chegue ao
+-- mesmo estado, e para que a remoção fique registrada onde se procura por ela.
+DROP TABLE IF EXISTS atlas.atlas_vector_memory;
+
+-- Rollback: recriar a tabela é possível (o DDL está nas migrations 0004, 0018
+-- e 0021), repovoá-la não — o corpus que a alimentava vinha do lake, cujo
+-- leitor foi removido no passo 7. O caminho de volta é reconstruir a partir de
+-- `atlas.match_record`, que é o que `atlas.vector.builder` já faz.

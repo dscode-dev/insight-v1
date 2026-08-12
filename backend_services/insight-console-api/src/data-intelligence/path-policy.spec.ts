@@ -146,3 +146,71 @@ describe('classify', () => {
     });
   });
 });
+
+describe('classify — superfície de ingestão do Atlas', () => {
+  it('roteia atlas/intake/* para v1/intake/*', () => {
+    // Um terceiro prefixo, ao lado de /atlas/* e /v1/internal/intelligence/*.
+    expect(classify('atlas/intake/matches', 'POST')).toEqual({
+      kind: 'allow',
+      upstream: 'atlas',
+      path: 'v1/intake/matches',
+    });
+    expect(classify('atlas/intake/coverage', 'GET')).toEqual({
+      kind: 'allow',
+      upstream: 'atlas',
+      path: 'v1/intake/coverage',
+    });
+  });
+
+  it('recusa uma rota de intake que ninguém revisou', () => {
+    // Uma regra por prefixo deixaria passar qualquer rota nova que o Atlas
+    // ganhasse sob /v1/intake — o oposto do que uma allow-list existe para
+    // fazer.
+    expect(classify('atlas/intake/inventada', 'POST')).toEqual({
+      kind: 'refuse',
+      reason: 'unknown_atlas_intake_path',
+    });
+  });
+
+  it('não confunde intake com o roteador de runtime', () => {
+    // `intake` não está em ATLAS_RUNTIME_ROOTS; sem o desvio explícito ele
+    // cairia em v1/internal/intelligence/intake/matches e daria 404.
+    const decision = classify('atlas/intake/matches', 'POST');
+    expect(decision.kind).toBe('allow');
+    if (decision.kind === 'allow') {
+      expect(decision.path).not.toContain('internal');
+    }
+  });
+
+  it('a travessia continua barrada dentro do intake', () => {
+    expect(classify('atlas/intake/../../etc', 'GET')).toEqual({
+      kind: 'refuse',
+      reason: 'path_traversal',
+    });
+  });
+});
+
+describe('classify — superfície de consulta do Atlas', () => {
+  it('roteia atlas/query para v1/query', () => {
+    expect(classify('atlas/query', 'POST')).toEqual({
+      kind: 'allow',
+      upstream: 'atlas',
+      path: 'v1/query',
+    });
+  });
+
+  it('roteia atlas/query/categorias', () => {
+    expect(classify('atlas/query/categorias', 'GET')).toEqual({
+      kind: 'allow',
+      upstream: 'atlas',
+      path: 'v1/query/categorias',
+    });
+  });
+
+  it('recusa uma rota de consulta que ninguém revisou', () => {
+    expect(classify('atlas/query/inventada', 'POST')).toEqual({
+      kind: 'refuse',
+      reason: 'unknown_atlas_query_path',
+    });
+  });
+});

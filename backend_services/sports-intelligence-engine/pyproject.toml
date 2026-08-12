@@ -1,0 +1,116 @@
+[project]
+name = "sports-intelligence-engine"
+version = "0.1.0"
+description = "Insight Sports Intelligence Engine — motor de tendências contextualizadas e explicáveis para futebol"
+requires-python = ">=3.13"
+license = { text = "Proprietary" }
+
+# AS DEPENDÊNCIAS DO PR-00 SÃO SÓ AS QUE O PR-00 USA.
+#
+# A stack alvo inclui PostgreSQL, ClickHouse, Redis, S3, NumPy, SciPy, Polars
+# e OpenTelemetry — todas declaradas nos ADRs e nenhuma instalada aqui. Uma
+# dependência que entra antes do primeiro uso vira peso no build, superfície
+# de CVE e uma decisão que ninguém lembra de rever. Elas entram no PR que as
+# usar, e o `doctor` da CLI já sabe reportar as que faltam.
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "typer>=0.15",
+    "rich>=13.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "coverage[toml]>=7.6",
+]
+
+[project.scripts]
+engine = "apps.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sports_intelligence", "apps"]
+
+# ---------------------------------------------------------------- ruff -----
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "apps", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "BLE",       # except cego
+    "C4",        # comprehensions
+    "SIM",       # simplify
+    "TID",       # tidy imports
+    "RUF",       # ruff-specific
+    "ANN",       # type annotations — o core é integralmente tipado
+    "DTZ",       # datetime sem timezone é erro, não estilo
+    "PT",        # pytest style
+]
+ignore = [
+    "ANN401",  # `Any` é proibido por convenção, não por regra: onde ele é
+               # inevitável (payload de evento) o motivo está escrito.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Import relativo atravessando pacote esconde a direção da dependência, que é
+# exatamente o que os testes de arquitetura protegem.
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["sports_intelligence", "apps"]
+
+# ---------------------------------------------------------------- mypy -----
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+warn_return_any = true
+disallow_any_explicit = false   # ver ANN401 acima
+show_error_codes = true
+pretty = true
+files = ["src", "apps", "tests"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# -------------------------------------------------------------- pytest -----
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+asyncio_mode = "auto"
+markers = [
+    "architecture: falha o CI quando um limite arquitetural é violado",
+    "smoke: prova que o processo sobe e responde",
+]
+
+[tool.coverage.run]
+source = ["src/sports_intelligence", "apps"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

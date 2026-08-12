@@ -1,0 +1,220 @@
+"""Os limites arquiteturais, verificados por AST — e falhando o CI.
+
+POR QUE UM TESTE E NÃO UMA CONVENÇÃO. Convenção de import sobrevive até a
+primeira sexta-feira apertada. O `import` que quebra a direção da dependência
+não dá erro, não dá warning, e resolve o problema imediato de quem escreveu.
+Só aparece meses depois, quando trocar de banco significa tocar o domínio.
+
+POR QUE AST E NÃO GREP. `grep -r "import fastapi"` não distingue um import
+real de uma menção em docstring — e esta base tem docstrings longas que citam
+FastAPI, Redis e Postgres por nome, justamente para explicar por que o domínio
+não os conhece. Um grep marcaria cada explicação como violação.
+
+A DIREÇÃO PERMITIDA:
+
+    apps → application → domain / features / engines
+                              ↑
+                            ports
+                              ↑
+                          adapters
+
+Adapters implementam ports. Nunca o inverso.
+"""
+
+from __future__ import annotations
+
+import ast
+from dataclasses import dataclass
+from pathlib import Path
+
+import pytest
+
+RAIZ = Path(__file__).resolve().parents[2]
+FONTE = RAIZ / "src" / "sports_intelligence"
+APPS = RAIZ / "apps"
+
+#: Pacotes que o domínio, features e engines não podem conhecer.
+INFRA_EXTERNA = frozenset(
+    {
+        "fastapi", "starlette", "uvicorn",
+        "sqlalchemy", "asyncpg", "psycopg", "psycopg2",
+        "redis", "aioredis",
+        "clickhouse_driver", "clickhouse_connect",
+        "boto3", "botocore", "minio",
+        "pgvector",
+        "typer", "rich",
+        "httpx", "requests", "aiohttp",
+    }
+)
+
+
+@dataclass(frozen=True)
+class Import:
+    """Um import real, com onde está — para que a falha seja acionável."""
+
+    module: str
+    file: Path
+    line: int
+
+    def __str__(self) -> str:
+        return f"{self.file.relative_to(RAIZ)}:{self.line} importa {self.module!r}"
+
+
+def _imports(caminho: Path) -> list[Import]:
+    """Os imports de um arquivo, lidos da árvore sintática.
+
+    `ast` e não texto: um `import redis` dentro de uma docstring explicando
+    por que o domínio não importa redis não é um import, e um grep não sabe a
+    diferença.
+    """
+    arvore = ast.parse(caminho.read_text(encoding="utf-8"), filename=str(caminho))
+    achados: list[Import] = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Import):
+            for alias in no.names:
+                achados.append(Import(alias.name, caminho, no.lineno))
+        # `level > 0` é import relativo; o ruff já os proíbe (TID252).
+        elif isinstance(no, ast.ImportFrom) and no.module and no.level == 0:
+            achados.append(Import(no.module, caminho, no.lineno))
+    return achados
+
+
+def _arquivos(*pacotes: str) -> list[Path]:
+    saida: list[Path] = []
+    for pacote in pacotes:
+        base = FONTE / pacote
+        if base.exists():
+            saida.extend(sorted(base.rglob("*.py")))
+    return saida
+
+
+def _raiz_do_modulo(module: str) -> str:
+    return module.split(".", 1)[0]
+
+
+def _violacoes(arquivos: list[Path], proibidos: frozenset[str]) -> list[Import]:
+    return [
+        imp
+        for arquivo in arquivos
+        for imp in _imports(arquivo)
+        if _raiz_do_modulo(imp.module) in proibidos
+    ]
+
+
+def _violacoes_internas(arquivos: list[Path], prefixos: tuple[str, ...]) -> list[Import]:
+    return [
+        imp
+        for arquivo in arquivos
+        for imp in _imports(arquivo)
+        if imp.module.startswith(prefixos)
+    ]
+
+
+pytestmark = pytest.mark.architecture
+
+
+class TestDominioNaoConheceInfraestrutura:
+    def test_dominio_nao_importa_framework_nem_driver(self) -> None:
+        """A regra mais importante da base.
+
+        Um `from fastapi import HTTPException` no domínio funciona, e mata a
+        possibilidade de a mesma regra rodar num worker — onde não há
+        requisição para responder.
+        """
+        violacoes = _violacoes(_arquivos("domain"), INFRA_EXTERNA)
+        assert not violacoes, "domínio importando infraestrutura:\n" + "\n".join(
+            map(str, violacoes)
+        )
+
+    def test_features_nao_importam_infraestrutura(self) -> None:
+        assert not _violacoes(_arquivos("features"), INFRA_EXTERNA)
+
+    def test_engines_nao_importam_infraestrutura(self) -> None:
+        """Um engine que fala com o banco não pode ser testado com uma
+        entrada fixa, e sem isso nenhuma medida dele é reproduzível."""
+        assert not _violacoes(_arquivos("engines"), INFRA_EXTERNA)
+
+    def test_ports_nao_importam_infraestrutura(self) -> None:
+        """O port descreve a necessidade; o adapter escolhe a tecnologia.
+        Um port que importa `redis` já escolheu."""
+        assert not _violacoes(_arquivos("ports"), INFRA_EXTERNA)
+
+
+class TestDirecaoDaDependencia:
+    def test_dominio_nao_importa_adapters(self) -> None:
+        violacoes = _violacoes_internas(
+            _arquivos("domain"), ("sports_intelligence.adapters",)
+        )
+        assert not violacoes, "domínio importando adapter:\n" + "\n".join(
+            map(str, violacoes)
+        )
+
+    def test_dominio_nao_importa_application_nem_apps(self) -> None:
+        """O domínio é a base. Importar a camada acima é ciclo, e ciclo é o
+        que torna impossível extrair um serviço depois."""
+        violacoes = _violacoes_internas(
+            _arquivos("domain"), ("sports_intelligence.application", "apps")
+        )
+        assert not violacoes
+
+    def test_features_e_engines_nao_importam_adapters(self) -> None:
+        violacoes = _violacoes_internas(
+            _arquivos("features", "engines"), ("sports_intelligence.adapters",)
+        )
+        assert not violacoes
+
+    def test_ports_nao_importam_adapters(self) -> None:
+        """A inversão que dá nome ao padrão: adapter conhece port, nunca o
+        contrário. Se o port importa o adapter, não há inversão nenhuma."""
+        violacoes = _violacoes_internas(
+            _arquivos("ports"), ("sports_intelligence.adapters",)
+        )
+        assert not violacoes
+
+
+class TestFormatoDeProvedorNaoVaza:
+    def test_dominio_nao_importa_pacote_de_provider(self) -> None:
+        """O tipo de um provedor no domínio significa que trocar de provedor
+        muda o domínio — que é exatamente o acoplamento que a camada de
+        normalização existe para absorver."""
+        violacoes = _violacoes_internas(
+            _arquivos("domain", "features", "engines"),
+            ("sports_intelligence.adapters.providers",),
+        )
+        assert not violacoes
+
+
+class TestAppsNaoContornamAsCamadas:
+    def test_apps_nao_importam_adapters_diretamente(self) -> None:
+        """A aplicação pede pelo port e recebe o adapter montado na borda.
+        Importar o adapter direto amarra o processo à tecnologia.
+
+        `apps/_shared.py` é a exceção declarada: ele É a borda HTTP.
+        """
+        arquivos = [
+            p for p in sorted(APPS.rglob("*.py")) if p.name != "_shared.py"
+        ]
+        violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))
+        assert not violacoes
+
+
+class TestOTesteVeDeVerdade:
+    """O verificador precisa provar que enxerga — senão um teste de
+    arquitetura que não lê nada passa sempre, e é pior que não existir."""
+
+    def test_encontra_arquivos_para_analisar(self) -> None:
+        assert len(_arquivos("domain")) >= 5
+        assert len(_arquivos("ports")) >= 5
+
+    def test_detecta_um_import_proibido_plantado(self, tmp_path: Path) -> None:
+        plantado = tmp_path / "violacao.py"
+        plantado.write_text("import fastapi\n", encoding="utf-8")
+        assert _violacoes([plantado], INFRA_EXTERNA)
+
+    def test_ignora_mencao_em_docstring(self) -> None:
+        """A prova de que AST era necessário: esta base cita fastapi, redis e
+        boto3 em docstrings explicando por que o domínio não os importa."""
+        arquivo = FONTE / "domain" / "shared" / "errors.py"
+        texto = arquivo.read_text(encoding="utf-8")
+        assert "FastAPI" in texto, "o teste depende desta menção existir"
+        assert not _violacoes([arquivo], INFRA_EXTERNA)

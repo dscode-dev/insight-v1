@@ -22,11 +22,22 @@ async function proxy(req: Request): Promise<Response> {
       || permissions.has("config.write");
     if (!allowed) throw new ConsoleApiError(403, "permission_denied");
   }
-  if (path.startsWith("atlas/")) {
-    // Atlas 1.0.0 frozen, read-only, service-token identity — not operator-bound.
-    return atlasIntelligenceCall(path.slice("atlas/".length), req.method, body);
-  }
   const query = url.search ? url.search : "";
+  if (path.startsWith("atlas/")) {
+    // A query PRECISA ir junto: `?simular=true` é o que separa uma
+    // validação em seco de uma gravação, e descartá-la aqui faria a tela
+    // gravar quando o operador pediu simulação. O caminho continua sendo
+    // filtrado pela allow-list do Control Plane.
+    //
+    // (O comentário anterior dizia "Atlas read-only, não vinculado ao
+    // operador". Deixou de valer com a ingestão: o Control Plane assina
+    // X-Operator a partir da sessão, e o Atlas grava quem ingeriu.)
+    return atlasIntelligenceCall(
+      path.slice("atlas/".length) + query,
+      req.method,
+      body,
+    );
+  }
   // Operator-bound typed adapter (server-derived X-Operator + correlation).
   return explorerPrivilegedCall(ctx, path + query, req.method, body);
 }

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "generated_by": "scripts/club_logo_crawler +ml-c-conmebol +ml-c-conmebol +ml-c-conmebol",
-  "count": 299,
+  "count": 334,
   "clubs": [
     {
       "club_id": "1_fc_union_berlin",
@@ -59,7 +59,10 @@
       "logo_path": null,
       "aliases": [
         "AFC Bournemouth"
-      ]
+      ],
+      "latitude": 50.73,
+      "longitude": -1.84,
+      "city": "Bournemouth"
     },
     {
       "club_id": "aguilas_doradas",
@@ -102,7 +105,10 @@
       "logo_path": null,
       "aliases": [
         "Alavés"
-      ]
+      ],
+      "latitude": 42.85,
+      "longitude": -2.67,
+      "city": "Vitoria-Gasteiz"
     },
     {
       "club_id": "alianza_lima",
@@ -130,7 +136,10 @@
       "logo_path": null,
       "aliases": [
         "Almería"
-      ]
+      ],
+      "latitude": 36.84,
+      "longitude": -2.44,
+      "city": "Almería"
     },
     {
       "club_id": "always_ready",
@@ -192,7 +201,10 @@
         "America Mineiro",
         "América Mineiro",
         "América-MG"
-      ]
+      ],
+      "latitude": -19.92,
+      "longitude": -43.94,
+      "city": "Belo Horizonte"
     },
     {
       "club_id": "antwerp",
@@ -249,8 +261,12 @@
       "logo_path": "/clubs/argentinos_juniors.png",
       "aliases": [
         "Argentinos Juniors",
-        "AA Argentinos Juniors"
-      ]
+        "AA Argentinos Juniors",
+        "Argentinos Jrs"
+      ],
+      "latitude": -34.61,
+      "longitude": -58.38,
+      "city": "Buenos Aires"
     },
     {
       "club_id": "arsenal",
@@ -265,7 +281,10 @@
       "aliases": [
         "Arsenal",
         "Arsenal FC"
-      ]
+      ],
+      "latitude": 51.55,
+      "longitude": -0.11,
+      "city": "Londres"
     },
     {
       "club_id": "as_monaco",
@@ -310,7 +329,10 @@
       "aliases": [
         "Aston Villa",
         "Aston Villa FC"
-      ]
+      ],
+      "latitude": 52.51,
+      "longitude": -1.88,
+      "city": "Birmingham"
     },
     {
       "club_id": "atalanta",
@@ -341,7 +363,10 @@
         "Athletic Bilbao",
         "Athletic Club",
         "Ath Bilbao"
-      ]
+      ],
+      "latitude": 43.26,
+      "longitude": -2.95,
+      "city": "Bilbao"
     },
     {
       "club_id": "athletico_paranaense",
@@ -357,7 +382,10 @@
         "Athletico Paranaense",
         "Athletico-PR",
         "Furacão"
-      ]
+      ],
+      "latitude": -25.43,
+      "longitude": -49.27,
+      "city": "Curitiba"
     },
     {
       "club_id": "atletico_bucaramanga",
@@ -375,15 +403,19 @@
     {
       "club_id": "atletico_goianiense",
       "name": "Atlético Goianiense",
-      "country": null,
+      "country": "BR",
       "competition": "brasileirao",
       "competitions": [
         "brasileirao"
       ],
       "logo_path": null,
       "aliases": [
+        "Atletico GO",
         "Atlético Goianiense"
-      ]
+      ],
+      "latitude": -16.69,
+      "longitude": -49.26,
+      "city": "Goiânia"
     },
     {
       "club_id": "atletico_madrid",
@@ -400,7 +432,10 @@
         "Atlético Madrid",
         "Atlético de Madrid",
         "Ath Madrid"
-      ]
+      ],
+      "latitude": 40.44,
+      "longitude": -3.6,
+      "city": "Madri"
     },
     {
       "club_id": "atletico_mineiro",
@@ -417,7 +452,10 @@
         "Atlético Mineiro",
         "Atlético-MG",
         "Galo"
-      ]
+      ],
+      "latitude": -19.92,
+      "longitude": -43.94,
+      "city": "Belo Horizonte"
     },
     {
       "club_id": "atletico_nacional",
@@ -446,8 +484,12 @@
       ],
       "logo_path": "/clubs/atletico_tucuman.png",
       "aliases": [
-        "Atlético Tucumán"
-      ]
+        "Atlético Tucumán",
+        "Atl. Tucuman"
+      ],
+      "latitude": -26.82,
+      "longitude": -65.22,
+      "city": "San Miguel de Tucumán"
     },
     {
       "club_id": "au_nt",
@@ -524,7 +566,10 @@
         "Avai",
         "Avaí",
         "Avaí FC"
-      ]
+      ],
+      "latitude": -27.6,
+      "longitude": -48.55,
+      "city": "Florianópolis"
     },
     {
       "club_id": "ayacucho",
@@ -555,7 +600,10 @@
       "aliases": [
         "Bahia",
         "EC Bahia"
-      ]
+      ],
+      "latitude": -12.97,
+      "longitude": -38.5,
+      "city": "Salvador"
     },
     {
       "club_id": "barcelona",
@@ -572,7 +620,10 @@
         "Barcelona",
         "Barça",
         "FC Barcelona"
-      ]
+      ],
+      "latitude": 41.38,
+      "longitude": 2.12,
+      "city": "Barcelona"
     },
     {
       "club_id": "bayer_leverkusen",
@@ -721,7 +772,10 @@
         "Boca Juniors",
         "CA Boca Juniors",
         "Boca"
-      ]
+      ],
+      "latitude": -34.64,
+      "longitude": -58.36,
+      "city": "Buenos Aires"
     },
     {
       "club_id": "bolivar",
@@ -814,7 +868,10 @@
       "aliases": [
         "Botafogo",
         "Botafogo FR"
-      ]
+      ],
+      "latitude": -22.91,
+      "longitude": -43.17,
+      "city": "Rio de Janeiro"
     },
     {
       "club_id": "br_nt",
@@ -857,7 +914,10 @@
         "Bragantino",
         "RB Bragantino",
         "Red Bull Bragantino"
-      ]
+      ],
+      "latitude": -22.95,
+      "longitude": -46.54,
+      "city": "Bragança Paulista"
     },
     {
       "club_id": "brazil",
@@ -888,7 +948,10 @@
       "aliases": [
         "Brentford",
         "Brentford FC"
-      ]
+      ],
+      "latitude": 51.49,
+      "longitude": -0.29,
+      "city": "Londres"
     },
     {
       "club_id": "brest",
@@ -916,7 +979,10 @@
       "aliases": [
         "Brighton",
         "Brighton & Hove Albion"
-      ]
+      ],
+      "latitude": 50.86,
+      "longitude": -0.08,
+      "city": "Brighton"
     },
     {
       "club_id": "burnley",
@@ -929,7 +995,10 @@
       "logo_path": null,
       "aliases": [
         "Burnley"
-      ]
+      ],
+      "latitude": 53.79,
+      "longitude": -2.23,
+      "city": "Burnley"
     },
     {
       "club_id": "ca_nt",
@@ -956,7 +1025,10 @@
       "logo_path": null,
       "aliases": [
         "Cádiz"
-      ]
+      ],
+      "latitude": 36.5,
+      "longitude": -6.27,
+      "city": "Cádis"
     },
     {
       "club_id": "carabobo",
@@ -1004,7 +1076,10 @@
         "Ceara",
         "Ceará",
         "Ceará SC"
-      ]
+      ],
+      "latitude": -3.73,
+      "longitude": -38.52,
+      "city": "Fortaleza"
     },
     {
       "club_id": "celta_vigo",
@@ -1016,8 +1091,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Celta",
         "Celta Vigo"
-      ]
+      ],
+      "latitude": 42.21,
+      "longitude": -8.74,
+      "city": "Vigo"
     },
     {
       "club_id": "celtic",
@@ -1035,7 +1114,7 @@
     {
       "club_id": "central_cordoba_santiago_del_estero",
       "name": "Central Córdoba (Santiago del Estero)",
-      "country": null,
+      "country": "AR",
       "competition": "libertadores",
       "competitions": [
         "libertadores"
@@ -1044,7 +1123,10 @@
       "aliases": [
         "Central Córdoba",
         "Central Córdoba (Santiago del Estero)"
-      ]
+      ],
+      "latitude": -27.78,
+      "longitude": -64.26,
+      "city": "Santiago del Estero"
     },
     {
       "club_id": "cerro_largo",
@@ -1119,7 +1201,10 @@
       "aliases": [
         "Chapecoense",
         "Chapecoense AF"
-      ]
+      ],
+      "latitude": -27.1,
+      "longitude": -52.62,
+      "city": "Chapecó"
     },
     {
       "club_id": "chelsea",
@@ -1134,7 +1219,10 @@
       "aliases": [
         "Chelsea",
         "Chelsea FC"
-      ]
+      ],
+      "latitude": 51.48,
+      "longitude": -0.19,
+      "city": "Londres"
     },
     {
       "club_id": "cl_nt",
@@ -1226,7 +1314,7 @@
     {
       "club_id": "colon_santa_fe",
       "name": "Colón (Santa Fe)",
-      "country": null,
+      "country": "AR",
       "competition": "libertadores",
       "competitions": [
         "libertadores"
@@ -1235,7 +1323,10 @@
       "aliases": [
         "Colón",
         "Colón (Santa Fe)"
-      ]
+      ],
+      "latitude": -31.63,
+      "longitude": -60.7,
+      "city": "Santa Fe"
     },
     {
       "club_id": "corinthians",
@@ -1251,7 +1342,10 @@
         "Corinthians",
         "SC Corinthians",
         "Sport Club Corinthians Paulista"
-      ]
+      ],
+      "latitude": -23.55,
+      "longitude": -46.63,
+      "city": "São Paulo"
     },
     {
       "club_id": "coritiba",
@@ -1266,7 +1360,10 @@
       "aliases": [
         "Coritiba",
         "Coritiba FBC"
-      ]
+      ],
+      "latitude": -25.43,
+      "longitude": -49.27,
+      "city": "Curitiba"
     },
     {
       "club_id": "cr_nt",
@@ -1296,7 +1393,10 @@
         "Criciuma",
         "Criciúma",
         "Criciúma EC"
-      ]
+      ],
+      "latitude": -28.68,
+      "longitude": -49.37,
+      "city": "Criciúma"
     },
     {
       "club_id": "croatia",
@@ -1326,7 +1426,10 @@
       "aliases": [
         "Cruzeiro",
         "Cruzeiro EC"
-      ]
+      ],
+      "latitude": -19.92,
+      "longitude": -43.94,
+      "city": "Belo Horizonte"
     },
     {
       "club_id": "crystal_palace",
@@ -1341,7 +1444,27 @@
       "aliases": [
         "Crystal Palace",
         "Crystal Palace FC"
-      ]
+      ],
+      "latitude": 51.4,
+      "longitude": -0.09,
+      "city": "Londres"
+    },
+    {
+      "club_id": "csa",
+      "name": "CSA",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "CSA",
+        "Centro Sportivo Alagoano"
+      ],
+      "latitude": -9.67,
+      "longitude": -35.74,
+      "city": "Maceió"
     },
     {
       "club_id": "cuiaba",
@@ -1357,7 +1480,10 @@
         "Cuiaba",
         "Cuiabá",
         "Cuiabá EC"
-      ]
+      ],
+      "latitude": -15.6,
+      "longitude": -56.1,
+      "city": "Cuiabá"
     },
     {
       "club_id": "curico_unido",
@@ -1402,7 +1528,10 @@
       "logo_path": "/clubs/defensa_y_justicia.png",
       "aliases": [
         "Defensa y Justicia"
-      ]
+      ],
+      "latitude": -34.79,
+      "longitude": -58.28,
+      "city": "Florencio Varela"
     },
     {
       "club_id": "defensor_sporting",
@@ -1614,7 +1743,10 @@
       "logo_path": null,
       "aliases": [
         "Eibar"
-      ]
+      ],
+      "latitude": 43.18,
+      "longitude": -2.48,
+      "city": "Eibar"
     },
     {
       "club_id": "eintracht_frankfurt",
@@ -1658,7 +1790,10 @@
       "logo_path": null,
       "aliases": [
         "Elche"
-      ]
+      ],
+      "latitude": 38.27,
+      "longitude": -0.66,
+      "city": "Elche"
     },
     {
       "club_id": "emelec",
@@ -1731,7 +1866,10 @@
         "RCD Espanyol",
         "RCD Espanyol de Barcelona",
         "Espanol"
-      ]
+      ],
+      "latitude": 41.35,
+      "longitude": 2.07,
+      "city": "Barcelona"
     },
     {
       "club_id": "estudiantes",
@@ -1748,7 +1886,10 @@
         "Estudiantes de La Plata",
         "Estudiantes",
         "Estudiantes LP"
-      ]
+      ],
+      "latitude": -34.92,
+      "longitude": -57.95,
+      "city": "La Plata"
     },
     {
       "club_id": "everton",
@@ -1763,7 +1904,10 @@
       "aliases": [
         "Everton",
         "Everton FC"
-      ]
+      ],
+      "latitude": 53.44,
+      "longitude": -2.97,
+      "city": "Liverpool"
     },
     {
       "club_id": "f_c_k_benhavn",
@@ -1831,6 +1975,23 @@
       ]
     },
     {
+      "club_id": "figueirense",
+      "name": "Figueirense",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Figueirense",
+        "Figueirense FC"
+      ],
+      "latitude": -27.6,
+      "longitude": -48.55,
+      "city": "Florianópolis"
+    },
+    {
       "club_id": "fiorentina",
       "name": "Fiorentina",
       "short_name": "FIO",
@@ -1859,7 +2020,10 @@
         "CR Flamengo",
         "Clube de Regatas do Flamengo",
         "Flamengo"
-      ]
+      ],
+      "latitude": -22.91,
+      "longitude": -43.17,
+      "city": "Rio de Janeiro"
     },
     {
       "club_id": "fluminense",
@@ -1874,7 +2038,10 @@
       "aliases": [
         "Fluminense",
         "Fluminense FC"
-      ]
+      ],
+      "latitude": -22.91,
+      "longitude": -43.17,
+      "city": "Rio de Janeiro"
     },
     {
       "club_id": "fortaleza",
@@ -1889,7 +2056,10 @@
       "aliases": [
         "Fortaleza",
         "Fortaleza EC"
-      ]
+      ],
+      "latitude": -3.73,
+      "longitude": -38.52,
+      "city": "Fortaleza"
     },
     {
       "club_id": "fr_nt",
@@ -1934,7 +2104,10 @@
       "aliases": [
         "Fulham",
         "Fulham FC"
-      ]
+      ],
+      "latitude": 51.47,
+      "longitude": -0.22,
+      "city": "Londres"
     },
     {
       "club_id": "galatasaray",
@@ -1976,7 +2149,10 @@
       "logo_path": null,
       "aliases": [
         "Getafe"
-      ]
+      ],
+      "latitude": 40.33,
+      "longitude": -3.71,
+      "city": "Getafe"
     },
     {
       "club_id": "gh_nt",
@@ -2005,7 +2181,10 @@
       "aliases": [
         "Girona",
         "Girona FC"
-      ]
+      ],
+      "latitude": 41.96,
+      "longitude": 2.83,
+      "city": "Girona"
     },
     {
       "club_id": "godoy_cruz",
@@ -2021,7 +2200,10 @@
       "aliases": [
         "Godoy Cruz Antonio Tomba",
         "Godoy Cruz"
-      ]
+      ],
+      "latitude": -32.89,
+      "longitude": -68.84,
+      "city": "Mendoza"
     },
     {
       "club_id": "goias",
@@ -2037,7 +2219,10 @@
         "Goias",
         "Goiás",
         "Goiás EC"
-      ]
+      ],
+      "latitude": -16.69,
+      "longitude": -49.26,
+      "city": "Goiânia"
     },
     {
       "club_id": "granada",
@@ -2050,7 +2235,10 @@
       "logo_path": null,
       "aliases": [
         "Granada"
-      ]
+      ],
+      "latitude": 37.15,
+      "longitude": -3.6,
+      "city": "Granada"
     },
     {
       "club_id": "gremio",
@@ -2066,7 +2254,10 @@
         "Gremio",
         "Grêmio",
         "Grêmio FBPA"
-      ]
+      ],
+      "latitude": -30.03,
+      "longitude": -51.23,
+      "city": "Porto Alegre"
     },
     {
       "club_id": "guarani_py",
@@ -2126,7 +2317,10 @@
       "logo_path": null,
       "aliases": [
         "Huesca"
-      ]
+      ],
+      "latitude": 42.13,
+      "longitude": -0.41,
+      "city": "Huesca"
     },
     {
       "club_id": "huracan",
@@ -2142,7 +2336,10 @@
       "aliases": [
         "Huracán",
         "CA Huracán"
-      ]
+      ],
+      "latitude": -34.64,
+      "longitude": -58.4,
+      "city": "Buenos Aires"
     },
     {
       "club_id": "independiente_del_valle",
@@ -2233,7 +2430,10 @@
         "Inter",
         "Internacional",
         "SC Internacional"
-      ]
+      ],
+      "latitude": -30.03,
+      "longitude": -51.23,
+      "city": "Porto Alegre"
     },
     {
       "club_id": "ipswich_town",
@@ -2245,8 +2445,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Ipswich",
         "Ipswich Town"
-      ]
+      ],
+      "latitude": 52.06,
+      "longitude": 1.14,
+      "city": "Ipswich"
     },
     {
       "club_id": "ir_nt",
@@ -2321,6 +2525,23 @@
       ]
     },
     {
+      "club_id": "joinville",
+      "name": "Joinville",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Joinville",
+        "Joinville EC"
+      ],
+      "latitude": -26.3,
+      "longitude": -48.85,
+      "city": "Joinville"
+    },
+    {
       "club_id": "jorge_wilstermann",
       "name": "Wilstermann",
       "short_name": "WIL",
@@ -2381,7 +2602,10 @@
       "aliases": [
         "EC Juventude",
         "Juventude"
-      ]
+      ],
+      "latitude": -29.17,
+      "longitude": -51.18,
+      "city": "Caxias do Sul"
     },
     {
       "club_id": "juventus",
@@ -2437,7 +2661,10 @@
       "logo_path": null,
       "aliases": [
         "Las Palmas"
-      ]
+      ],
+      "latitude": 28.1,
+      "longitude": -15.46,
+      "city": "Las Palmas"
     },
     {
       "club_id": "lazio",
@@ -2482,8 +2709,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Leeds",
         "Leeds United"
-      ]
+      ],
+      "latitude": 53.78,
+      "longitude": -1.57,
+      "city": "Leeds"
     },
     {
       "club_id": "leganes",
@@ -2496,7 +2727,10 @@
       "logo_path": null,
       "aliases": [
         "Leganés"
-      ]
+      ],
+      "latitude": 40.34,
+      "longitude": -3.76,
+      "city": "Leganés"
     },
     {
       "club_id": "leicester_city",
@@ -2508,8 +2742,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Leicester",
         "Leicester City"
-      ]
+      ],
+      "latitude": 52.62,
+      "longitude": -1.14,
+      "city": "Leicester"
     },
     {
       "club_id": "lens",
@@ -2537,7 +2775,10 @@
       "logo_path": null,
       "aliases": [
         "Levante"
-      ]
+      ],
+      "latitude": 39.49,
+      "longitude": -0.36,
+      "city": "Valência"
     },
     {
       "club_id": "libertad",
@@ -2583,7 +2824,10 @@
       "aliases": [
         "Liverpool",
         "Liverpool FC"
-      ]
+      ],
+      "latitude": 53.43,
+      "longitude": -2.96,
+      "city": "Liverpool"
     },
     {
       "club_id": "lokomotiv_moscow",
@@ -2608,8 +2852,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Luton",
         "Luton Town"
-      ]
+      ],
+      "latitude": 51.88,
+      "longitude": -0.43,
+      "city": "Luton"
     },
     {
       "club_id": "ma_nt",
@@ -2680,7 +2928,10 @@
       "logo_path": null,
       "aliases": [
         "Mallorca"
-      ]
+      ],
+      "latitude": 39.59,
+      "longitude": 2.63,
+      "city": "Palma"
     },
     {
       "club_id": "malmo_ff",
@@ -2709,7 +2960,10 @@
         "Man City",
         "Manchester City",
         "Manchester City FC"
-      ]
+      ],
+      "latitude": 53.48,
+      "longitude": -2.2,
+      "city": "Manchester"
     },
     {
       "club_id": "manchester_united",
@@ -2726,7 +2980,10 @@
         "Man Utd",
         "Manchester United",
         "Manchester United FC"
-      ]
+      ],
+      "latitude": 53.46,
+      "longitude": -2.29,
+      "city": "Manchester"
     },
     {
       "club_id": "melgar",
@@ -2804,7 +3061,10 @@
       "aliases": [
         "Mirassol",
         "Mirassol FC"
-      ]
+      ],
+      "latitude": -20.82,
+      "longitude": -49.52,
+      "city": "Mirassol"
     },
     {
       "club_id": "monagas",
@@ -2948,6 +3208,24 @@
       ]
     },
     {
+      "club_id": "nautico",
+      "name": "Náutico",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Clube Náutico Capibaribe",
+        "Nautico",
+        "Náutico"
+      ],
+      "latitude": -8.05,
+      "longitude": -34.9,
+      "city": "Recife"
+    },
+    {
       "club_id": "netherlands",
       "name": "Netherlands",
       "short_name": "NED",
@@ -2977,7 +3255,10 @@
         "Newcastle",
         "Newcastle United",
         "Newcastle Utd"
-      ]
+      ],
+      "latitude": 54.98,
+      "longitude": -1.62,
+      "city": "Newcastle"
     },
     {
       "club_id": "ng_nt",
@@ -3032,8 +3313,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "Norwich",
         "Norwich City"
-      ]
+      ],
+      "latitude": 52.62,
+      "longitude": 1.31,
+      "city": "Norwich"
     },
     {
       "club_id": "nottingham_forest",
@@ -3050,7 +3335,10 @@
         "Nottingham Forest",
         "Notts Forest",
         "Nott'm Forest"
-      ]
+      ],
+      "latitude": 52.94,
+      "longitude": -1.13,
+      "city": "Nottingham"
     },
     {
       "club_id": "novorizontino",
@@ -3170,7 +3458,10 @@
       "logo_path": null,
       "aliases": [
         "Osasuna"
-      ]
+      ],
+      "latitude": 42.8,
+      "longitude": -1.64,
+      "city": "Pamplona"
     },
     {
       "club_id": "palestino",
@@ -3202,7 +3493,28 @@
         "Palmeiras",
         "SE Palmeiras",
         "Sociedade Esportiva Palmeiras"
-      ]
+      ],
+      "latitude": -23.55,
+      "longitude": -46.63,
+      "city": "São Paulo"
+    },
+    {
+      "club_id": "parana",
+      "name": "Paraná",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Parana",
+        "Paraná",
+        "Paraná Clube"
+      ],
+      "latitude": -25.43,
+      "longitude": -49.27,
+      "city": "Curitiba"
     },
     {
       "club_id": "paris_saint_germain",
@@ -3234,7 +3546,10 @@
       "logo_path": "/clubs/patronato.png",
       "aliases": [
         "Patronato"
-      ]
+      ],
+      "latitude": -31.73,
+      "longitude": -60.53,
+      "city": "Paraná"
     },
     {
       "club_id": "paysandu",
@@ -3311,6 +3626,23 @@
       ]
     },
     {
+      "club_id": "ponte_preta",
+      "name": "Ponte Preta",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "AA Ponte Preta",
+        "Ponte Preta"
+      ],
+      "latitude": -22.91,
+      "longitude": -47.06,
+      "city": "Campinas"
+    },
+    {
       "club_id": "portugal",
       "name": "Portugal",
       "short_name": "POR",
@@ -3327,19 +3659,22 @@
     },
     {
       "club_id": "portuguesa",
-      "name": "Portuguesa",
+      "name": "Associação Portuguesa de Desportos",
       "short_name": "POR",
-      "country": "VE",
-      "competition": "libertadores",
+      "country": "BR",
+      "competition": "brasileirao",
       "competitions": [
-        "libertadores",
-        "sudamericana"
+        "brasileirao"
       ],
       "logo_path": "/clubs/portuguesa.png",
       "aliases": [
         "Portuguesa",
-        "Portuguesa FC"
-      ]
+        "Portuguesa de Desportos",
+        "Lusa"
+      ],
+      "latitude": -23.55,
+      "longitude": -46.63,
+      "city": "São Paulo"
     },
     {
       "club_id": "psv_eindhoven",
@@ -3411,7 +3746,10 @@
         "Racing Club",
         "Racing",
         "Racing Club de Avellaneda"
-      ]
+      ],
+      "latitude": -34.67,
+      "longitude": -58.37,
+      "city": "Avellaneda"
     },
     {
       "club_id": "rangers",
@@ -3436,8 +3774,12 @@
       ],
       "logo_path": null,
       "aliases": [
-        "Rayo Vallecano"
-      ]
+        "Rayo Vallecano",
+        "Vallecano"
+      ],
+      "latitude": 40.39,
+      "longitude": -3.65,
+      "city": "Madri"
     },
     {
       "club_id": "rb_leipzig",
@@ -3480,7 +3822,10 @@
       "aliases": [
         "Betis",
         "Real Betis"
-      ]
+      ],
+      "latitude": 37.36,
+      "longitude": -5.98,
+      "city": "Sevilha"
     },
     {
       "club_id": "real_madrid",
@@ -3495,7 +3840,10 @@
       "aliases": [
         "Real Madrid",
         "Real Madrid CF"
-      ]
+      ],
+      "latitude": 40.45,
+      "longitude": -3.69,
+      "city": "Madri"
     },
     {
       "club_id": "real_sociedad",
@@ -3509,8 +3857,12 @@
       "logo_path": "/clubs/real_sociedad.png",
       "aliases": [
         "Real Sociedad",
-        "Real Sociedad de Fútbol"
-      ]
+        "Real Sociedad de Fútbol",
+        "Sociedad"
+      ],
+      "latitude": 43.3,
+      "longitude": -1.97,
+      "city": "San Sebastián"
     },
     {
       "club_id": "real_valladolid",
@@ -3522,8 +3874,12 @@
       ],
       "logo_path": null,
       "aliases": [
-        "Real Valladolid"
-      ]
+        "Real Valladolid",
+        "Valladolid"
+      ],
+      "latitude": 41.64,
+      "longitude": -4.76,
+      "city": "Valladolid"
     },
     {
       "club_id": "red_star_belgrade",
@@ -3537,6 +3893,23 @@
       "aliases": [
         "Red Star Belgrade"
       ]
+    },
+    {
+      "club_id": "remo",
+      "name": "Remo",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Clube do Remo",
+        "Remo"
+      ],
+      "latitude": -1.46,
+      "longitude": -48.5,
+      "city": "Belém"
     },
     {
       "club_id": "rennes",
@@ -3580,7 +3953,10 @@
       "aliases": [
         "River Plate",
         "CA River Plate"
-      ]
+      ],
+      "latitude": -34.55,
+      "longitude": -58.45,
+      "city": "Buenos Aires"
     },
     {
       "club_id": "rosario_central",
@@ -3595,7 +3971,10 @@
       "logo_path": "/clubs/rosario_central.png",
       "aliases": [
         "Rosario Central"
-      ]
+      ],
+      "latitude": -32.95,
+      "longitude": -60.65,
+      "city": "Rosario"
     },
     {
       "club_id": "royal_pari",
@@ -3656,7 +4035,7 @@
     {
       "club_id": "san_lorenzo",
       "name": "San Lorenzo",
-      "country": null,
+      "country": "AR",
       "competition": "libertadores",
       "competitions": [
         "libertadores"
@@ -3664,7 +4043,27 @@
       "logo_path": null,
       "aliases": [
         "San Lorenzo"
-      ]
+      ],
+      "latitude": -34.65,
+      "longitude": -58.44,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "santa_cruz",
+      "name": "Santa Cruz",
+      "country": "BR",
+      "competition": "brasileirao_serie_a",
+      "competitions": [
+        "brasileirao_serie_a"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Santa Cruz",
+        "Santa Cruz FC"
+      ],
+      "latitude": -8.05,
+      "longitude": -34.9,
+      "city": "Recife"
     },
     {
       "club_id": "santos",
@@ -3680,7 +4079,10 @@
       "aliases": [
         "Santos",
         "Santos FC"
-      ]
+      ],
+      "latitude": -23.96,
+      "longitude": -46.33,
+      "city": "Santos"
     },
     {
       "club_id": "sao_paulo",
@@ -3697,7 +4099,10 @@
         "Sao Paulo",
         "São Paulo",
         "São Paulo FC"
-      ]
+      ],
+      "latitude": -23.55,
+      "longitude": -46.63,
+      "city": "São Paulo"
     },
     {
       "club_id": "sevilla",
@@ -3712,7 +4117,10 @@
       "aliases": [
         "Sevilla",
         "Sevilla FC"
-      ]
+      ],
+      "latitude": 37.38,
+      "longitude": -5.97,
+      "city": "Sevilha"
     },
     {
       "club_id": "shakhtar_donetsk",
@@ -3738,7 +4146,10 @@
       "logo_path": null,
       "aliases": [
         "Sheffield United"
-      ]
+      ],
+      "latitude": 53.37,
+      "longitude": -1.47,
+      "city": "Sheffield"
     },
     {
       "club_id": "sheriff_tiraspol",
@@ -3804,7 +4215,10 @@
       "logo_path": null,
       "aliases": [
         "Southampton"
-      ]
+      ],
+      "latitude": 50.91,
+      "longitude": -1.39,
+      "city": "Southampton"
     },
     {
       "club_id": "spain",
@@ -3849,7 +4263,10 @@
         "Sport",
         "Sport Club do Recife",
         "Sport Recife"
-      ]
+      ],
+      "latitude": -8.05,
+      "longitude": -34.9,
+      "city": "Recife"
     },
     {
       "club_id": "sporting_cp",
@@ -3910,7 +4327,10 @@
         "Talleres (Córdoba)",
         "Talleres",
         "Talleres de Córdoba"
-      ]
+      ],
+      "latitude": -31.42,
+      "longitude": -64.18,
+      "city": "Córdoba"
     },
     {
       "club_id": "the_strongest",
@@ -3942,7 +4362,10 @@
       "aliases": [
         "Tigre",
         "CA Tigre"
-      ]
+      ],
+      "latitude": -34.44,
+      "longitude": -58.53,
+      "city": "Victoria"
     },
     {
       "club_id": "tn_nt",
@@ -3987,7 +4410,10 @@
         "Spurs",
         "Tottenham",
         "Tottenham Hotspur"
-      ]
+      ],
+      "latitude": 51.6,
+      "longitude": -0.07,
+      "city": "Londres"
     },
     {
       "club_id": "ucv_fc",
@@ -4169,7 +4595,10 @@
       "aliases": [
         "Valencia",
         "Valencia CF"
-      ]
+      ],
+      "latitude": 39.47,
+      "longitude": -0.36,
+      "city": "Valência"
     },
     {
       "club_id": "vasco_da_gama",
@@ -4185,7 +4614,10 @@
         "CR Vasco da Gama",
         "Vasco",
         "Vasco da Gama"
-      ]
+      ],
+      "latitude": -22.91,
+      "longitude": -43.17,
+      "city": "Rio de Janeiro"
     },
     {
       "club_id": "ve_nt",
@@ -4216,7 +4648,10 @@
         "Vélez Sarsfield",
         "Vélez",
         "Velez Sarsfield"
-      ]
+      ],
+      "latitude": -34.64,
+      "longitude": -58.52,
+      "city": "Buenos Aires"
     },
     {
       "club_id": "vfb_stuttgart",
@@ -4289,7 +4724,10 @@
       "aliases": [
         "Villarreal",
         "Villarreal CF"
-      ]
+      ],
+      "latitude": 39.94,
+      "longitude": -0.1,
+      "city": "Villarreal"
     },
     {
       "club_id": "vitoria",
@@ -4305,7 +4743,10 @@
         "EC Vitória",
         "Vitoria",
         "Vitória"
-      ]
+      ],
+      "latitude": -12.97,
+      "longitude": -38.5,
+      "city": "Salvador"
     },
     {
       "club_id": "wal_nt",
@@ -4332,7 +4773,10 @@
       "logo_path": null,
       "aliases": [
         "Watford"
-      ]
+      ],
+      "latitude": 51.65,
+      "longitude": -0.4,
+      "city": "Watford"
     },
     {
       "club_id": "west_bromwich_albion",
@@ -4344,8 +4788,12 @@
       ],
       "logo_path": null,
       "aliases": [
+        "West Brom",
         "West Bromwich Albion"
-      ]
+      ],
+      "latitude": 52.51,
+      "longitude": -1.96,
+      "city": "West Bromwich"
     },
     {
       "club_id": "west_ham_united",
@@ -4361,7 +4809,10 @@
         "West Ham",
         "West Ham United",
         "West Ham Utd"
-      ]
+      ],
+      "latitude": 51.54,
+      "longitude": -0.02,
+      "city": "Londres"
     },
     {
       "club_id": "wolverhampton_wanderers",
@@ -4376,7 +4827,10 @@
       "aliases": [
         "Wolverhampton Wanderers",
         "Wolves"
-      ]
+      ],
+      "latitude": 52.59,
+      "longitude": -2.13,
+      "city": "Wolverhampton"
     },
     {
       "club_id": "young_boys",
@@ -4419,6 +4873,490 @@
       "aliases": [
         "Zenit St Petersburg"
       ]
+    },
+    {
+      "club_id": "newells_old_boys",
+      "name": "Newell's Old Boys",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Newells Old Boys",
+        "Newell's Old Boys"
+      ],
+      "latitude": -32.95,
+      "longitude": -60.65,
+      "city": "Rosario"
+    },
+    {
+      "club_id": "lanus",
+      "name": "Club Atlético Lanús",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Lanus",
+        "Lanús",
+        "Club Atlético Lanús"
+      ],
+      "latitude": -34.7,
+      "longitude": -58.39,
+      "city": "Lanús"
+    },
+    {
+      "club_id": "independiente",
+      "name": "Club Atlético Independiente",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Independiente",
+        "Club Atlético Independiente"
+      ],
+      "latitude": -34.67,
+      "longitude": -58.37,
+      "city": "Avellaneda"
+    },
+    {
+      "club_id": "independiente_rivadavia",
+      "name": "Independiente Rivadavia",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Ind. Rivadavia",
+        "Independiente Rivadavia"
+      ],
+      "latitude": -32.89,
+      "longitude": -68.84,
+      "city": "Mendoza"
+    },
+    {
+      "club_id": "gimnasia_la_plata",
+      "name": "Gimnasia y Esgrima La Plata",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Gimnasia L.P.",
+        "Gimnasia y Esgrima La Plata"
+      ],
+      "latitude": -34.92,
+      "longitude": -57.95,
+      "city": "La Plata"
+    },
+    {
+      "club_id": "gimnasia_mendoza",
+      "name": "Gimnasia y Esgrima de Mendoza",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Gimnasia Mendoza",
+        "Gimnasia y Esgrima de Mendoza"
+      ],
+      "latitude": -32.89,
+      "longitude": -68.84,
+      "city": "Mendoza"
+    },
+    {
+      "club_id": "san_martin_san_juan",
+      "name": "San Martín de San Juan",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "San Martin S.J.",
+        "San Martín de San Juan"
+      ],
+      "latitude": -31.54,
+      "longitude": -68.53,
+      "city": "San Juan"
+    },
+    {
+      "club_id": "san_martin_tucuman",
+      "name": "San Martín de Tucumán",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "San Martin T.",
+        "San Martín de Tucumán"
+      ],
+      "latitude": -26.82,
+      "longitude": -65.22,
+      "city": "San Miguel de Tucumán"
+    },
+    {
+      "club_id": "union_santa_fe",
+      "name": "Unión de Santa Fe",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Union de Santa Fe",
+        "Unión de Santa Fe"
+      ],
+      "latitude": -31.63,
+      "longitude": -60.7,
+      "city": "Santa Fe"
+    },
+    {
+      "club_id": "banfield",
+      "name": "Club Atlético Banfield",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Banfield",
+        "Club Atlético Banfield"
+      ],
+      "latitude": -34.74,
+      "longitude": -58.39,
+      "city": "Banfield"
+    },
+    {
+      "club_id": "belgrano",
+      "name": "Club Atlético Belgrano",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Belgrano",
+        "Club Atlético Belgrano"
+      ],
+      "latitude": -31.42,
+      "longitude": -64.18,
+      "city": "Córdoba"
+    },
+    {
+      "club_id": "sarmiento_junin",
+      "name": "Sarmiento de Junín",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Sarmiento Junin",
+        "Sarmiento de Junín"
+      ],
+      "latitude": -34.59,
+      "longitude": -60.94,
+      "city": "Junín"
+    },
+    {
+      "club_id": "aldosivi",
+      "name": "Club Atlético Aldosivi",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Aldosivi",
+        "Club Atlético Aldosivi"
+      ],
+      "latitude": -38.0,
+      "longitude": -57.56,
+      "city": "Mar del Plata"
+    },
+    {
+      "club_id": "platense",
+      "name": "Club Atlético Platense",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Platense",
+        "Club Atlético Platense"
+      ],
+      "latitude": -34.53,
+      "longitude": -58.48,
+      "city": "Vicente López"
+    },
+    {
+      "club_id": "barracas_central",
+      "name": "Barracas Central",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Barracas Central"
+      ],
+      "latitude": -34.65,
+      "longitude": -58.38,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "atletico_rafaela",
+      "name": "Atlético de Rafaela",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Atl. Rafaela",
+        "Atlético de Rafaela"
+      ],
+      "latitude": -31.25,
+      "longitude": -61.49,
+      "city": "Rafaela"
+    },
+    {
+      "club_id": "quilmes",
+      "name": "Quilmes Atlético Club",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Quilmes",
+        "Quilmes Atlético Club"
+      ],
+      "latitude": -34.72,
+      "longitude": -58.25,
+      "city": "Quilmes"
+    },
+    {
+      "club_id": "instituto",
+      "name": "Instituto Atlético Central Córdoba",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Instituto",
+        "Instituto Atlético Central Córdoba"
+      ],
+      "latitude": -31.42,
+      "longitude": -64.18,
+      "city": "Córdoba"
+    },
+    {
+      "club_id": "temperley",
+      "name": "Club Atlético Temperley",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Temperley",
+        "Club Atlético Temperley"
+      ],
+      "latitude": -34.77,
+      "longitude": -58.4,
+      "city": "Temperley"
+    },
+    {
+      "club_id": "deportivo_riestra",
+      "name": "Deportivo Riestra",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Dep. Riestra",
+        "Deportivo Riestra"
+      ],
+      "latitude": -34.66,
+      "longitude": -58.44,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "all_boys",
+      "name": "Club Atlético All Boys",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "All Boys",
+        "Club Atlético All Boys"
+      ],
+      "latitude": -34.61,
+      "longitude": -58.38,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "nueva_chicago",
+      "name": "Nueva Chicago",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Nueva Chicago"
+      ],
+      "latitude": -34.67,
+      "longitude": -58.47,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "chacarita_juniors",
+      "name": "Chacarita Juniors",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Chacarita Juniors"
+      ],
+      "latitude": -34.58,
+      "longitude": -58.52,
+      "city": "Buenos Aires"
+    },
+    {
+      "club_id": "crucero_del_norte",
+      "name": "Crucero del Norte",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Crucero del Norte"
+      ],
+      "latitude": -27.48,
+      "longitude": -55.83,
+      "city": "Garupá"
+    },
+    {
+      "club_id": "arsenal_sarandi",
+      "name": "Arsenal de Sarandí",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional",
+        "argentina_copa_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Arsenal Sarandi",
+        "Arsenal de Sarandí",
+        "Arsenal de Sarandi"
+      ],
+      "latitude": -34.68,
+      "longitude": -58.34,
+      "city": "Sarandí"
+    },
+    {
+      "club_id": "portuguesa_acarigua",
+      "name": "Portuguesa FC",
+      "country": "VE",
+      "competition": "libertadores",
+      "competitions": [
+        "libertadores",
+        "sudamericana"
+      ],
+      "logo_path": "/clubs/portuguesa.png",
+      "aliases": [
+        "Portuguesa FC",
+        "Portuguesa Acarigua"
+      ],
+      "latitude": 9.55,
+      "longitude": -69.2,
+      "city": "Acarigua"
+    },
+    {
+      "club_id": "olimpo",
+      "name": "Club Olimpo",
+      "country": "AR",
+      "competition": "argentina_liga_profesional",
+      "competitions": [
+        "argentina_liga_profesional"
+      ],
+      "logo_path": null,
+      "aliases": [
+        "Olimpo Bahia Blanca",
+        "Olimpo",
+        "Club Olimpo"
+      ],
+      "latitude": -38.72,
+      "longitude": -62.27,
+      "city": "Bahía Blanca"
     }
   ]
 }

@@ -61,13 +61,22 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "intelligence",
     label: "Inteligência (Atlas)",
+    // Tres telas sairam daqui em 2026-08-11: Inteligencia, Conhecimento e
+    // Datasets. As duas primeiras liam a memoria vetorial antiga (37
+    // dimensoes, 14 constantes) por uma superficie de leitura que a
+    // `atlas.query.v1` substituiu; a terceira listava duas tabelas que
+    // nunca receberam uma linha. Nao foram desativadas — o codigo, as
+    // rotas e as tabelas foram removidos junto.
     items: [
       // Primeiro na lista de propósito: é onde a aprovação humana que o
       // ATLAS_V1_FROZEN.md exige acontece.
       { href: "/atlas/quality-gate", key: "atlas-quality-gate", label: "Quality Gate", icon: ShieldCheck, permission: "config.read" },
-      { href: "/atlas/intelligence", key: "atlas-intelligence", label: "Inteligência", icon: Brain, permission: "console.access" },
-      { href: "/atlas/knowledge", key: "atlas-knowledge", label: "Conhecimento", icon: BookOpen, permission: "console.access" },
-      { href: "/data-intelligence/datasets", key: "dataset-center", label: "Datasets", icon: Database, permission: "console.access" },
+      // Primeiro item de dados do Atlas: e por aqui que partida entra desde
+      // que a leitura de diretorio saiu (INTAKE-V1).
+      { href: "/atlas/intake", key: "atlas-intake", label: "Ingestão", icon: Database, permission: "config.read" },
+      // Simulador de consulta: o MESMO endpoint que o fluxo de producao
+      // chama ao montar um post. Nao ha caminho paralelo nem modo demo.
+      { href: "/atlas/query", key: "atlas-query", label: "Consulta", icon: Brain, permission: "config.read" },
     ],
   },
 
