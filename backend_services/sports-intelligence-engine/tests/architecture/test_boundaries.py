@@ -198,6 +198,68 @@ class TestAppsNaoContornamAsCamadas:
         assert not violacoes
 
 
+class TestPacotesDoDominioFutebolistico:
+    """Os pacotes que o PR-01 acrescentou, sob as mesmas regras.
+
+    Listados por NOME e não cobertos por `_arquivos("domain")` genérico:
+    quando o PR-02 acrescentar `ingestion/normalization`, o teste genérico o
+    cobriria em silêncio e ninguém saberia se ele foi de fato verificado.
+    """
+
+    @pytest.mark.parametrize(
+        "pacote",
+        [
+            "domain/competitions",
+            "domain/teams",
+            "domain/players",
+            "domain/matches",
+            "domain/events",
+            "domain/odds",
+        ],
+    )
+    def test_nao_importa_infraestrutura(self, pacote: str) -> None:
+        arquivos = _arquivos(pacote)
+        assert arquivos, f"{pacote} não tem arquivo para verificar"
+        violacoes = _violacoes(arquivos, INFRA_EXTERNA)
+        assert not violacoes, f"{pacote} importa infraestrutura: {violacoes}"
+
+    @pytest.mark.parametrize(
+        "pacote",
+        [
+            "domain/competitions",
+            "domain/teams",
+            "domain/players",
+            "domain/matches",
+            "domain/events",
+            "domain/odds",
+        ],
+    )
+    def test_nao_importa_adapters_nem_camadas_acima(self, pacote: str) -> None:
+        violacoes = _violacoes_internas(
+            _arquivos(pacote),
+            (
+                "sports_intelligence.adapters",
+                "sports_intelligence.application",
+                "sports_intelligence.ports",
+                "apps",
+            ),
+        )
+        assert not violacoes, str(violacoes)
+
+
+class TestApplicationNaoConheceInfraestrutura:
+    def test_use_cases_falam_por_ports(self) -> None:
+        """A camada de aplicação coordena; ela não escolhe tecnologia. Um
+        `import redis` aqui amarraria o caso de uso ao transporte."""
+        assert not _violacoes(_arquivos("application"), INFRA_EXTERNA)
+
+    def test_use_cases_nao_importam_adapters(self) -> None:
+        violacoes = _violacoes_internas(
+            _arquivos("application"), ("sports_intelligence.adapters",)
+        )
+        assert not violacoes
+
+
 class TestOTesteVeDeVerdade:
     """O verificador precisa provar que enxerga — senão um teste de
     arquitetura que não lê nada passa sempre, e é pior que não existir."""

@@ -112,6 +112,18 @@ class PostgresSettings(_Base):
             raise ValueError(f"pool_max_size ({valor}) é menor que pool_min_size ({minimo})")
         return valor
 
+    def dsn(self) -> str:
+        """A URL de conexão, com a senha revelada.
+
+        UM MÉTODO E NÃO UMA PROPRIEDADE, de propósito. Propriedade convida a
+        aparecer em f-string de log e em `repr` de debug, e o que sairia dali
+        é a senha em claro. Uma chamada explícita é visível na revisão.
+        """
+        return (
+            f"postgresql://{self.user}:{self.password.get_secret_value()}"
+            f"@{self.host}:{self.port}/{self.database}"
+        )
+
 
 class ClickHouseSettings(_Base):
     """Eventos, snapshots e séries temporais de alto volume. Ver ADR-0004."""
@@ -140,6 +152,21 @@ class RedisSettings(_Base):
     password: SecretStr | None = None
 
 
+class ObjectStoreBackend(StrEnum):
+    """Qual implementação de object store este processo usa.
+
+    `FILESYSTEM` EXISTE E É RESTRITO. Ele torna o teste unitário e o
+    desenvolvimento sem Docker possíveis, e por isso vale. O que ele não pode
+    é chegar em produção por descuido: um "object store" que é uma pasta local
+    perde tudo quando o contêiner é recriado, e a perda é do ARQUIVO BRUTO —
+    a única camada que não se reconstrói. `ObjectStoreSettings` recusa a
+    combinação em ambiente produtivo.
+    """
+
+    S3 = "s3"
+    FILESYSTEM = "filesystem"
+
+
 class ObjectStoreSettings(_Base):
     """S3 ou MinIO: o bruto imutável e os arquivos reconstruíveis."""
 
@@ -147,11 +174,59 @@ class ObjectStoreSettings(_Base):
         **{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}OBJECT_STORE_"}
     )
 
+    backend: ObjectStoreBackend = ObjectStoreBackend.S3
     endpoint_url: str | None = None
     region: str = "us-east-1"
     bucket: str
     access_key_id: SecretStr
     secret_access_key: SecretStr
+    #: Raiz do backend de arquivos. Só usada quando `backend=filesystem`.
+    root_path: str | None = None
+    #: TLS. `False` é o normal para MinIO local e nunca deveria ser o de um
+    #: endpoint remoto — a checagem de ambiente abaixo cobra isso.
+    secure: bool = True
+
+    @field_validator("bucket")
+    @classmethod
+    def _bucket_valido(cls, valor: str) -> str:
+        # As regras de nome de bucket do S3, cobradas aqui: descobri-las na
+        # primeira gravação significa descobri-las em produção.
+        texto = valor.strip().lower()
+        if not 3 <= len(texto) <= 63 or not texto.replace("-", "").replace(".", "").isalnum():
+            raise ValueError(
+                f"bucket {valor!r} inválido: 3 a 63 caracteres, minúsculas, dígitos, "
+                "hífen e ponto"
+            )
+        return texto
+
+
+class IntakeSettings(_Base):
+    """Os limites da ingestão histórica manual.
+
+    ELES SÃO CONFIGURAÇÃO E NÃO CONSTANTE DE CÓDIGO por um motivo operacional:
+    o limite certo depende da máquina e do disco de quem opera, e um número
+    fixo no código obriga um deploy para ajustá-lo — o que, na prática,
+    significa que ninguém ajusta e alguém contorna.
+
+    Todos têm default, e nenhum é segredo: são tetos de proteção, não
+    credenciais.
+    """
+
+    model_config = SettingsConfigDict(
+        **{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}INTAKE_"}
+    )
+
+    #: 2 GiB. Cobre com folga um dump de temporada em Parquet e recusa o
+    #: acidente — o backup de um banco inteiro enviado por engano.
+    max_file_size_bytes: int = Field(default=2 * 1024 * 1024 * 1024, ge=1)
+    max_files_per_dataset: int = Field(default=200, ge=1)
+    #: Teto de linhas por arquivo. Existe para o caso patológico: um CSV com
+    #: 500 milhões de linhas não é um dataset de futebol, é um engano.
+    max_rows_per_file: int = Field(default=50_000_000, ge=1)
+    #: Quantas issues são GUARDADAS. O total continua sendo contado.
+    max_validation_issues: int = Field(default=200, ge=1)
+    #: Acima disto o buffer de upload vai para disco em vez de RAM.
+    upload_spool_threshold_bytes: int = Field(default=8 * 1024 * 1024, ge=0)
 
 
 class ObservabilitySettings(_Base):
@@ -186,3 +261,33 @@ class SecuritySettings(_Base):
         if isinstance(valor, str):
             return tuple(p.strip() for p in valor.split(",") if p.strip())
         return valor
+
+
+def assert_object_store_is_durable(
+    store: ObjectStoreSettings, environment: Environment
+) -> None:
+    """Recusa um arquivo bruto que não sobrevive ao contêiner.
+
+    A CHECAGEM MORA NUMA FUNÇÃO E NÃO NUM VALIDADOR porque ela cruza dois
+    grupos de settings — `ObjectStoreSettings` não conhece o ambiente, e
+    fazê-la conhecer amarraria os dois. Ela é chamada na composição de cada
+    processo, que é onde os dois já estão em mãos.
+
+    O QUE ELA PROTEGE: o arquivo bruto é a ÚNICA camada que não se reconstrói
+    (ADR-0004). Um backend de sistema de arquivos dentro de um contêiner é
+    uma pasta que some no próximo deploy, e a perda seria de evidência
+    primária — não de cache.
+    """
+    if not environment.is_production_like:
+        return
+    if store.backend is ObjectStoreBackend.FILESYSTEM:
+        raise ValueError(
+            f"object store 'filesystem' em ambiente {environment.value}: o arquivo bruto "
+            "é a única camada que não se reconstrói, e uma pasta local não sobrevive "
+            "ao contêiner. Configure S3 ou MinIO."
+        )
+    if store.endpoint_url and not store.secure:
+        raise ValueError(
+            f"object store sem TLS em ambiente {environment.value}: as credenciais e o "
+            "conteúdo trafegariam em claro"
+        )

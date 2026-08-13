@@ -1,0 +1,112 @@
+"""Quem pediu. O mínimo, e por que o mínimo é o certo agora.
+
+O QUE ISTO NÃO É. Não é RBAC, não tem papel, não tem permissão, não tem
+política. Construir um sistema de autorização antes de existir a segunda
+operação que precisa de autorização diferente produz um sistema calibrado para
+um caso hipotético — e ele fica no caminho quando o caso real chega.
+
+O QUE ISTO É. A garantia de que toda operação administrativa tem AUTOR, e que
+o autor não é um padrão global. Um `created_by = "system"` embutido no código
+é indistinguível de "ninguém sabe quem fez", e é o que se encontra em toda
+trilha de auditoria que foi construída depois do fato.
+
+Então: o ator é obrigatório, vem da fronteira, e a fronteira o deriva de quem
+autenticou. Ele nunca vem do corpo da requisição — deixar o cliente declarar
+quem é ele transforma a trilha de auditoria em campo de texto livre.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Final, Self, final
+
+from sports_intelligence.domain.shared.errors import UnauthorizedError, ValidationError
+
+
+class ActorKind(StrEnum):
+    """A natureza de quem pediu. Governa o que se espera do id."""
+
+    #: Uma pessoa operando o Control Plane.
+    HUMAN_OPERATOR = "HUMAN_OPERATOR"
+    #: Outro serviço do Insight, autenticado por token interno.
+    SERVICE = "SERVICE"
+    #: A CLI, rodando na máquina de alguém. Distinta do operador humano na
+    #: API porque o caminho de autenticação é outro, e a trilha precisa
+    #: distinguir "aprovou pelo console" de "rodou um comando local".
+    CLI = "CLI"
+    #: Um processo do próprio motor: worker, reconciliação, migração.
+    SYSTEM = "SYSTEM"
+
+    @property
+    def is_human(self) -> bool:
+        return self in (ActorKind.HUMAN_OPERATOR, ActorKind.CLI)
+
+
+_ID_DE_ATOR = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@-]{1,127}$")
+
+#: Identificadores que parecem autoria e não são. Recusados por nome porque
+#: cada um deles, encontrado numa trilha de auditoria dois anos depois,
+#: significa exatamente "não sabemos quem fez" — e é melhor falhar no momento
+#: da configuração do que descobrir isso durante uma investigação.
+_PROIBIDOS: Final[frozenset[str]] = frozenset(
+    {"system", "admin", "root", "unknown", "anonymous", "none", "null", "default", "-"}
+)
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class Actor:
+    """Quem está executando a operação."""
+
+    id: str
+    kind: ActorKind
+
+    def __post_init__(self) -> None:
+        texto = self.id.strip()
+        if not _ID_DE_ATOR.match(texto):
+            raise ValidationError(
+                f"identificador de ator {self.id!r} inválido: 2 a 128 caracteres, "
+                "letras, dígitos, ponto, arroba, hífen e underscore"
+            )
+        if texto.lower() in _PROIBIDOS and self.kind is not ActorKind.SYSTEM:
+            raise ValidationError(
+                f"{texto!r} não identifica ninguém. Uma trilha de auditoria com este "
+                "autor responde 'quando' e não responde 'quem', que é a pergunta.",
+                context={"actor": texto},
+            )
+        object.__setattr__(self, "id", texto)
+
+    @classmethod
+    def system(cls, process: str) -> Self:
+        """Um processo do motor. O nome do processo É a identificação.
+
+        `Actor.system("dataset-reconciler")` é acionável — diz qual código
+        fez. `Actor("system")` não é, e é por isso que o construtor genérico
+        recusa o literal.
+        """
+        return cls(id=process, kind=ActorKind.SYSTEM)
+
+    @property
+    def is_automated(self) -> bool:
+        return not self.kind.is_human
+
+    def __str__(self) -> str:
+        return f"{self.id}({self.kind})"
+
+
+def require_actor(actor: Actor | None) -> Actor:
+    """Recusa a operação sem autor, com a categoria de erro certa.
+
+    `UnauthorizedError` E NÃO `ValidationError`: a ausência de ator não é um
+    campo mal preenchido, é uma requisição que não provou quem é. A distinção
+    chega ao cliente como 401 em vez de 422, e a diferença muda o que ele faz
+    a respeito.
+    """
+    if actor is None:
+        raise UnauthorizedError(
+            "operação administrativa sem ator identificado — "
+            "toda mutação do Control Plane tem autor, e ele vem de quem autenticou"
+        )
+    return actor
