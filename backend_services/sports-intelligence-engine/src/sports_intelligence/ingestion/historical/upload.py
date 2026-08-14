@@ -106,7 +106,10 @@ class StreamingReceiver:
             raise ValueError(f"max_bytes={max_bytes} inválido")
         self._max_bytes = max_bytes
         self._chunk_size = chunk_size
-        self._buffer: IO[bytes] = tempfile.SpooledTemporaryFile(
+        # SIM115 suprimido: o buffer vive enquanto o receptor viver, e é fechado
+        # por `close()` — chamado pelo `__aexit__`, inclusive quando a
+        # gravação falha no meio. Um `with` aqui o fecharia no construtor.
+        self._buffer: IO[bytes] = tempfile.SpooledTemporaryFile(  # noqa: SIM115
             max_size=spool_threshold, mode="w+b"
         )
         self._resultado: ReceivedUpload | None = None
@@ -200,7 +203,7 @@ async def chunks_from_path(path: str, *, chunk_size: int = CHUNK_SIZE) -> AsyncI
     na máquina de quem opera, e o limite de memória de um laptop é menor que
     o do servidor, não maior.
     """
-    with open(path, "rb") as arquivo:  # noqa: PTH123 — stream, não leitura de conteúdo
+    with open(path, "rb") as arquivo:
         while True:
             bloco = arquivo.read(chunk_size)
             if not bloco:

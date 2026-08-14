@@ -44,7 +44,11 @@ class ActorKind(StrEnum):
         return self in (ActorKind.HUMAN_OPERATOR, ActorKind.CLI)
 
 
-_ID_DE_ATOR = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@-]{1,127}$")
+#: O `:` entra desde o PR-03 para a convenção `user:<uuid>` — que torna a
+#: trilha legível sem consulta cruzada. Ele é seguro aqui: este identificador
+#: nunca vira caminho de arquivo nem chave de objeto; ele é gravado numa
+#: coluna e comparado por igualdade.
+_ID_DE_ATOR = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@:-]{1,127}$")
 
 #: Identificadores que parecem autoria e não são. Recusados por nome porque
 #: cada um deles, encontrado numa trilha de auditoria dois anos depois,
@@ -88,9 +92,47 @@ class Actor:
         """
         return cls(id=process, kind=ActorKind.SYSTEM)
 
+    @classmethod
+    def service(cls, name: str) -> Self:
+        """Um serviço identificado pelo que ele É, não por «system».
+
+            Actor.service("historical-resolution-worker")
+
+        A DISTINÇÃO ENTRE HUMANO E SERVIÇO É O QUE O PR-03 EXIGE, e ela não é
+        cosmética: uma decisão de identidade tomada por um worker sob política
+        declarada e uma tomada por uma pessoa na fila de revisão são coisas
+        diferentes, com garantias diferentes. `ResolutionDecision` recusa a
+        combinação errada — método manual com ator de serviço, e vice-versa.
+        """
+        return cls(id=name, kind=ActorKind.SERVICE)
+
+    @classmethod
+    def human(cls, user_id: str) -> Self:
+        """Uma pessoa. O identificador é opaco e vem de quem autenticou.
+
+            Actor.human("user:9f2b6f3e-6a1f-4d2c-9c4a-1e5b7d8f0a31")
+
+        O PREFIXO `user:` NÃO É EXIGIDO e é a convenção recomendada: ele
+        torna a trilha legível sem consulta cruzada. O que É exigido está no
+        construtor — o identificador não pode ser um nome genérico.
+        """
+        return cls(id=user_id, kind=ActorKind.HUMAN_OPERATOR)
+
     @property
     def is_automated(self) -> bool:
+        """Se quem decidiu foi código.
+
+        `CLI` CONTA COMO HUMANO, e é a resposta certa: quem digitou o comando
+        foi uma pessoa, e `getpass.getuser()` a identifica. O que a distingue
+        de `HUMAN_OPERATOR` é o caminho — «rodou um comando local» contra
+        «aprovou pelo console» —, não a natureza.
+        """
         return not self.kind.is_human
+
+    @property
+    def is_service(self) -> bool:
+        """Se é um processo automático identificado pelo próprio nome."""
+        return self.kind in (ActorKind.SERVICE, ActorKind.SYSTEM)
 
     def __str__(self) -> str:
         return f"{self.id}({self.kind})"

@@ -5,13 +5,18 @@ description = "Insight Sports Intelligence Engine — motor de tendências conte
 requires-python = ">=3.13"
 license = { text = "Proprietary" }
 
-# AS DEPENDÊNCIAS DO PR-00 SÃO SÓ AS QUE O PR-00 USA.
+# CADA DEPENDÊNCIA ENTRA NO PR QUE A USA, e sai da lista quem não usa.
 #
-# A stack alvo inclui PostgreSQL, ClickHouse, Redis, S3, NumPy, SciPy, Polars
-# e OpenTelemetry — todas declaradas nos ADRs e nenhuma instalada aqui. Uma
-# dependência que entra antes do primeiro uso vira peso no build, superfície
-# de CVE e uma decisão que ninguém lembra de rever. Elas entram no PR que as
-# usar, e o `doctor` da CLI já sabe reportar as que faltam.
+# ClickHouse, Redis, pgvector, NumPy, SciPy e OpenTelemetry continuam de fora:
+# estão declarados nos ADRs e nenhum PR os exercita ainda. Uma dependência que
+# entra antes do primeiro uso vira peso no build, superfície de CVE e uma
+# decisão que ninguém lembra de rever. O `doctor` da CLI reporta as que faltam.
+#
+# As quatro do PR-02 e o que cada uma faz aqui:
+#   asyncpg    o registro transacional; sem ORM, por decisão (ADR-0003)
+#   aioboto3   S3 e MinIO pelo mesmo cliente, sem segurar thread no upload
+#   pyarrow    o rodapé do Parquet — schema e contagem sem ler os dados
+#   polars     inferência de tipo em Rust, sobre amostra, fora da RAM
 dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
@@ -19,6 +24,10 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "typer>=0.15",
     "rich>=13.9",
+    "asyncpg>=0.30",
+    "aioboto3>=13.2",
+    "pyarrow>=18.0",
+    "polars>=1.17",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +38,11 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "coverage[toml]>=7.6",
+    # Sobem PostgreSQL e MinIO de verdade nos testes de integração. Ver
+    # `tests/integration/conftest.py`: quando o ambiente já oferece os dois
+    # (compose local, CI), os testes usam esses e o Testcontainers nem carrega.
+    "testcontainers[postgres]>=4.8",
+    "types-aioboto3>=13.2",
 ]
 
 [project.scripts]
@@ -96,6 +110,13 @@ files = ["src", "apps", "tests"]
 module = "tests.*"
 disallow_untyped_defs = false
 
+# Bibliotecas sem stubs completos. `ignore_missing_imports` e NÃO `Any` no
+# nosso lado: a fronteira com elas fica em `adapters/` e `ingestion/`, e o
+# tipo do que sai de lá é declarado por nós.
+[[tool.mypy.overrides]]
+module = ["aioboto3.*", "aiobotocore.*", "testcontainers.*", "asyncpg.*", "pyarrow.*"]
+ignore_missing_imports = true
+
 # -------------------------------------------------------------- pytest -----
 
 [tool.pytest.ini_options]
@@ -105,6 +126,8 @@ asyncio_mode = "auto"
 markers = [
     "architecture: falha o CI quando um limite arquitetural é violado",
     "smoke: prova que o processo sobe e responde",
+    "integration: exige PostgreSQL e object store de verdade",
+    "performance: mede tempo e memória; não afirma SLO",
 ]
 
 [tool.coverage.run]

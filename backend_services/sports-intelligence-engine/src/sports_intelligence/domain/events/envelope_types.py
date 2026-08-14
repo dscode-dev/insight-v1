@@ -42,3 +42,18 @@ DATASET_REGISTERED: Final = "dataset.registered"
 DATASET_FILE_STORED: Final = "dataset.file.stored"
 DATASET_VALIDATION_COMPLETED: Final = "dataset.validation.completed"
 DATASET_STAGED: Final = "dataset.staged"
+
+#: Os quatro do PR-03. Mesmo critério: cada um tem consumidor previsto.
+#:
+#:   `resolution.run.completed`    o operador e o painel de execução
+#:   `resolution.review.required`  a fila humana acorda por aqui
+#:   `fusion.run.completed`        o PR-04 lerá isto
+#:   `fusion.conflict.detected`    o operador de conflitos
+#:
+#: `resolution.run.completed` carrega `historical_active: false` no payload
+#: pelo mesmo motivo de `dataset.staged`: nenhum consumidor precisa inferir
+#: que a saída de uma resolução ainda não é conhecimento histórico.
+RESOLUTION_RUN_COMPLETED: Final = "resolution.run.completed"
+RESOLUTION_REVIEW_REQUIRED: Final = "resolution.review.required"
+FUSION_RUN_COMPLETED: Final = "fusion.run.completed"
+FUSION_CONFLICT_DETECTED: Final = "fusion.conflict.detected"

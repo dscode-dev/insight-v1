@@ -32,7 +32,7 @@ from __future__ import annotations
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, final
+from typing import final
 
 from sports_intelligence.domain.datasets.files import DatasetFile
 from sports_intelligence.domain.datasets.models import Dataset
@@ -51,6 +51,7 @@ from sports_intelligence.ingestion.validation.detection import PROBE_BYTES, prob
 from sports_intelligence.ingestion.validation.inspectors import Inspection, inspect
 from sports_intelligence.ports.clock import ClockPort
 from sports_intelligence.ports.raw_dataset_archive import RawDatasetArchivePort
+
 
 @final
 @dataclass(frozen=True, slots=True)

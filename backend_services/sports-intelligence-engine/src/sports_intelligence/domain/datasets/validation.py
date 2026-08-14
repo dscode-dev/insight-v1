@@ -223,7 +223,7 @@ class DatasetValidationIssue:
 
     def __str__(self) -> str:
         onde = f" ({self.location})" if self.location else ""
-        vezes = f" ×{self.occurrences}" if self.occurrences > 1 else ""
+        vezes = f" ({self.occurrences} vezes)" if self.occurrences > 1 else ""
         return f"[{self.severity}] {self.code}{onde}: {self.message}{vezes}"
 
 

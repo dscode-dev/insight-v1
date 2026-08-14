@@ -23,7 +23,7 @@ processo nunca usaria.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Final
+from typing import Final, Self
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -60,6 +60,25 @@ class _Base(BaseSettings):
         extra="ignore",
         frozen=True,
     )
+
+    @classmethod
+    def from_env(cls) -> Self:
+        """Constrói lendo o ambiente. É por aqui que todo processo carrega.
+
+        POR QUE UM MÉTODO E NÃO `PostgresSettings()` DIRETO. `pydantic-settings`
+        preenche campos obrigatórios a partir de variáveis de ambiente em tempo
+        de execução, e o verificador de tipos não tem como saber disso: para
+        ele, `PostgresSettings()` é uma chamada faltando quatro argumentos.
+        Cada ponto de construção precisaria de uma supressão, e uma supressão
+        repetida em dez lugares é uma supressão que ninguém revisa.
+
+        Aqui a construção é declarada uma vez, no `_Base` — onde nenhum campo
+        é obrigatório —, e as subclasses a herdam com assinatura nula. Nada é
+        enfraquecido: os erros de configuração continuam aparecendo na hora de
+        construir, como `ValidationError` do pydantic, com o nome da variável
+        que falta.
+        """
+        return cls()
 
 
 class AppSettings(_Base):
@@ -227,6 +246,19 @@ class IntakeSettings(_Base):
     max_validation_issues: int = Field(default=200, ge=1)
     #: Acima disto o buffer de upload vai para disco em vez de RAM.
     upload_spool_threshold_bytes: int = Field(default=8 * 1024 * 1024, ge=0)
+
+    # --- PR-03. Todos trocam MEMÓRIA por NÚMERO DE IDAS AO BANCO, e o ponto
+    # certo depende da máquina — por isso são settings e não constantes.
+    #: Quantos registros a resolução processa por lote. É o que decide quantos
+    #: candidatos são carregados de uma vez; um lote maior faz menos consultas
+    #: e ocupa mais memória.
+    resolution_batch_size: int = Field(default=2_000, ge=1, le=20_000)
+    #: Teto de candidatos carregados por lote. Um lote com nomes muito
+    #: genéricos poderia casar com meio registro canônico.
+    candidate_limit: int = Field(default=5_000, ge=1)
+    #: Quantos candidatos descartados a fila de revisão mostra por item.
+    review_candidate_limit: int = Field(default=8, ge=1, le=50)
+    fusion_batch_size: int = Field(default=1_000, ge=1, le=20_000)
 
 
 class ObservabilitySettings(_Base):

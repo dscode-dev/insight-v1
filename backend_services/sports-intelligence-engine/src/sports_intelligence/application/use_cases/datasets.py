@@ -29,6 +29,7 @@ from sports_intelligence.domain.datasets.formats import DatasetFormat
 from sports_intelligence.domain.datasets.lifecycle import (
     DatasetLifecycle,
     assert_can_stage,
+    transition_to,
 )
 from sports_intelligence.domain.datasets.manifest import DatasetManifest
 from sports_intelligence.domain.datasets.models import (
@@ -229,7 +230,13 @@ class AttachDatasetFile:
         dataset = await self.datasets.by_id(dataset_id)
         if dataset is None:
             raise NotFoundError(f"dataset {dataset_id} não registrado")
-        dataset.assert_accepts_files()
+        if dataset.lifecycle.is_terminal:
+            # Recusa BARATA, antes de ler um byte. Um dataset promovido ou
+            # rejeitado não recebe mais nada, e nenhum retry muda isso.
+            raise ConflictError(
+                f"dataset em {dataset.lifecycle} não recebe mais arquivos",
+                context={"state": dataset.lifecycle.value},
+            )
 
         async with StreamingReceiver(
             max_bytes=self.max_file_size_bytes,
@@ -257,6 +264,13 @@ class AttachDatasetFile:
 
             existente = await self.files.by_content(dataset_id, recebido.content_hash.value)
             agora = self.clock.now()
+
+            # A PERGUNTA SOBRE O SELO SÓ VALE PARA CONTEÚDO NOVO, e a ordem é
+            # o que faz o retry continuar funcionando depois de a validação
+            # começar: reenviar bytes já registrados não muda o conjunto, e
+            # recusá-los transformaria uma convergência normal em erro.
+            if existente is None:
+                dataset.assert_accepts_files()
 
             registro = existente or DatasetFile.intent(
                 dataset_id=dataset.id,
@@ -420,7 +434,17 @@ class ValidateDataset:
             raise NotFoundError(f"dataset {dataset_id} não registrado")
         dataset.assert_ready_for_validation()
 
+        # O GRAFO DECIDE SE A TRANSIÇÃO EXISTE; o banco decide quem chega
+        # primeiro. Sem a primeira metade, um dataset já em `VALIDATING`
+        # passaria pela transição condicional — o estado esperado bateria
+        # consigo mesmo — e uma segunda validação rodaria em paralelo.
         origem = dataset.lifecycle
+        transition_to(
+            origem,
+            DatasetLifecycle.VALIDATING,
+            at=self.clock.now(),
+            reason="validação estrutural iniciada",
+        )
         tomou = await self.datasets.transition(
             dataset_id,
             expected=origem,

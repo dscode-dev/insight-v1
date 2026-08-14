@@ -23,92 +23,23 @@ Adapters implementam ports. Nunca o inverso.
 
 from __future__ import annotations
 
-import ast
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-RAIZ = Path(__file__).resolve().parents[2]
-FONTE = RAIZ / "src" / "sports_intelligence"
-APPS = RAIZ / "apps"
-
-#: Pacotes que o domínio, features e engines não podem conhecer.
-INFRA_EXTERNA = frozenset(
-    {
-        "fastapi", "starlette", "uvicorn",
-        "sqlalchemy", "asyncpg", "psycopg", "psycopg2",
-        "redis", "aioredis",
-        "clickhouse_driver", "clickhouse_connect",
-        "boto3", "botocore", "minio",
-        "pgvector",
-        "typer", "rich",
-        "httpx", "requests", "aiohttp",
-    }
+from tests.support.ast_checks import (
+    APPS,
+    FONTE,
+    INFRA_EXTERNA,
 )
+from tests.support.ast_checks import external_violations as _violacoes
+from tests.support.ast_checks import files_in as _arquivos
+from tests.support.ast_checks import internal_violations as _violacoes_internas
 
-
-@dataclass(frozen=True)
-class Import:
-    """Um import real, com onde está — para que a falha seja acionável."""
-
-    module: str
-    file: Path
-    line: int
-
-    def __str__(self) -> str:
-        return f"{self.file.relative_to(RAIZ)}:{self.line} importa {self.module!r}"
-
-
-def _imports(caminho: Path) -> list[Import]:
-    """Os imports de um arquivo, lidos da árvore sintática.
-
-    `ast` e não texto: um `import redis` dentro de uma docstring explicando
-    por que o domínio não importa redis não é um import, e um grep não sabe a
-    diferença.
-    """
-    arvore = ast.parse(caminho.read_text(encoding="utf-8"), filename=str(caminho))
-    achados: list[Import] = []
-    for no in ast.walk(arvore):
-        if isinstance(no, ast.Import):
-            for alias in no.names:
-                achados.append(Import(alias.name, caminho, no.lineno))
-        # `level > 0` é import relativo; o ruff já os proíbe (TID252).
-        elif isinstance(no, ast.ImportFrom) and no.module and no.level == 0:
-            achados.append(Import(no.module, caminho, no.lineno))
-    return achados
-
-
-def _arquivos(*pacotes: str) -> list[Path]:
-    saida: list[Path] = []
-    for pacote in pacotes:
-        base = FONTE / pacote
-        if base.exists():
-            saida.extend(sorted(base.rglob("*.py")))
-    return saida
-
-
-def _raiz_do_modulo(module: str) -> str:
-    return module.split(".", 1)[0]
-
-
-def _violacoes(arquivos: list[Path], proibidos: frozenset[str]) -> list[Import]:
-    return [
-        imp
-        for arquivo in arquivos
-        for imp in _imports(arquivo)
-        if _raiz_do_modulo(imp.module) in proibidos
-    ]
-
-
-def _violacoes_internas(arquivos: list[Path], prefixos: tuple[str, ...]) -> list[Import]:
-    return [
-        imp
-        for arquivo in arquivos
-        for imp in _imports(arquivo)
-        if imp.module.startswith(prefixos)
-    ]
-
+# O VERIFICADOR MORA EM `tests/support/ast_checks.py` desde o PR-02, que
+# acrescentou um segundo arquivo de testes de arquitetura. Duas cópias
+# divergiriam na primeira vez que alguém ajustasse uma — e o pior resultado
+# disso não é falha, é uma das duas deixar de enxergar em silêncio.
 
 pytestmark = pytest.mark.architecture
 
@@ -189,11 +120,20 @@ class TestAppsNaoContornamAsCamadas:
         """A aplicação pede pelo port e recebe o adapter montado na borda.
         Importar o adapter direto amarra o processo à tecnologia.
 
-        `apps/_shared.py` é a exceção declarada: ele É a borda HTTP.
+        DUAS EXCEÇÕES DECLARADAS, e ambas SÃO a borda:
+
+            `apps/_shared.py`                a tradução de erro para HTTP
+            `apps/composition.py`            a raiz de composição
+            `apps/resolution_composition.py` a do PR-03, mais a leitura de
+                                             arquivo que é trabalho de borda
+
+        Todo o resto pede pelo port e recebe o objeto já montado. Um nome novo
+        nesta lista é sinal de que a composição vazou, e o sintoma prático de
+        vazamento é um processo instanciando o próprio pool — uma conexão por
+        requisição.
         """
-        arquivos = [
-            p for p in sorted(APPS.rglob("*.py")) if p.name != "_shared.py"
-        ]
+        excecoes = {"_shared.py", "composition.py", "resolution_composition.py"}
+        arquivos = [p for p in sorted(APPS.rglob("*.py")) if p.name not in excecoes]
         violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))
         assert not violacoes
 

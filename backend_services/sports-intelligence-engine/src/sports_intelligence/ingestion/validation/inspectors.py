@@ -44,7 +44,7 @@ import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, final
+from typing import Final, final
 
 from sports_intelligence.domain.datasets.formats import DatasetFormat
 from sports_intelligence.domain.datasets.schema import (
@@ -187,7 +187,12 @@ def inspect_csv(path: Path, *, file_id: str, max_rows: int) -> Inspection:
         row_count=varredura.rows,
         truncated_columns=len(varredura.header) > MAX_COLUMNS_DESCRIBED,
     )
-    issues.extend(_issues_de_colunas(observacao, file_id))
+    # DO CABEÇALHO CRU, e não da observação. O Polars RENOMEIA colunas
+    # duplicadas ao ler — `Date` e `Date` viram `Date` e `Date_duplicated_0` —
+    # então perguntar à observação sobre duplicatas nunca encontraria nenhuma.
+    # É exatamente o defeito que se quer relatar: a biblioteca resolve
+    # sozinha, e o dado de uma das duas some sem aviso.
+    issues.extend(_issues_de_cabecalho_cru(varredura.header, file_id))
     if varredura.rows == 0:
         issues.append(
             DatasetValidationIssue.of(
@@ -526,6 +531,40 @@ def _issues_agregadas(
                 f"{motivo_impeditivo}",
                 file_id=file_id,
                 severity=IssueSeverity.BLOCKING,
+            )
+        )
+    return issues
+
+
+def _issues_de_cabecalho_cru(
+    cabecalho: list[str], file_id: str
+) -> list[DatasetValidationIssue]:
+    """Defeitos do cabeçalho como ele veio no arquivo, antes de qualquer
+    parser ter a chance de consertá-lo por conta própria."""
+    contagem: dict[str, int] = {}
+    for nome in cabecalho:
+        chave = nome.strip().lower()
+        contagem[chave] = contagem.get(chave, 0) + 1
+
+    issues: list[DatasetValidationIssue] = [
+        DatasetValidationIssue.of(
+            IssueCode.DUPLICATE_COLUMN,
+            f"a coluna {nome!r} aparece {vezes} vezes no cabeçalho — quase toda "
+            "biblioteca renomeia ou descarta uma delas em silêncio",
+            file_id=file_id,
+            location=f"coluna {nome}",
+        )
+        for nome, vezes in sorted(contagem.items())
+        if vezes > 1
+    ]
+    vazias = sum(1 for n in cabecalho if not n.strip())
+    if vazias:
+        issues.append(
+            DatasetValidationIssue.of(
+                IssueCode.EMPTY_COLUMN_NAME,
+                f"{vazias} coluna(s) sem nome no cabeçalho",
+                file_id=file_id,
+                occurrences=vazias,
             )
         )
     return issues

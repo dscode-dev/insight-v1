@@ -103,8 +103,8 @@ class TestCli:
         from apps.cli.main import app
 
         resultado = CliRunner().invoke(app, ["doctor"])
-        assert resultado.exit_code == 0
         assert "postgres" in resultado.stdout
+        assert "object_store" in resultado.stdout
         assert "não configurado" in resultado.stdout
 
     def test_doctor_falha_quando_falta_o_que_e_exigido(
@@ -121,8 +121,61 @@ class TestCli:
 
     def test_doctor_nao_morre_sem_infraestrutura(self) -> None:
         """Um doctor que morre porque não há Postgres é inútil justamente
-        quando é mais necessário: antes de haver Postgres."""
+        quando é mais necessário: antes de haver Postgres.
+
+        "NÃO MORRE" É PRODUZIR O RELATÓRIO, e não devolver zero. A partir do
+        PR-02 o Postgres e o object store passaram a ser exigidos, então o
+        código de saída é 1 quando eles faltam — que é o sinal certo para o
+        CI e para quem está montando o ambiente.
+
+        A distinção que importa é outra, e é ela que este teste protege: o
+        comando percorre TODAS as dependências e imprime a tabela inteira,
+        em vez de abortar na primeira ausência. Um doctor que morre na
+        primeira falta obriga a consertar uma coisa por execução.
+        """
         assert "ENGINE_POSTGRES_HOST" not in os.environ
         from apps.cli.main import app
 
-        assert CliRunner().invoke(app, ["doctor"]).exit_code == 0
+        resultado = CliRunner().invoke(app, ["doctor"])
+        assert resultado.exception is None or isinstance(
+            resultado.exception, SystemExit
+        ), "o doctor levantou exceção em vez de relatar"
+        # A tabela inteira saiu: as sete dependências, não só a primeira que
+        # falhou.
+        for dependencia in (
+            "postgres",
+            "clickhouse",
+            "redis",
+            "object_store",
+            "observability",
+            "security",
+            "intake",
+        ):
+            assert dependencia in resultado.stdout
+        assert "Falta configuração exigida" in resultado.stdout
+
+    def test_doctor_devolve_zero_quando_o_exigido_esta_configurado(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """O outro lado do teste acima: com o exigido no lugar, sai 0.
+
+        As dependências ainda não usadas — ClickHouse, Redis — continuam
+        ausentes e NÃO derrubam o código de saída. É a diferença entre
+        "faltam quatro coisas" e "está pronto para o que existe hoje".
+        """
+        for variavel, valor in {
+            "ENGINE_SECURITY_INTERNAL_TOKEN": "token-de-teste",
+            "ENGINE_POSTGRES_HOST": "localhost",
+            "ENGINE_POSTGRES_DATABASE": "sports_intelligence",
+            "ENGINE_POSTGRES_USER": "engine",
+            "ENGINE_POSTGRES_PASSWORD": "engine_local",
+            "ENGINE_OBJECT_STORE_BUCKET": "sports-intelligence-raw",
+            "ENGINE_OBJECT_STORE_ACCESS_KEY_ID": "minioadmin",
+            "ENGINE_OBJECT_STORE_SECRET_ACCESS_KEY": "minioadmin",
+        }.items():
+            monkeypatch.setenv(variavel, valor)
+        from apps.cli.main import app
+
+        resultado = CliRunner().invoke(app, ["doctor"])
+        assert resultado.exit_code == 0, resultado.stdout
+        assert "Pronto para o que existe hoje" in resultado.stdout

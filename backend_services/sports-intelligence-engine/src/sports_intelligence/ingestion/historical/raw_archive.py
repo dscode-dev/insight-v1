@@ -70,7 +70,7 @@ class RawDatasetArchive:
                 content_type=file.media_type,
                 size_bytes=file.size_bytes,
             )
-        except Exception as erro:  # noqa: BLE001 — traduzir a falha do store
+        except Exception as erro:
             raise DependencyError(
                 f"falha ao gravar {file.safe_filename!r} no arquivo bruto: {erro}",
                 context={"object_key": file.object_key},

@@ -80,14 +80,26 @@ class DatasetLifecycle(StrEnum):
 
     @property
     def accepts_files(self) -> bool:
-        """Se ainda é legítimo anexar arquivo.
+        """Se ainda é legítimo anexar CONTEÚDO NOVO.
 
-        Depois de `UPLOADED` o conjunto de arquivos está selado: acrescentar
-        um arquivo a um dataset já validado mudaria o conteúdo de uma versão
-        cujo relatório e cujo manifesto já foram emitidos — e os dois
-        passariam a descrever algo que não existe mais.
+        O SELO ACONTECE QUANDO A VALIDAÇÃO COMEÇA, e não quando o último
+        upload termina. Um operador que percebe ter esquecido uma temporada
+        depois de enviar as outras está no caso normal: `UPLOADED` volta para
+        `UPLOADING` e o arquivo entra.
+
+        Depois de `VALIDATING` não entra mais. O relatório e o manifesto
+        descrevem um conjunto; um arquivo acrescentado em seguida entraria sem
+        nunca ter sido lido, e o relatório limpo passaria a cobrir conteúdo
+        que ele não examinou.
+
+        REENVIAR OS MESMOS BYTES não passa por aqui — retry é reconhecido pelo
+        hash antes de esta pergunta ser feita. Ver `AttachDatasetFile`.
         """
-        return self in (DatasetLifecycle.REGISTERED, DatasetLifecycle.UPLOADING)
+        return self in (
+            DatasetLifecycle.REGISTERED,
+            DatasetLifecycle.UPLOADING,
+            DatasetLifecycle.UPLOADED,
+        )
 
 
 #: O grafo. Fechado e escrito por extenso, não gerado por regra.
