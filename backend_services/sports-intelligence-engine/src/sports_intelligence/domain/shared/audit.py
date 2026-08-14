@@ -50,6 +50,19 @@ class AuditAction(StrEnum):
     DATASET_STAGED = "DATASET_STAGED"
     DATASET_REJECTED = "DATASET_REJECTED"
 
+    # ---- PR-04.2. O QUE ENTRA AQUI É O CICLO DE VIDA DA EXECUÇÃO, e não o
+    # que ela produziu: `CanonicalBuildRecord` já é a linhagem de cada fato, e
+    # auditar fato a fato faria o volume da trilha ser governado pelo tamanho
+    # do corpus até que ninguém encontre as decisões no meio (§76).
+    QUALITY_RUN_STARTED = "QUALITY_RUN_STARTED"
+    QUALITY_RUN_COMPLETED = "QUALITY_RUN_COMPLETED"
+    CANONICAL_BUILD_STARTED = "CANONICAL_BUILD_STARTED"
+    CANONICAL_BUILD_COMPLETED = "CANONICAL_BUILD_COMPLETED"
+    #: UMA linha por execução com o RESUMO das exclusões por licença — não uma
+    #: por partida. É a pergunta que de fato se faz numa auditoria jurídica:
+    #: «este build comercial descartou o quê, e sob qual licença» (§20, §76).
+    CANONICAL_BUILD_FAMILY_EXCLUDED = "CANONICAL_BUILD_FAMILY_EXCLUDED"
+
     @property
     def is_decision(self) -> bool:
         """Se a ação foi um julgamento humano e não um passo mecânico.

@@ -862,6 +862,38 @@ class PostgresResolutionDecisionRepository:
             for linha in linhas
         }
 
+    async def confidences_for_records(
+        self, run_ids: Sequence[str], record_refs: Sequence[str]
+    ) -> dict[str, dict[SubjectType, float]]:
+        """A confiança POR TIPO de cada linha de fonte do lote, numa consulta.
+
+        A MENOR CONFIANÇA VENCE quando a mesma linha tem duas decisões do
+        mesmo tipo em execuções diferentes. É o elo mais fraco outra vez, e
+        pelo mesmo motivo: a maior faria uma reexecução mais permissiva
+        apagar a evidência de que a anterior duvidou.
+        """
+        if not run_ids or not record_refs:
+            return {}
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                """
+                SELECT record_ref, subject_type, min(confidence) AS confidence
+                FROM resolution_decisions
+                WHERE run_id = ANY($1::uuid[])
+                  AND record_ref = ANY($2::text[])
+                  AND status = 'RESOLVED'
+                GROUP BY record_ref, subject_type
+                """,
+                [uuid.UUID(r) for r in run_ids],
+                list(dict.fromkeys(record_refs)),
+            )
+        saida: dict[str, dict[SubjectType, float]] = {}
+        for linha in linhas:
+            saida.setdefault(linha["record_ref"], {})[
+                SubjectType(linha["subject_type"])
+            ] = float(linha["confidence"])
+        return saida
+
     @staticmethod
     async def _evidencias(conexao: Any, decision_id: uuid.UUID) -> tuple[ResolutionEvidence, ...]:
         linhas = await conexao.fetch(

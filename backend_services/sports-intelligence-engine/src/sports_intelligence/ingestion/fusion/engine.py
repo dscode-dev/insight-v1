@@ -27,6 +27,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Final, final
 
 from sports_intelligence.domain.fusion.models import (
+    ODDS_OBSERVATION_KIND,
     CanonicalFieldCandidate,
     FieldContribution,
     FusionGroup,
@@ -46,9 +47,11 @@ from sports_intelligence.domain.shared.errors import ValidationError
 from sports_intelligence.domain.shared.identity import MatchId
 from sports_intelligence.domain.sources.semantics import SemanticRole
 
-#: O tipo do conjunto de observações de odds. Uma constante porque ele é
-#: comparado em três lugares, e três literais divergem.
-ODDS_SET_KIND: Final[str] = "odds"
+#: O tipo do conjunto de observações de odds. Reexportado do domínio, onde ele
+#: passou a morar no PR-04.2: quem LÊ um candidato fundido — a avaliação de
+#: qualidade, a construção canônica — precisa reconhecer o conjunto sem
+#: importar este motor para isso.
+ODDS_SET_KIND: Final[str] = ODDS_OBSERVATION_KIND
 
 
 def group_by_identity(

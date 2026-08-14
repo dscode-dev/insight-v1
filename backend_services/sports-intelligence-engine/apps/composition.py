@@ -25,6 +25,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import final
 
+from apps.build_composition import (
+    BuildContainer,
+    build_build_container,
+    candidate_batches,
+    evidence_batches,
+    rebuild_fusion_output,
+)
 from apps.resolution_composition import (
     ResolutionContainer,
     build_resolution_container,
@@ -44,6 +51,7 @@ from sports_intelligence.adapters.postgres.dataset_registry import (
 )
 from sports_intelligence.adapters.s3.filesystem import FilesystemObjectStore
 from sports_intelligence.adapters.s3.object_store import S3ObjectStore
+from sports_intelligence.application.use_cases.canonical_build import BuildOutput
 from sports_intelligence.application.use_cases.datasets import (
     AttachDatasetFile,
     GetDataset,
@@ -56,6 +64,7 @@ from sports_intelligence.application.use_cases.datasets import (
     ValidateDataset,
 )
 from sports_intelligence.application.use_cases.fusion import FusionOutput
+from sports_intelligence.application.use_cases.quality import QualityOutput
 from sports_intelligence.application.use_cases.resolution import ResolutionOutput
 from sports_intelligence.config.settings import (
     AppSettings,
@@ -65,6 +74,7 @@ from sports_intelligence.config.settings import (
     PostgresSettings,
     assert_object_store_is_durable,
 )
+from sports_intelligence.domain.build.policy import CanonicalBuildPolicy
 from sports_intelligence.domain.datasets.content import ContentHash
 from sports_intelligence.domain.fusion.models import ResolvedSourceRecord
 from sports_intelligence.domain.shared.actor import Actor
@@ -95,6 +105,10 @@ class Container:
     intake: IntakeSettings
     database: Database
     object_store: ObjectStorePort
+    #: O repositório de datasets, exposto porque a BORDA do PR-04.2 relê as
+    #: fontes de uma execução para remontar os candidatos fundidos — e ela
+    #: precisa do dataset, não do caso de uso que o busca.
+    datasets: PostgresDatasetRepository
     register: RegisterDataset
     attach: AttachDatasetFile
     validate: ValidateDataset
@@ -109,6 +123,11 @@ class Container:
     #: checador de tipos, ao contrário de um `__getattr__` que delega e
     #: devolve `object`.
     resolution: ResolutionContainer
+    #: O grafo do PR-04.2, no mesmo desenho: um campo próprio, verificável
+    #: pelo checador de tipos. Ele NÃO tem rota nem comando ainda — a API e a
+    #: CLI do PR-04 são a fase seguinte (§72, §73) — e existe para que os
+    #: casos de uso sejam composicionalmente alcançáveis (§74).
+    build: BuildContainer
     archive: RawDatasetArchivePort
     clock: SystemClock
 
@@ -193,6 +212,71 @@ class Container:
             correlation_id=correlation_id,
         )
 
+    async def run_quality_for_fusion(
+        self,
+        *,
+        actor: Actor,
+        fusion_run_ids: Sequence[str],
+        resolution_run_ids: Sequence[str],
+        correlation_id: str | None = None,
+    ) -> QualityOutput:
+        """Remonta a saída fundida e avalia a qualidade dela.
+
+        A REMONTAGEM MORA NA BORDA, como toda leitura de fonte desta base. O
+        caso de uso recebe lotes de evidência e nada mais — é o que o mantém
+        testável sem object store.
+        """
+        grupos, candidatos = await rebuild_fusion_output(
+            resolution=self.resolution,
+            datasets=self.datasets,
+            archive=self.archive,
+            resolution_run_ids=resolution_run_ids,
+        )
+        return await self.build.run_quality.execute(
+            actor=actor,
+            fusion_run_ids=fusion_run_ids,
+            batches=evidence_batches(
+                resolution=self.resolution,
+                groups=grupos,
+                candidates=candidatos,
+                resolution_run_ids=resolution_run_ids,
+            ),
+            correlation_id=correlation_id,
+        )
+
+    async def run_canonical_build_for_quality(
+        self,
+        *,
+        actor: Actor,
+        quality_run_id: str,
+        resolution_run_ids: Sequence[str],
+        policy: CanonicalBuildPolicy | None = None,
+        correlation_id: str | None = None,
+    ) -> BuildOutput:
+        """Constrói os fatos canônicos autorizados por uma avaliação.
+
+        A POLÍTICA É PARÂMETRO, e é o §18: a mesma avaliação sob a política de
+        pesquisa e sob a comercial produz corpus diferentes, e os dois
+        coexistem. Sem ela na assinatura, um dos dois seria inalcançável.
+        """
+        _, candidatos = await rebuild_fusion_output(
+            resolution=self.resolution,
+            datasets=self.datasets,
+            archive=self.archive,
+            resolution_run_ids=resolution_run_ids,
+        )
+        caso = (
+            self.build.run_research_build
+            if policy is None
+            else self.build.build_for(policy)
+        )
+        return await caso.execute(
+            actor=actor,
+            quality_run_id=quality_run_id,
+            batches=candidate_batches(candidates=candidatos),
+            correlation_id=correlation_id,
+        )
+
 
 def build_container(settings: AppSettings | None = None) -> Container:
     """Constrói o grafo. Chamado no startup do processo, nunca por requisição."""
@@ -230,11 +314,22 @@ def build_container(settings: AppSettings | None = None) -> Container:
         ),
     )
 
+    resolucao = build_resolution_container(
+        database=database,
+        archive=archive,
+        datasets=datasets,
+        clock=clock,
+        audit=audit,
+        publisher=publisher,
+        batch_size=intake.resolution_batch_size,
+    )
+
     return Container(
         settings=app_settings,
         intake=intake,
         database=database,
         object_store=store,
+        datasets=datasets,
         register=RegisterDataset(
             datasets=datasets, clock=clock, audit=audit, publisher=publisher
         ),
@@ -271,14 +366,9 @@ def build_container(settings: AppSettings | None = None) -> Container:
         validation=GetDatasetValidation(datasets=datasets, validations=validations),
         manifest=GetDatasetManifest(manifests=manifests),
         reconcile=ReconcilePendingUploads(files=files, archive=archive, clock=clock),
-        resolution=build_resolution_container(
-            database=database,
-            archive=archive,
-            datasets=datasets,
-            clock=clock,
-            audit=audit,
-            publisher=publisher,
-            batch_size=intake.resolution_batch_size,
+        resolution=resolucao,
+        build=build_build_container(
+            database=database, resolution=resolucao, clock=clock, audit=audit
         ),
         archive=archive,
         clock=clock,

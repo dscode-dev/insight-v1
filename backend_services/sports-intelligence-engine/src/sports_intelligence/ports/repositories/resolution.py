@@ -239,6 +239,23 @@ class ResolutionDecisionRepositoryPort(Protocol):
 
     async def by_id(self, decision_id: str) -> ResolutionDecision | None: ...
 
+    async def confidences_for_records(
+        self, run_ids: Sequence[str], record_refs: Sequence[str]
+    ) -> dict[str, dict[SubjectType, float]]:
+        """`record_ref → {tipo de identidade: confiança}` das decisões RESOLVED.
+
+        É O QUE A AVALIAÇÃO DE QUALIDADE CONSOME (§13). Ela precisa da
+        confiança POR TIPO — competição, temporada, time, partida — para
+        conferir cada uma contra o piso DELA, e não contra uma média que
+        deixaria um jogador em 0,4 passar escondido atrás de quatro
+        identidades em 0,95.
+
+        EM MASSA, POR LOTE DE REFERÊNCIAS. Buscar decisão a decisão faria uma
+        consulta por linha de fonte — o N+1 que a assinatura destes ports
+        existe para impedir. `record_refs` é o lote que está sendo avaliado.
+        """
+        ...
+
     async def resolved_entities_of_run(
         self, run_id: str, subject: SubjectType
     ) -> dict[str, str]:

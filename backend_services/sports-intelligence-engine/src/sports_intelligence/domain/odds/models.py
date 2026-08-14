@@ -191,3 +191,98 @@ class OddsQuote:
             f"{self.bookmaker} {self.market}{linha} {self.selection}={self.decimal_odds}"
             f"{marca}"
         )
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class CanonicalOddsObservation:
+    """Uma cotação HISTÓRICA canônica — cujo instante pode ser desconhecido.
+
+    POR QUE ELA NÃO É UM `OddsQuote`. `OddsQuote` exige `observed_at`, e a
+    exigência está certa para o caminho AO VIVO: ali cada tick tem instante, e
+    a diferença entre abertura e fechamento é o sinal.
+
+    Um arquivo histórico de futebol publica UMA cotação por casa e por partida,
+    e não diz quando ela foi observada. As três saídas possíveis eram:
+
+        exigir o instante             a família inteira ficaria de fora do
+                                      corpus, por um metadado que a fonte não
+                                      tem
+        preencher com o kickoff       inventar um fato — e um fato inventado
+                                      que parece plausível é o pior tipo
+        registrar a ausência          `None`, que é a resposta honesta (§44)
+
+    A terceira. `observed_at is None` significa «esta fonte não declara quando
+    observou», e é distinto de qualquer instante — inclusive do instante em
+    que NÓS lemos o arquivo, que descreve a nossa leitura e não a cotação.
+
+    A IDENTIDADE DA V1 NÃO MUDA (§43). Ela continua sendo (partida, casa,
+    mercado, seleção, linha) — exatamente o que o PR-03.2 entregou. O instante
+    NÃO entra nela, e por isso duas leituras do mesmo arquivo produzem a mesma
+    observação em vez de duas.
+
+    NUNCA UMA MÉDIA (§42). `Bet365 @ 2.00` e `Pinnacle @ 2.05` são DUAS
+    observações. `2.025` é um preço que casa nenhuma ofereceu, e ele apagaria
+    justamente a dispersão entre casas, que é o sinal.
+    """
+
+    match_id: MatchId
+    bookmaker: BookmakerRef
+    market: OddsMarket
+    selection: OddsSelection
+    decimal_odds: Decimal
+    provenance: DataProvenance
+    line: Decimal | None = None
+    #: `None` quando a fonte não declara. NUNCA o kickoff, nunca `now()`.
+    observed_at: Instant | None = None
+
+    def __post_init__(self) -> None:
+        if self.selection not in self.market.selections:
+            raise ValueError(
+                f"seleção {self.selection} não existe no mercado {self.market}; "
+                f"as válidas são {sorted(s.value for s in self.market.selections)}"
+            )
+        if self.decimal_odds <= Decimal(1):
+            raise ValueError(
+                f"decimal_odds={self.decimal_odds} deve ser > 1: uma cotação decimal "
+                "inclui o valor apostado, então 1,00 seria devolver o dinheiro"
+            )
+        if self.decimal_odds > Decimal(1000):
+            raise ValueError(f"decimal_odds={self.decimal_odds} implausível")
+        if self.market.requires_line and self.line is None:
+            raise ValueError(
+                f"{self.market} exige linha: 'mais de 2,5' e 'mais de 3,5' são apostas "
+                "diferentes com a mesma seleção"
+            )
+        if not self.market.requires_line and self.line is not None:
+            raise ValueError(f"{self.market} não tem linha, e veio com {self.line}")
+
+    @property
+    def identity(self) -> tuple[str, str, str, str, str | None]:
+        """A chave da V1 (§43). Sem instante, sem id de cotação do provedor."""
+        return (
+            str(self.match_id),
+            str(self.bookmaker),
+            self.market.value,
+            self.selection.value,
+            str(self.line) if self.line is not None else None,
+        )
+
+    @property
+    def observation_time_is_known(self) -> bool:
+        """Se a fonte declarou quando observou. Explícito porque a resposta
+        `False` é informação, e um `observed_at is None` espalhado pelo código
+        vira uma checagem que alguém esquece."""
+        return self.observed_at is not None
+
+    def __str__(self) -> str:
+        linha = f" @{self.line}" if self.line is not None else ""
+        quando = (
+            self.observed_at.isoformat()
+            if self.observed_at is not None
+            else "instante não declarado"
+        )
+        return (
+            f"{self.bookmaker} {self.market}{linha} {self.selection}="
+            f"{self.decimal_odds} ({quando})"
+        )

@@ -45,6 +45,15 @@ from sports_intelligence.domain.sources.semantics import SemanticRole
 
 MAX_ALTERNATIVES_PER_FIELD: Final[int] = 8
 
+#: O `kind` do conjunto de observações de odds na saída fundida.
+#:
+#: MORA NO DOMÍNIO porque ele faz parte do CONTRATO da saída, e não do motor
+#: que a produz: quem lê um candidato fundido — a avaliação de qualidade, a
+#: construção canônica — precisa reconhecer o conjunto sem importar o motor de
+#: fusão para isso. Um literal `"odds"` repetido em cada leitor divergiria no
+#: primeiro que alguém escrevesse `"ODDS"`.
+ODDS_OBSERVATION_KIND: Final[str] = "odds"
+
 
 class FusionRule(StrEnum):
     """Como um valor foi escolhido. Catálogo fechado, sem `AUTO`.

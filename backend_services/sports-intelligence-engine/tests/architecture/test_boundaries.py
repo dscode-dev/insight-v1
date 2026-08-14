@@ -120,19 +120,28 @@ class TestAppsNaoContornamAsCamadas:
         """A aplicação pede pelo port e recebe o adapter montado na borda.
         Importar o adapter direto amarra o processo à tecnologia.
 
-        DUAS EXCEÇÕES DECLARADAS, e ambas SÃO a borda:
+        QUATRO EXCEÇÕES DECLARADAS, e todas SÃO a borda:
 
             `apps/_shared.py`                a tradução de erro para HTTP
             `apps/composition.py`            a raiz de composição
             `apps/resolution_composition.py` a do PR-03, mais a leitura de
                                              arquivo que é trabalho de borda
+            `apps/build_composition.py`      a do PR-04.2, mais a remontagem
+                                             dos candidatos fundidos, que é
+                                             leitura de fonte pelo mesmo
+                                             caminho da fusão
 
         Todo o resto pede pelo port e recebe o objeto já montado. Um nome novo
         nesta lista é sinal de que a composição vazou, e o sintoma prático de
         vazamento é um processo instanciando o próprio pool — uma conexão por
         requisição.
         """
-        excecoes = {"_shared.py", "composition.py", "resolution_composition.py"}
+        excecoes = {
+            "_shared.py",
+            "composition.py",
+            "resolution_composition.py",
+            "build_composition.py",
+        }
         arquivos = [p for p in sorted(APPS.rglob("*.py")) if p.name not in excecoes]
         violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))
         assert not violacoes
