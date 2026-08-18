@@ -448,23 +448,40 @@ async def _gravar_cobertura(conexao: Any, records: Sequence[MatchQualityRecord])
 
 
 async def _gravar_licencas(conexao: Any, records: Sequence[MatchQualityRecord]) -> None:
+    """A pegada de licença POR FAMÍLIA, com o suporte independente marcado.
+
+    `independent` É O QUE SEPARA CONFIRMAÇÃO DE DERIVAÇÃO (PR-04.2.1 §42).
+    Sem a coluna, «a fonte restrita confirmou o placar público» e «o placar
+    saiu de um desempate entre as duas» viram a mesma linha — e a política de
+    build passa a tratar as duas como restritas, perdendo justamente as
+    partidas mais bem confirmadas.
+    """
+    pegadas = [(uuid.UUID(r.id), r.assessment.usage.footprint) for r in records]
     linhas = [
-        (uuid.UUID(r.id), familia, licenca)
-        for r in records
-        for familia, licencas in r.assessment.usage.footprint.by_family.items()
+        (
+            identificador,
+            familia,
+            licenca,
+            licenca in pegada.independent_support.get(familia, frozenset()),
+        )
+        for identificador, pegada in pegadas
+        for familia, licencas in pegada.by_family.items()
         for licenca in sorted(licencas, key=lambda lic: lic.value)
     ]
     if not linhas:
         return
     await conexao.execute(
         """
-        INSERT INTO quality_assessment_licenses (assessment_id, family, license_class)
-        SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[])
-        ON CONFLICT DO NOTHING
+        INSERT INTO quality_assessment_licenses (
+            assessment_id, family, license_class, independent
+        )
+        SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::boolean[])
+        ON CONFLICT (assessment_id, family, license_class) DO NOTHING
         """,
-        [i for i, _, _ in linhas],
-        [f.value for _, f, _ in linhas],
-        [lic.value for _, _, lic in linhas],
+        [i for i, _, _, _ in linhas],
+        [f.value for _, f, _, _ in linhas],
+        [lic.value for _, _, lic, _ in linhas],
+        [sozinha for _, _, _, sozinha in linhas],
     )
 
 
@@ -638,12 +655,24 @@ def _para_registro(
 
 
 def _pegada(licencas: Sequence[Any]) -> LicenseFootprint:
+    """A pegada relida do banco — INCLUSIVE o suporte independente.
+
+    É O QUE O §35 DO PR-04.2.1 EXIGE: a política de build consome exatamente
+    o que foi gravado, e não uma reconstrução parecida feita na camada de
+    aplicação. Perder a coluna `independent` aqui faria a decisão de build
+    diferir entre «acabou de avaliar» e «releu do banco».
+    """
     por_familia: dict[CoverageFamily, set[LicenseClass]] = {}
+    sozinhas: dict[CoverageFamily, set[LicenseClass]] = {}
     for linha in licencas:
         familia = CoverageFamily(linha["family"])
-        por_familia.setdefault(familia, set()).add(LicenseClass(linha["license_class"]))
+        classe = LicenseClass(linha["license_class"])
+        por_familia.setdefault(familia, set()).add(classe)
+        if linha["independent"]:
+            sozinhas.setdefault(familia, set()).add(classe)
     return LicenseFootprint(
-        by_family={f: frozenset(ls) for f, ls in por_familia.items()}
+        by_family={f: frozenset(ls) for f, ls in por_familia.items()},
+        independent_support={f: frozenset(ls) for f, ls in sozinhas.items()},
     )
 
 

@@ -1354,6 +1354,15 @@ class PostgresFusionRunRepository:
             )
         return [_corpo(linha["body"]) for linha in linhas], int(total or 0)
 
+    async def group_ids_of(self, run_id: str) -> dict[str, str]:
+        """Os grupos que esta execução persistiu, por partida canônica."""
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                "SELECT canonical_match_id, id FROM fusion_groups WHERE fusion_run_id = $1",
+                uuid.UUID(run_id),
+            )
+        return {str(linha["canonical_match_id"]): str(linha["id"]) for linha in linhas}
+
     async def conflicts_of(
         self, run_id: str, *, limit: int = 100
     ) -> Sequence[tuple[str, str, str]]:

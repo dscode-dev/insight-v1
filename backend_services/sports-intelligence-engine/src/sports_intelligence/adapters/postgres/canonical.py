@@ -425,15 +425,19 @@ class PostgresCanonicalBuildRunRepository:
                 """
                 INSERT INTO canonical_build_runs (
                     id, quality_run_id, build_policy_major, build_policy_minor,
-                    scope, quality_policy_major, quality_policy_minor,
+                    build_policy_fingerprint, scope,
+                    quality_policy_major, quality_policy_minor,
                     status, started_at, triggered_by, triggered_by_kind
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 """,
                 uuid.UUID(run.id),
                 uuid.UUID(run.quality_run_id),
                 run.build_policy_version.major,
                 run.build_policy_version.minor,
+                run.build_policy_fingerprint.value
+                if run.build_policy_fingerprint
+                else None,
                 run.scope.value,
                 run.quality_policy_version.major,
                 run.quality_policy_version.minor,
@@ -774,6 +778,11 @@ def _para_build(linha: Any, fusion_run_ids: tuple[str, ...]) -> CanonicalBuildRu
         input_fusion_run_ids=fusion_run_ids,
         build_policy_version=PolicyVersion(
             major=linha["build_policy_major"], minor=linha["build_policy_minor"]
+        ),
+        build_policy_fingerprint=(
+            ContentHash(linha["build_policy_fingerprint"])
+            if linha["build_policy_fingerprint"]
+            else None
         ),
         scope=UsageScope(linha["scope"]),
         quality_policy_version=PolicyVersion(

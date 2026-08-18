@@ -231,6 +231,9 @@ class Container:
             datasets=self.datasets,
             archive=self.archive,
             resolution_run_ids=resolution_run_ids,
+            # O ID DO GRUPO PRECISA SER O QUE A FUSÃO GRAVOU, senão a linhagem
+            # do fato canônico aponta para um grupo que não existe (§47).
+            fusion_run_id=fusion_run_ids[0] if fusion_run_ids else None,
         )
         return await self.build.run_quality.execute(
             actor=actor,

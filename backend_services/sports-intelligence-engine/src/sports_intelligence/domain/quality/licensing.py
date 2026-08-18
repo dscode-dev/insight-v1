@@ -132,6 +132,30 @@ class LicenseFootprint:
     by_family: dict[CoverageFamily, frozenset[LicenseClass]] = field(
         default_factory=dict
     )
+    #: As licenças das fontes que sustentam a família **SOZINHAS** — as que
+    #: teriam produzido o MESMO valor sem nenhuma das outras.
+    #:
+    #: POR QUE ISTO NÃO É REDUNDANTE COM `by_family` (PR-04.2.1 §42). Existe
+    #: uma diferença material entre um valor DERIVADO do conjunto e um valor
+    #: que várias fontes afirmaram IGUALMENTE:
+    #:
+    #:     conflito resolvido consultando A e B   o valor foi produzido usando
+    #:                                            as duas; a restrição da mais
+    #:                                            restritiva vale (§35, §76)
+    #:
+    #:     A e B disseram exatamente o mesmo      o valor seria idêntico só
+    #:                                            com A; a presença de B não o
+    #:                                            derivou, e não o contamina
+    #:
+    #: Sem esta distinção, uma fonte restrita que apenas CONFIRMA um fato de
+    #: domínio público condenaria o fato — e o corpus comercial perderia
+    #: exatamente as partidas mais bem confirmadas.
+    #:
+    #: VAZIO É O DEFAULT E É CONSERVADOR: sem suporte independente declarado,
+    #: vale a regra antiga, que é a restritiva.
+    independent_support: dict[CoverageFamily, frozenset[LicenseClass]] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         for familia, licencas in self.by_family.items():
@@ -141,11 +165,38 @@ class LicenseFootprint:
                     "recebeu contribuição sabe de quem ela veio, e uma que não "
                     "recebeu não deveria estar no mapa"
                 )
+        desconhecidas = set(self.independent_support) - set(self.by_family)
+        if desconhecidas:
+            raise ValidationError(
+                f"suporte independente para família sem contribuição: "
+                f"{sorted(f.value for f in desconhecidas)} — uma fonte não pode "
+                "sustentar sozinha algo que ela não contribuiu"
+            )
 
     @property
     def all_licenses(self) -> frozenset[LicenseClass]:
         return frozenset(
             licenca for licencas in self.by_family.values() for licenca in licencas
+        )
+
+    def family_verdict(
+        self, family: CoverageFamily, scope: UsageScope
+    ) -> UsageEligibility:
+        """O veredito de UMA família, considerando o suporte independente.
+
+        A ORDEM DA PERGUNTA É O PONTO: primeiro «há alguma fonte elegível que
+        sustenta isto sozinha?». Se há, a família é utilizável — o fato existe
+        sem a fonte restrita. Só quando NÃO há é que a regra do conjunto vale,
+        e ela é a mais restritiva.
+        """
+        sozinhas = self.independent_support.get(family, frozenset())
+        if any(eligibility_of(lic, scope) is UsageEligibility.ELIGIBLE for lic in sozinhas):
+            return UsageEligibility.ELIGIBLE
+        return worst(
+            tuple(
+                eligibility_of(lic, scope)
+                for lic in self.by_family.get(family, frozenset())
+            )
         )
 
     def verdict(
@@ -156,14 +207,18 @@ class LicenseFootprint:
         `excluding` É O MECANISMO DO §36, e ele é EXPLÍCITO de propósito: a
         exclusão precisa vir de uma política declarada, nunca de o motor
         decidir sozinho descartar dado restrito para conseguir publicar.
+
+        O PIOR ENTRE AS FAMÍLIAS, e cada família decidida por
+        `family_verdict`. Achatar tudo numa lista de licenças — como era antes
+        do PR-04.2.1 — perderia o suporte independente, que é por família.
         """
-        consideradas = tuple(
-            licenca
-            for familia, licencas in self.by_family.items()
-            if familia not in excluding
-            for licenca in licencas
+        return worst(
+            tuple(
+                self.family_verdict(familia, scope)
+                for familia in self.by_family
+                if familia not in excluding
+            )
         )
-        return worst(tuple(eligibility_of(licenca, scope) for licenca in consideradas))
 
     def families_blocking(self, scope: UsageScope) -> tuple[CoverageFamily, ...]:
         """As famílias cuja licença impede o escopo — as candidatas a exclusão.
@@ -175,8 +230,8 @@ class LicenseFootprint:
             sorted(
                 (
                     familia
-                    for familia, licencas in self.by_family.items()
-                    if worst(tuple(eligibility_of(lic, scope) for lic in licencas))
+                    for familia in self.by_family
+                    if self.family_verdict(familia, scope)
                     is UsageEligibility.INELIGIBLE
                 ),
                 key=lambda f: f.value,
@@ -192,7 +247,12 @@ class LicenseFootprint:
         juntas: dict[CoverageFamily, frozenset[LicenseClass]] = dict(self.by_family)
         for familia, licencas in other.by_family.items():
             juntas[familia] = juntas.get(familia, frozenset()) | licencas
-        return LicenseFootprint(by_family=juntas)
+        sozinhas: dict[CoverageFamily, frozenset[LicenseClass]] = dict(
+            self.independent_support
+        )
+        for familia, licencas in other.independent_support.items():
+            sozinhas[familia] = sozinhas.get(familia, frozenset()) | licencas
+        return LicenseFootprint(by_family=juntas, independent_support=sozinhas)
 
     def as_canonical(self) -> dict[str, list[str]]:
         return {

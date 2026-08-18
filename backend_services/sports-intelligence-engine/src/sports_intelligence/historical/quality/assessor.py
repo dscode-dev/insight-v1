@@ -26,7 +26,9 @@ from typing import Final, final
 from sports_intelligence.domain.build.facts import LineupDraft
 from sports_intelligence.domain.fusion.models import (
     ODDS_OBSERVATION_KIND,
+    CanonicalFieldCandidate,
     FusionGroup,
+    FusionRule,
 )
 from sports_intelligence.domain.fusion.runs import FusedMatchCandidate
 from sports_intelligence.domain.quality.assessment import (
@@ -51,8 +53,22 @@ from sports_intelligence.domain.sources.semantics import SemanticRole
 #: Os papéis que compõem o NÚCLEO de uma partida. Conflito não resolvido num
 #: deles é bloqueante; nos demais, não chega a virar problema de qualidade —
 #: vira uma família indecidível, que é decisão de build (§45, §46).
-CORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(
+#:
+#: `KICKOFF` ENTRA AQUI (PR-04.2.1 §12, §13), e a inclusão desfaz uma
+#: generalização que teria sido errada. Rótulo de identidade não vira conflito
+#: — `Man City` e `Manchester City` são a mesma coisa provada. Horário NÃO é
+#: rótulo: duas fontes com 20:00 e 23:00 estão discordando sobre quando a
+#: partida aconteceu, e um corpus que engolisse isso guardaria um fato que
+#: nenhuma das duas afirmou.
+#: Os papéis do PLACAR. Eles decidem se existe RESULTADO — e só eles: o
+#: horário não é placar, e exigi-lo para dizer «tem resultado» faria toda fonte
+#: sem coluna de kickoff parecer sem placar.
+SCORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(
     {SemanticRole.HOME_SCORE, SemanticRole.AWAY_SCORE}
+)
+
+CORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(
+    SCORE_ROLES | {SemanticRole.KICKOFF}
 )
 
 #: As identidades sem as quais uma partida canônica não existe (§13). Jogador
@@ -245,11 +261,41 @@ class HistoricalQualityAssessor:
         DE TODAS AS CONTRIBUIÇÕES, e não só da vencedora (§49). Um campo cujo
         conflito foi resolvido consultando a fonte restrita foi produzido
         usando-a, mesmo que o valor final tenha vindo de outra.
+
+        RÓTULO DE IDENTIDADE NÃO É PROCEDÊNCIA FACTUAL (PR-04.2.1 §4, §7, §11).
+        Toda fonte precisa escrever o nome dos times para que a resolução
+        consiga casar a linha — e o `Match` canônico NÃO é construído a partir
+        desses textos: ele vem de `MatchIdentityFacts`, lido do registro, com
+        identidade provada no PR-03. Uma fonte `RESEARCH_ONLY` que apenas
+        escreve `Man City` ajudou a RECONHECER o time; ela não é a autoridade
+        de que a partida aconteceu.
+
+        Contá-la faria toda fonte de odds restringir o núcleo por ter dito de
+        que jogo se trata, e o §19 deixaria de ser expressável.
+
+        MAS O FATO CONTINUA SUJEITO A PROCEDÊNCIA (§6, §8). `KICKOFF`,
+        `ROUND_NUMBER`, `VENUE_NAME` e as observações AFIRMAM coisas, e quem
+        as afirma é procedência factual do núcleo — com as consequências de
+        licença que isso implica. Se a única fonte que afirma que a partida
+        existe é `RESEARCH_ONLY`, o núcleo não vira comercialmente livre só
+        porque os times já tinham id canônico.
+
+        O SUPORTE INDEPENDENTE É A TERCEIRA PEÇA (§42). Quando várias fontes
+        dizem exatamente o mesmo — `EXACT_AGREEMENT` —, o valor seria idêntico
+        sem a restrita; ela confirma, não deriva. Quando o valor saiu de um
+        desempate entre fontes, ele foi produzido usando todas, e a mais
+        restritiva governa (§35 do PR-04.1, preservado).
         """
         por_familia: dict[CoverageFamily, set[LicenseClass]] = {}
+        sozinhas: dict[CoverageFamily, set[LicenseClass]] = {}
         for campo in evidence.candidate.fields:
+            if campo.field_name.is_identity_label:
+                continue
             familia = family_of(campo.field_name)
             por_familia.setdefault(familia, set()).update(campo.licenses)
+            independentes = _licencas_independentes(campo)
+            if independentes:
+                sozinhas.setdefault(familia, set()).update(independentes)
         for conjunto in evidence.candidate.observation_sets:
             familia = (
                 CoverageFamily.ODDS
@@ -257,8 +303,15 @@ class HistoricalQualityAssessor:
                 else CoverageFamily.MATCH
             )
             por_familia.setdefault(familia, set()).update(conjunto.licenses)
+            # CADA OBSERVAÇÃO É UM FATO PRÓPRIO de uma fonte só: a cotação da
+            # Bet365 não foi derivada da da Pinnacle. Cada uma sustenta a si
+            # mesma, e a família é sustentada por quem trouxe qualquer uma.
+            sozinhas.setdefault(familia, set()).update(conjunto.licenses)
         return LicenseFootprint(
-            by_family={f: frozenset(ls) for f, ls in por_familia.items() if ls}
+            by_family={f: frozenset(ls) for f, ls in por_familia.items() if ls},
+            independent_support={
+                f: frozenset(ls) for f, ls in sozinhas.items() if ls and f in por_familia
+            },
         )
 
     # ------------------------------------------------------------ problemas --
@@ -461,9 +514,15 @@ class HistoricalQualityAssessor:
         referência aponta para algo que existe ou não aponta, e uma data fecha
         ou não fecha. Uma fração ali seria a média de coisas que não somam.
 
-        `consistency` e `provenance_quality` são FRAÇÕES porque há o que
-        contar: campos sem conflito sobre campos, contribuições com
-        procedência sobre contribuições.
+        `consistency` CONTA SÓ O NÚCLEO, e a restrição é o §46 escrito no
+        eixo. Contar todos os campos faria UM conflito de formação num
+        candidato de seis campos dar 0,83 — abaixo do piso de 0,95 — e a
+        partida inteira reprovaria por causa de uma escalação indecidível.
+        A escalação some; a partida fica. O conflito opcional continua
+        visível, em `families_in_conflict`, para a política de build decidir.
+
+        `provenance_quality` é fração porque há o que contar: contribuições
+        com procedência sobre contribuições.
 
         `identity_confidence` é o ELO MAIS FRACO e não a média — a mesma
         decisão do PR-00, pelo mesmo motivo: média deixa um eixo em 0,4 ser
@@ -471,19 +530,24 @@ class HistoricalQualityAssessor:
         """
         candidato = evidence.candidate
         campos = candidato.fields
-        conflitos = len(candidato.unresolved_conflicts)
         contribuicoes = [c for campo in campos for c in campo.contributions]
         com_procedencia = sum(
             1 for c in contribuicoes if str(c.record_ref).strip()
         )
-        nucleo_presente = sum(
-            1 for papel in CORE_ROLES if _tem_valor(candidato, papel)
+        nucleo_total = sum(
+            1 for campo in campos if campo.field_name in CORE_ROLES
+        )
+        nucleo_em_conflito = sum(
+            1 for campo in candidato.unresolved_conflicts if campo.field_name in CORE_ROLES
+        )
+        placar_presente = sum(
+            1 for papel in SCORE_ROLES if _tem_valor(candidato, papel)
         )
         return QualityVector(
             integrity=_zero_se(problemas, IssueCode.MISSING_REQUIRED_IDENTITY,
                                IssueCode.DANGLING_CANONICAL_REFERENCE),
-            consistency=_fracao(len(campos) - conflitos, len(campos)),
-            completeness=_fracao(nucleo_presente, len(CORE_ROLES)),
+            consistency=_fracao(nucleo_total - nucleo_em_conflito, nucleo_total),
+            completeness=_fracao(placar_presente, len(SCORE_ROLES)),
             identity_confidence=identidades.aggregate,
             temporal_integrity=_zero_se(
                 problemas,
@@ -503,6 +567,19 @@ class HistoricalQualityAssessor:
         O NÚCLEO NÃO ENTRA AQUI: um conflito de placar já virou problema
         BLOQUEANTE de qualidade, e listá-lo de novo faria a mesma coisa ser
         decidida em dois lugares (§5).
+
+        OS RÓTULOS DE IDENTIDADE TAMBÉM NÃO (§5): `Man City` numa fonte e
+        `Manchester City` noutra é desacordo de GRAFIA, não de fato — e
+        absorvê-lo é literalmente o que a resolução existe para fazer (PR-03).
+        As duas já terminaram no mesmo `TeamId`, provado por decisão com
+        evidência. Tratá-lo como conflito faria toda fusão multi-fonte legítima
+        derrubar o núcleo, e o motor rejeitaria exatamente os candidatos que
+        várias fontes confirmam.
+
+        MAS FATO CONTINUA SENDO FATO (§12). `KICKOFF` está no NÚCLEO e é
+        bloqueante; `ROUND_NUMBER` e `VENUE_NAME` são fato de nível de partida
+        e entram como família em conflito. A regra não é «papel de identidade
+        nunca participa» — é «rótulo não participa».
         """
         return tuple(
             sorted(
@@ -510,6 +587,7 @@ class HistoricalQualityAssessor:
                     family_of(campo.field_name)
                     for campo in evidence.candidate.unresolved_conflicts
                     if campo.field_name not in CORE_ROLES
+                    and not campo.field_name.is_identity_label
                 },
                 key=lambda f: f.value,
             )
@@ -528,6 +606,35 @@ class HistoricalQualityAssessor:
         if any(not r.is_fully_resolved for r in evidence.lineup_drafts):
             return (CoverageFamily.LINEUP, CoverageFamily.PLAYER)
         return ()
+
+
+def _licencas_independentes(field: CanonicalFieldCandidate) -> frozenset[LicenseClass]:
+    """As licenças das fontes que sustentam ESTE campo sozinhas (§42).
+
+    A REGRA VEM DA `FusionRule`, e não de uma heurística nova — ela já grava
+    COMO o valor foi escolhido:
+
+        EXACT_AGREEMENT    todas disseram o mesmo. O valor seria idêntico só
+                           com qualquer uma delas; cada uma o sustenta sozinha.
+        MOST_COMPLETE      só uma trouxe o campo. Ela é a única e sustenta.
+        desempate          o valor foi produzido COMPARANDO as fontes — sem a
+                           restrita, a comparação teria sido outra. Ninguém
+                           sustenta sozinho (§35, §76 do PR-04.1).
+        CONFLITO ABERTO    não há valor; não há o que sustentar.
+
+    SÓ AS FONTES QUE DISSERAM O VALOR ESCOLHIDO entram, mesmo em
+    `EXACT_AGREEMENT` — a regra já garante que são todas, e filtrar por valor
+    mantém a função correta se a semântica da regra mudar.
+    """
+    if field.rule not in (FusionRule.EXACT_AGREEMENT, FusionRule.MOST_COMPLETE):
+        return frozenset()
+    if field.selected_value is None:
+        return frozenset()
+    return frozenset(
+        contribuicao.license_class
+        for contribuicao in field.contributions
+        if contribuicao.value == field.selected_value
+    )
 
 
 def _fracao(parte: int, total: int) -> float:
@@ -555,6 +662,11 @@ def _tem_valor(candidate: FusedMatchCandidate, role: SemanticRole) -> bool:
 
 
 def _tem_placar(candidate: FusedMatchCandidate) -> bool:
-    """Os DOIS lados. `2-None` não é um placar — é meio placar, e completá-lo
-    com zero é o defeito que o §44 existe para impedir."""
-    return all(_tem_valor(candidate, papel) for papel in CORE_ROLES)
+    """Os DOIS lados do PLACAR. `2-None` não é um placar — é meio placar, e
+    completá-lo com zero é o defeito que o §44 existe para impedir.
+
+    SOBRE `SCORE_ROLES` E NÃO SOBRE `CORE_ROLES`: o horário faz parte do
+    núcleo da partida e não do resultado, e confundi-los faria uma fonte sem
+    coluna de kickoff ser reportada como sem placar.
+    """
+    return all(_tem_valor(candidate, papel) for papel in SCORE_ROLES)

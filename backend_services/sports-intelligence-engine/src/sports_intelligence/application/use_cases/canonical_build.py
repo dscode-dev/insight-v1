@@ -21,8 +21,6 @@ meio-termo, e o §65 continua valendo dentro dele: se a escrita falha, nenhum
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, final
@@ -39,7 +37,6 @@ from sports_intelligence.domain.build.runs import (
     CanonicalBuildRun,
     counts_of,
 )
-from sports_intelligence.domain.datasets.content import ContentHash
 from sports_intelligence.domain.fusion.runs import FusedMatchCandidate
 from sports_intelligence.domain.quality.runs import (
     QualityRun,
@@ -48,6 +45,10 @@ from sports_intelligence.domain.quality.runs import (
 from sports_intelligence.domain.shared.actor import Actor
 from sports_intelligence.domain.shared.audit import AuditAction, AuditEntry
 from sports_intelligence.domain.shared.errors import NotFoundError
+from sports_intelligence.domain.shared.fingerprint import (
+    SetFingerprint,
+    policy_fingerprint,
+)
 from sports_intelligence.domain.shared.identity import MatchId
 from sports_intelligence.historical.build.assembly import (
     CanonicalAssembler,
@@ -127,6 +128,7 @@ class RunCanonicalBuild:
                 quality_run_id=avaliacao.id,
                 input_fusion_run_ids=avaliacao.fusion_run_ids,
                 build_policy_version=self.policy.version,
+                build_policy_fingerprint=policy_fingerprint(self.policy),
                 scope=self.policy.scope,
                 quality_policy_version=avaliacao.policy_version,
                 at=self.clock.now(),
@@ -147,7 +149,7 @@ class RunCanonicalBuild:
         montador = CanonicalAssembler(policy=self.policy)
         decisoes: list[BuildDecision] = []
         contagens = BuildCounts()
-        impressao = hashlib.sha256()
+        impressao = SetFingerprint()
         try:
             async for lote in batches:
                 planos, registros = await self._construir_lote(
@@ -165,7 +167,7 @@ class RunCanonicalBuild:
         concluida = execucao.complete(
             counts=contagens,
             at=self.clock.now(),
-            output_fingerprint=ContentHash(impressao.hexdigest()),
+            output_fingerprint=impressao.value,
         )
         await self.build_runs.finish(concluida)
         await self._auditar_conclusao(
@@ -407,23 +409,16 @@ class _SemTransacao:
         return None
 
 
-def _acumular(digest: Any, records: Sequence[CanonicalBuildRecord]) -> None:
+def _acumular(digest: SetFingerprint, records: Sequence[CanonicalBuildRecord]) -> None:
     """A impressão determinística do conjunto de registros (§54).
 
-    ORDENADA POR (partida, tipo de fato) e SEM os identificadores de execução:
-    `id` e `build_run_id` são UUID sorteados e mudam a cada execução, e
-    incluí-los faria a impressão dizer «são diferentes» sobre dois builds que
-    produziram exatamente a mesma coisa — que é o oposto do que ela existe para
-    responder.
+    A CHAVE É (partida, tipo de fato) porque é ela que identifica o registro
+    dentro da execução. `id` e `build_run_id` ficam de fora: são UUID
+    sorteados e mudam a cada execução, e incluí-los faria a impressão dizer
+    «são diferentes» sobre dois builds que produziram exatamente a mesma
+    coisa — o oposto do que ela existe para responder.
     """
-    for registro in sorted(
-        records, key=lambda r: (str(r.match_id), r.fact_type.value)
-    ):
-        digest.update(
-            json.dumps(
-                registro.as_canonical(),
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-            ).encode("utf-8")
+    for registro in records:
+        digest.add(
+            f"{registro.match_id}|{registro.fact_type.value}", registro.as_canonical()
         )

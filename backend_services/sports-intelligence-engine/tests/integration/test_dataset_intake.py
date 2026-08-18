@@ -162,7 +162,7 @@ class TestMigrations:
     async def test_schema_esta_aplicado_e_o_checksum_confere(
         self, database: Database
     ) -> None:
-        from sports_intelligence.adapters.postgres import migrations
+        import sports_intelligence.adapters.postgres.migrations as migrations
         from tests.integration.conftest import MIGRATIONS
 
         estados = await migrations.status(database, MIGRATIONS)
@@ -171,7 +171,7 @@ class TestMigrations:
         assert all(e.checksum_matches for e in estados)
 
     async def test_reaplicar_nao_faz_nada(self, database: Database) -> None:
-        from sports_intelligence.adapters.postgres import migrations
+        import sports_intelligence.adapters.postgres.migrations as migrations
         from tests.integration.conftest import MIGRATIONS
 
         assert await migrations.migrate(database, MIGRATIONS) == ()
@@ -181,7 +181,7 @@ class TestMigrations:
     ) -> None:
         """O banco e o repositório discordando é silencioso até a primeira
         consulta usar o que ninguém criou."""
-        from sports_intelligence.adapters.postgres import migrations
+        import sports_intelligence.adapters.postgres.migrations as migrations
 
         falsa = tmp_path / "0001_dataset_registry.sql"
         falsa.write_text("SELECT 1;", encoding="utf-8")

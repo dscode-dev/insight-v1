@@ -328,6 +328,20 @@ class FusionRunRepositoryPort(Protocol):
         """
         ...
 
+    async def group_ids_of(self, run_id: str) -> dict[str, str]:
+        """`canonical_match_id → id do grupo` que ESTA execução persistiu.
+
+        É O ELO QUE A LINHAGEM DO PR-04.2 PRECISA (§47, §48). Quem relê as
+        fontes para remontar os candidatos produz grupos NOVOS, com ids
+        sorteados; se a avaliação gravasse esses, o `fusion_group_id` do
+        veredito apontaria para um grupo que nunca foi persistido — e a
+        travessia até o `record_ref` terminaria num beco.
+
+        Devolver o mapa é o que permite realinhar os grupos remontados aos que
+        de fato existem no banco.
+        """
+        ...
+
     async def conflicts_of(
         self, run_id: str, *, limit: int = 100
     ) -> Sequence[tuple[str, str, str]]:

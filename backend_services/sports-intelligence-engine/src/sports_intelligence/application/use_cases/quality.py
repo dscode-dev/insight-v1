@@ -20,13 +20,10 @@ mediu e corrigiu.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, final
 
-from sports_intelligence.domain.datasets.content import ContentHash
 from sports_intelligence.domain.quality.assessment import BuildEligibility
 from sports_intelligence.domain.quality.policy import (
     DEFAULT_QUALITY_POLICY,
@@ -41,6 +38,10 @@ from sports_intelligence.domain.quality.runs import (
 from sports_intelligence.domain.shared.actor import Actor
 from sports_intelligence.domain.shared.audit import AuditAction, AuditEntry
 from sports_intelligence.domain.shared.errors import ConflictError, NotFoundError
+from sports_intelligence.domain.shared.fingerprint import (
+    SetFingerprint,
+    policy_fingerprint,
+)
 from sports_intelligence.historical.quality.assessor import (
     CandidateEvidence,
     HistoricalQualityAssessor,
@@ -108,7 +109,7 @@ class RunHistoricalQualityAssessment:
         avaliador = HistoricalQualityAssessor(policy=self.policy)
         contagens = QualityCounts()
         gravados = 0
-        impressao = hashlib.sha256()
+        impressao = SetFingerprint()
         try:
             async for lote in batches:
                 registros = tuple(
@@ -130,7 +131,7 @@ class RunHistoricalQualityAssessment:
         concluida = execucao.complete(
             counts=contagens,
             at=self.clock.now(),
-            output_fingerprint=ContentHash(impressao.hexdigest()),
+            output_fingerprint=impressao.value,
         )
         await self.quality_runs.finish(concluida)
         await self._auditar(
@@ -245,38 +246,18 @@ class ListQualityAssessments:
         )
 
 
-def policy_fingerprint(policy: HistoricalQualityPolicy) -> ContentHash:
-    """A impressão da política inteira.
-
-    ELA PEGA O QUE A VERSÃO NÃO PEGA. Alguém edita um piso e esquece de subir
-    o número: as duas execuções ficam rotuladas `1.0` e decidem diferente, e a
-    pergunta «sob qual política esta partida reprovou» passa a ter duas
-    respostas com o mesmo nome. Sessenta e quatro caracteres resolvem.
-    """
-    bruto = json.dumps(
-        policy.as_canonical(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-    return ContentHash(hashlib.sha256(bruto).hexdigest())
-
-
-def _acumular(digest: Any, records: Sequence[MatchQualityRecord]) -> None:
+def _acumular(digest: SetFingerprint, records: Sequence[MatchQualityRecord]) -> None:
     """Acrescenta um lote à impressão determinística do conjunto.
 
-    ORDENADO PELO ID DA PARTIDA DENTRO DO LOTE, e os lotes chegam em ordem de
-    partida. Duas execuções que processem os mesmos candidatos em ordens
-    diferentes de lote produziriam impressões diferentes — e aí ela não
-    provaria reprodutibilidade nenhuma (§53).
+    A COMBINAÇÃO É COMUTATIVA (ver `SetFingerprint`), então a impressão não
+    depende de como os lotes foram particionados — duas execuções que quebrem
+    os mesmos candidatos em lotes diferentes produzem a mesma impressão, que é
+    o que o §53 exige.
 
     O `id` DO VEREDITO E O DA EXECUÇÃO FICAM DE FORA (§54). Eles são UUID
     sorteado e mudam a cada execução; incluí-los faria a impressão dizer «são
-    diferentes» sobre duas execuções idênticas.
+    diferentes» sobre duas execuções idênticas. A CHAVE é a partida, que é
+    estável e única dentro da execução.
     """
-    for registro in sorted(records, key=lambda r: str(r.match_id)):
-        digest.update(
-            json.dumps(
-                registro.as_canonical(),
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-            ).encode("utf-8")
-        )
+    for registro in records:
+        digest.add(str(registro.match_id), registro.as_canonical())

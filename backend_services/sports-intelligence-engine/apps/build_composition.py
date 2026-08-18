@@ -22,7 +22,7 @@ diferente, e a impressão deixaria de conferir.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, final
 
 from apps.resolution_composition import (
@@ -174,6 +174,7 @@ async def rebuild_fusion_output(
     datasets: DatasetRepositoryPort,
     archive: RawDatasetArchivePort,
     resolution_run_ids: Sequence[str],
+    fusion_run_id: str | None = None,
 ) -> tuple[tuple[FusionGroup, ...], tuple[FusedMatchCandidate, ...]]:
     """Relê as fontes e reconstrói grupos e candidatos da fusão.
 
@@ -214,8 +215,37 @@ async def rebuild_fusion_output(
             registros.append(registro)
 
     grupos, _ = group_by_identity(tuple(registros))
+    if fusion_run_id is not None:
+        grupos = await _realinhar_com_o_banco(resolution, fusion_run_id, grupos)
     motor = FusionEngine(resolution.run_fusion.policy)
     return grupos, tuple(motor.fuse(grupo) for grupo in grupos)
+
+
+async def _realinhar_com_o_banco(
+    resolution: ResolutionContainer,
+    fusion_run_id: str,
+    groups: Sequence[FusionGroup],
+) -> tuple[FusionGroup, ...]:
+    """Devolve aos grupos remontados o id que a FUSÃO gravou.
+
+    SEM ISTO A LINHAGEM SE ROMPE NO PRIMEIRO ELO (§47, §48). `FusionGroup.of`
+    sorteia um `uuid4`, então remontar produz grupos com ids NOVOS — e o
+    `fusion_group_id` que a avaliação gravasse apontaria para um grupo que
+    nunca foi persistido. A travessia `fato → avaliação → grupo → record_ref →
+    arquivo → SHA-256` terminaria num beco, e o corpus perderia justamente a
+    propriedade que o justifica.
+
+    OS QUE NÃO ESTÃO NO BANCO FICAM COMO ESTÃO. Um grupo remontado que a fusão
+    não gravou é uma divergência entre as duas leituras, e inventar um id para
+    ele esconderia a divergência em vez de deixá-la aparecer na travessia.
+    """
+    do_banco = await resolution.fusion_runs.group_ids_of(fusion_run_id)
+    return tuple(
+        replace(grupo, id=gravado)
+        if (gravado := do_banco.get(str(grupo.canonical_match_id))) is not None
+        else grupo
+        for grupo in groups
+    )
 
 
 async def evidence_batches(

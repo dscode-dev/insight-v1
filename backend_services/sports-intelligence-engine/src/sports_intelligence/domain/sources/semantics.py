@@ -107,6 +107,42 @@ class SemanticRole(StrEnum):
         return not self.is_identity
 
     @property
+    def is_identity_label(self) -> bool:
+        """Se este papel é apenas o NOME que uma fonte dá a uma entidade.
+
+        A DISTINÇÃO QUE ESTE PROPRIEDADE EXISTE PARA FAZER (PR-04.2.1 §4, §11).
+        Nem todo papel de identidade afirma um FATO. Há dois tipos, e tratá-los
+        igual erra nos dois sentidos:
+
+            RÓTULO      `Man City`, `Manchester City FC`, um id de provedor
+                        É evidência para RECONHECER a entidade. Depois que a
+                        resolução provou que os três são `TeamId(X)`, a
+                        diferença textual entre eles não afirma nada sobre o
+                        mundo — e tratá-la como desacordo faria toda fusão
+                        multi-fonte legítima reprovar por consistência.
+
+            FATO        `kickoff`, `rodada`, `estádio`, `fase`
+                        A fonte está afirmando algo sobre a partida. Duas
+                        fontes com 20:00 e 23:00 discordam de verdade, e a
+                        fonte que afirma é PROCEDÊNCIA FACTUAL do núcleo — com
+                        as consequências de licença que isso implica.
+
+        O CATÁLOGO É FECHADO porque a classificação decide duas coisas caras:
+        se um desacordo é conflito, e se uma licença restrita contamina o fato
+        canônico. Deixá-la implícita faria cada leitor decidir sozinho.
+        """
+        return self in _RÓTULOS_DE_IDENTIDADE
+
+    @property
+    def is_factual(self) -> bool:
+        """Se este papel AFIRMA alguma coisa sobre o mundo.
+
+        Tudo que não é rótulo de identidade: as observações e os papéis de
+        identidade que carregam fato (`KICKOFF` e companhia).
+        """
+        return not self.is_identity_label
+
+    @property
     def is_odds(self) -> bool:
         """Odds são observação de UMA casa, não campo de partida.
 
@@ -148,6 +184,39 @@ _IDENTIDADE: Final[frozenset[SemanticRole]] = frozenset(
         SemanticRole.KICKOFF_DATE,
         SemanticRole.KICKOFF_TIME,
         SemanticRole.VENUE_NAME,
+        SemanticRole.TEAM_NAME,
+        SemanticRole.TEAM_PROVIDER_ID,
+        SemanticRole.TEAM_COUNTRY,
+        SemanticRole.PLAYER_NAME,
+        SemanticRole.PLAYER_PROVIDER_ID,
+        SemanticRole.PLAYER_DOB,
+        SemanticRole.PLAYER_NATIONALITY,
+        SemanticRole.PLAYER_POSITION,
+    }
+)
+
+#: OS PAPÉIS QUE SÃO SÓ NOME (PR-04.2.1 §4, §5, §11).
+#:
+#: Todos eles são consumidos pela RESOLUÇÃO e não sobrevivem à passagem para o
+#: canônico: `Man City` vira `TeamId(X)`, e o que o corpus guarda é o id. Uma
+#: fonte que escreve o nome de outro jeito ajudou a reconhecer a entidade e não
+#: afirmou nada sobre a partida.
+#:
+#: `SEASON_LABEL` E `COMPETITION_NAME` ESTÃO AQUI pelo mesmo motivo: `2024/25`
+#: e `2024-2025` são a mesma temporada, provada por decisão de resolução.
+#:
+#: `KICKOFF` NÃO ESTÁ, e a ausência é a decisão do §12: o horário é um FATO
+#: sobre a partida, e duas fontes com 20:00 e 23:00 discordam de verdade.
+_RÓTULOS_DE_IDENTIDADE: Final[frozenset[SemanticRole]] = frozenset(
+    {
+        SemanticRole.COMPETITION_NAME,
+        SemanticRole.COMPETITION_CODE,
+        SemanticRole.SEASON_LABEL,
+        SemanticRole.HOME_TEAM_NAME,
+        SemanticRole.AWAY_TEAM_NAME,
+        SemanticRole.HOME_TEAM_PROVIDER_ID,
+        SemanticRole.AWAY_TEAM_PROVIDER_ID,
+        SemanticRole.MATCH_PROVIDER_ID,
         SemanticRole.TEAM_NAME,
         SemanticRole.TEAM_PROVIDER_ID,
         SemanticRole.TEAM_COUNTRY,

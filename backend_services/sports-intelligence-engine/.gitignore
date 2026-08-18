@@ -8,7 +8,37 @@ venv/
 .mypy_cache/
 .coverage
 htmlcov/
-dist/
-build/
+
+# ARTEFATOS DE DISTRIBUIÇÃO, ANCORADOS NA RAIZ DO SERVIÇO.
+#
+# `/dist/` e `/build/` e não `dist/` e `build/`: sem a barra inicial, o padrão
+# casa QUALQUER diretório com esse nome em qualquer profundidade — e o PR-04.2
+# trouxe dois pacotes de código chamados `build`
+# (`domain/build`, `historical/build`) que o `build/` solto engolia inteiros,
+# em silêncio. Um pacote ausente do commit não quebra teste nenhum aqui: ele
+# quebra no `clone` de outra pessoa.
+/dist/
+/build/
 *.egg-info/
 .DS_Store
+
+# O `.gitignore` DA RAIZ DO MONORREPO IGNORA `build` E `data` EM QUALQUER
+# NÍVEL — as regras existem para artefato de distribuição e para dado local, e
+# apanham código e documentação por tabela. As reinclusões abaixo desfazem isso
+# DENTRO deste serviço, e só aqui.
+#
+# `src/**/build/` É CÓDIGO. O PR-04.2 trouxe `domain/build` e
+# `historical/build`; sem esta linha os dois pacotes sumiriam do commit em
+# silêncio — nenhum teste local falharia, e o `clone` de outra pessoa viria
+# sem eles.
+!src/**/build/
+
+# O `.gitignore` DA RAIZ DO MONORREPO IGNORA `data/` EM QUALQUER NÍVEL, e a
+# regra existe para dados locais — não para documentação. `docs/data/` é a
+# pasta onde moram os contratos de dado deste serviço (fusão, intake,
+# qualidade, construção canônica), e ela precisa ser versionada.
+#
+# A REINCLUSÃO É DO DIRETÓRIO, e não dos arquivos: o Git não reinclui arquivo
+# de dentro de diretório excluído, então negar só `docs/data/*.md` não teria
+# efeito nenhum.
+!docs/data/

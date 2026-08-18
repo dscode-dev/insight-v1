@@ -62,6 +62,19 @@ line-length = 100
 target-version = "py313"
 src = ["src", "apps", "tests"]
 
+# O LINTER NÃO PODE HERDAR OS PONTOS CEGOS DO GIT (PR-04.2.1 §23).
+#
+# Por padrão o Ruff respeita `.gitignore`, e a combinação com uma regra ampla
+# demais — um `build/` sem barra inicial, no `.gitignore` do monorepo — fez
+# `domain/build/` e `historical/build/` ficarem INVISÍVEIS para o lint. Dois
+# pacotes inteiros passaram por «All checks passed» sem nunca terem sido
+# lidos, e sete achados apareceram no instante em que o ignore foi corrigido.
+#
+# `false` DESLIGA SÓ O GITIGNORE. Os excludes próprios do Ruff continuam
+# valendo — `.venv`, `__pycache__`, `.mypy_cache` e companhia não voltam.
+# O que passa a ser lido é exatamente o que deveria: o código.
+respect-gitignore = false
+
 [tool.ruff.lint]
 select = [
     "E", "W",    # pycodestyle

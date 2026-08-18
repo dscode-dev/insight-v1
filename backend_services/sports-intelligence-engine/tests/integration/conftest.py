@@ -37,7 +37,7 @@ from typing import Any
 
 import pytest
 
-from sports_intelligence.adapters.postgres import migrations
+import sports_intelligence.adapters.postgres.migrations as migrations
 from sports_intelligence.adapters.postgres.database import Database
 from sports_intelligence.config.settings import ObjectStoreSettings, PostgresSettings
 
