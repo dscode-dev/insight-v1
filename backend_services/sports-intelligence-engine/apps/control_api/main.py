@@ -23,6 +23,7 @@ from fastapi import FastAPI
 
 from apps._shared import create_app
 from apps.composition import build_container
+from apps.control_api.routes import corpus as rotas_de_corpus
 from apps.control_api.routes import datasets as rotas_de_dataset
 from apps.control_api.routes import resolution as rotas_de_resolucao
 from sports_intelligence.config.settings import AppSettings
@@ -54,12 +55,11 @@ def build() -> FastAPI:
         yield
         await contêiner.database.close()
 
-    app = create_app(
-        settings, title="Insight Engine — Control API", plane="control"
-    )
+    app = create_app(settings, title="Insight Engine — Control API", plane="control")
     app.router.lifespan_context = ciclo_de_vida
     app.include_router(rotas_de_dataset.router)
     app.include_router(rotas_de_resolucao.router)
+    app.include_router(rotas_de_corpus.router)
 
     @app.get("/health/ready", tags=["health"])
     async def readiness() -> dict[str, object]:

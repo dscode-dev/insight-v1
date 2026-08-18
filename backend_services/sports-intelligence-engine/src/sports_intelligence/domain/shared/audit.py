@@ -63,6 +63,18 @@ class AuditAction(StrEnum):
     #: «este build comercial descartou o quê, e sob qual licença» (§20, §76).
     CANONICAL_BUILD_FAMILY_EXCLUDED = "CANONICAL_BUILD_FAMILY_EXCLUDED"
 
+    # ---- PR-04.3. A PUBLICAÇÃO É UMA DECISÃO, e por isso ela está aqui: um
+    # corpus publicado é o que passa a ser lido por tudo que vem depois, e
+    # «quem publicou a 1.0, quando, com qual escopo» precisa ter resposta sem
+    # arqueologia. O CONTEÚDO da versão não entra na trilha — a membership já
+    # o grava partida a partida (§114).
+    CORPUS_DATASET_CREATED = "CORPUS_DATASET_CREATED"
+    CORPUS_VERSION_CREATED = "CORPUS_VERSION_CREATED"
+    CORPUS_VERSION_BUILT = "CORPUS_VERSION_BUILT"
+    CORPUS_VERSION_PUBLISHED = "CORPUS_VERSION_PUBLISHED"
+    CORPUS_VERSION_FAILED = "CORPUS_VERSION_FAILED"
+    CORPUS_VERSION_SUPERSEDED = "CORPUS_VERSION_SUPERSEDED"
+
     @property
     def is_decision(self) -> bool:
         """Se a ação foi um julgamento humano e não um passo mecânico.
@@ -70,7 +82,14 @@ class AuditAction(StrEnum):
         Separa o que alguém DECIDIU do que o sistema executou. Numa
         investigação, as decisões são a lista curta por onde se começa.
         """
-        return self in (AuditAction.DATASET_STAGED, AuditAction.DATASET_REJECTED)
+        return self in (
+            AuditAction.DATASET_STAGED,
+            AuditAction.DATASET_REJECTED,
+            # Publicar é decidir que ESTE conteúdo é o corpus a partir de
+            # agora — e superar é decidir que ele deixou de ser.
+            AuditAction.CORPUS_VERSION_PUBLISHED,
+            AuditAction.CORPUS_VERSION_SUPERSEDED,
+        )
 
 
 #: Teto do `detail`. Um dicionário sem limite é por onde o conteúdo do dataset

@@ -163,9 +163,7 @@ class TestCanonicalBuildPolicy:
     def test_recusa_politica_sem_familia_obrigatoria(self) -> None:
         """Ela construiria uma partida sem nenhum dado."""
         with pytest.raises(ValidationError, match="sem família obrigatória"):
-            CanonicalBuildPolicy(
-                version=CURRENT_BUILD_POLICY_VERSION, scope=UsageScope.RESEARCH
-            )
+            CanonicalBuildPolicy(version=CURRENT_BUILD_POLICY_VERSION, scope=UsageScope.RESEARCH)
 
     def test_recusa_exigir_familia_que_o_contrato_nao_carrega(self) -> None:
         """§28, §92. Um build que exigisse `EVENT` reprovaria todo o corpus
@@ -334,9 +332,10 @@ class TestCanonicalBuildPolicy:
         assert evento.reason is FamilyExclusionReason.OUT_OF_BUILD_SCOPE
 
     def test_o_limite_de_familias_construiveis_esta_declarado(self) -> None:
-        assert frozenset(
-            {CoverageFamily.MATCH, CoverageFamily.LINEUP, CoverageFamily.ODDS}
-        ) == BUILDABLE_FAMILIES
+        assert (
+            frozenset({CoverageFamily.MATCH, CoverageFamily.LINEUP, CoverageFamily.ODDS})
+            == BUILDABLE_FAMILIES
+        )
         assert CoverageFamily.EVENT not in BUILDABLE_FAMILIES
 
 
@@ -399,15 +398,11 @@ class TestFamilyDecision:
         """§20. Uma família que some sem explicação é indistinguível de uma
         que nunca existiu."""
         with pytest.raises(ValidationError, match="sem motivo"):
-            FamilyDecision(
-                family=CoverageFamily.ODDS, outcome=FamilyOutcome.EXCLUDED
-            )
+            FamilyDecision(family=CoverageFamily.ODDS, outcome=FamilyOutcome.EXCLUDED)
 
     def test_exclusao_por_licenca_sem_licenca_e_recusada(self) -> None:
         with pytest.raises(ValidationError, match="sem dizer QUAL"):
-            FamilyDecision.excluded(
-                CoverageFamily.ODDS, FamilyExclusionReason.LICENSE_POLICY
-            )
+            FamilyDecision.excluded(CoverageFamily.ODDS, FamilyExclusionReason.LICENSE_POLICY)
 
     def test_incluida_com_motivo_e_recusada(self) -> None:
         with pytest.raises(ValidationError, match="incluída com motivo"):
@@ -485,22 +480,16 @@ class TestCanonicalMatchBuilder:
             scope=UsageScope.RESEARCH,
             build_policy_version=CURRENT_BUILD_POLICY_VERSION,
             families=(
-                FamilyDecision.excluded(
-                    CoverageFamily.MATCH, FamilyExclusionReason.NOT_AVAILABLE
-                ),
+                FamilyDecision.excluded(CoverageFamily.MATCH, FamilyExclusionReason.NOT_AVAILABLE),
             ),
             reason="pulada",
         )
         with pytest.raises(InvariantViolationError):
-            CanonicalMatchBuilder().build(
-                decision=recusada, identity=identity_facts()
-            )
+            CanonicalMatchBuilder().build(decision=recusada, identity=identity_facts())
 
     def test_recusa_identidade_de_outra_partida(self) -> None:
         with pytest.raises(InvariantViolationError, match="duas partidas"):
-            CanonicalMatchBuilder().build(
-                decision=_decisao_completa(), identity=identity_facts(7)
-            )
+            CanonicalMatchBuilder().build(decision=_decisao_completa(), identity=identity_facts(7))
 
 
 class TestCanonicalResultBuilder:
@@ -535,9 +524,7 @@ class TestCanonicalResultBuilder:
         facts = read_score_facts(cenario_publico_com_odds().candidate)
         assert facts.extra_home is None
         assert facts.penalties_home is None
-        resultado = CanonicalResultBuilder().build(
-            decision=_decisao_completa(), scores=facts
-        )
+        resultado = CanonicalResultBuilder().build(decision=_decisao_completa(), scores=facts)
         assert resultado is not None
         assert resultado.extra_time is None
         assert resultado.penalties is None
@@ -566,9 +553,7 @@ class TestCanonicalOddsBuilder:
         assert casas == {"bet365", "pinnacle"}
 
         mandantes = {
-            str(o.bookmaker): o.decimal_odds
-            for o in observacoes
-            if o.selection.value == "HOME"
+            str(o.bookmaker): o.decimal_odds for o in observacoes if o.selection.value == "HOME"
         }
         assert mandantes == {
             "bet365": Decimal("2.00"),
@@ -640,9 +625,7 @@ class TestCanonicalLineupBuilder:
                 LineupDraftEntry(
                     source_name="Camisa 10",
                     status=LineupStatus.STARTER,
-                    player_id=(
-                        PlayerId.derive("pr042", "camisa10") if resolvido else None
-                    ),
+                    player_id=(PlayerId.derive("pr042", "camisa10") if resolvido else None),
                     shirt_number=10,
                     captain=True,
                 ),
@@ -662,15 +645,11 @@ class TestCanonicalLineupBuilder:
         rascunho = self._rascunho(resolvido=False)
         assert rascunho.unresolved == ("Camisa 10",)
         with pytest.raises(InvariantViolationError, match="sem identidade canônica"):
-            CanonicalLineupBuilder().build(
-                decision=_decisao_completa(), draft=rascunho
-            )
+            CanonicalLineupBuilder().build(decision=_decisao_completa(), draft=rascunho)
 
     def test_a_formacao_invalida_vira_ausencia_e_nao_erro(self) -> None:
         rascunho = replace(self._rascunho(), formation="4231")
-        escalacao = CanonicalLineupBuilder().build(
-            decision=_decisao_completa(), draft=rascunho
-        )
+        escalacao = CanonicalLineupBuilder().build(decision=_decisao_completa(), draft=rascunho)
         assert escalacao.formation is None
 
 
@@ -704,9 +683,7 @@ class TestCanonicalAssembler:
     def test_sem_identidade_canonica_o_build_recusa_em_vez_de_inventar(self) -> None:
         """§27. Criar um `MatchId` aqui produziria uma partida que nenhuma
         resolução provou existir."""
-        entrada = replace(
-            self._inputs(cenario_publico_com_odds()), identity=None
-        )
+        entrada = replace(self._inputs(cenario_publico_com_odds()), identity=None)
         plano = CanonicalAssembler(policy=DEFAULT_RESEARCH_BUILD_POLICY).plan(
             entrada, ingested_at=AGORA
         )
@@ -816,9 +793,7 @@ class TestCanonicalBuildRun:
             quality_run_id="11111111-1111-4111-8111-111111111111",
             input_fusion_run_ids=("33333333-3333-4333-8333-333333333333",),
             build_policy_version=CURRENT_BUILD_POLICY_VERSION,
-            build_policy_fingerprint=policy_fingerprint(
-                DEFAULT_RESEARCH_BUILD_POLICY
-            ),
+            build_policy_fingerprint=policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY),
             scope=UsageScope.RESEARCH,
             quality_policy_version=DEFAULT_QUALITY_POLICY.version,
             at=AGORA,
@@ -860,8 +835,14 @@ class TestCanonicalBuildRun:
             BuildCounts(records_attempted=5, records_built=2).assert_consistent()
 
     def test_o_corpus_publicavel_continua_barrado(self) -> None:
-        """§110, §111. O que sai daqui são FATOS, não uma versão do corpus."""
-        with pytest.raises(InvariantViolationError, match=r"PR-04\.3"):
+        """§110, §111. O que sai daqui são FATOS, não uma versão do corpus.
+
+        A GUARDA PASSOU A IMPORTAR MAIS, e não menos, depois do PR-04.3:
+        enquanto a versão publicada não existia, confundir as duas era
+        impossível por ausência. Agora as duas existem, e o que separa um
+        recorte congelado de um registro global que cresce é esta recusa.
+        """
+        with pytest.raises(InvariantViolationError, match="versão publicada"):
             assert_not_a_published_corpus(self._execucao())
 
 
@@ -952,9 +933,7 @@ class TestRunCanonicalBuild:
             escritor=escritor,
             avaliacoes=avaliacoes,
             execucoes_de_qualidade=execucoes,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         partida = next(iter(escritor.matches.values()))
         assert not hasattr(partida, "result")
         assert escritor.results[partida.id].regular_time.home == 2
@@ -975,9 +954,7 @@ class TestRunCanonicalBuild:
             policy=DEFAULT_RESEARCH_BUILD_POLICY,
             build_runs=build_runs,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         comercial = await _montar_build(
             identidades=identidades,
             escritor=FakeCanonicalRegistryWriter(),
@@ -986,9 +963,7 @@ class TestRunCanonicalBuild:
             policy=DEFAULT_COMMERCIAL_BUILD_POLICY,
             build_runs=build_runs,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
 
         assert pesquisa.run.id != comercial.run.id
         assert pesquisa.run.scope is UsageScope.RESEARCH
@@ -1013,18 +988,14 @@ class TestRunCanonicalBuild:
             avaliacoes=avaliacoes,
             execucoes_de_qualidade=execucoes,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         segundo = await _montar_build(
             identidades=identidades,
             escritor=escritor,
             avaliacoes=avaliacoes,
             execucoes_de_qualidade=execucoes,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
 
         assert primeiro.run.counts.records_built == 1
         assert segundo.run.counts.records_reused == 1
@@ -1046,9 +1017,7 @@ class TestRunCanonicalBuild:
             home_team_id=identity_facts(0).away_team_id,
             away_team_id=CASA,
         )
-        divergente = CanonicalMatchBuilder().build(
-            decision=_decisao_completa(), identity=invertida
-        )
+        divergente = CanonicalMatchBuilder().build(decision=_decisao_completa(), identity=invertida)
         escritor.matches[divergente.id] = divergente
 
         saida = await _montar_build(
@@ -1056,9 +1025,7 @@ class TestRunCanonicalBuild:
             escritor=escritor,
             avaliacoes=avaliacoes,
             execucoes_de_qualidade=execucoes,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
 
         assert saida.run.status is RunStatus.FAILED
         assert saida.run.counts.records_failed == 1
@@ -1097,9 +1064,7 @@ class TestRunCanonicalBuild:
             avaliacoes=avaliacoes,
             execucoes_de_qualidade=execucoes,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         assert saida.run.counts.records_skipped == 1
         linhagem = await registros.for_match(match_id(0))
         assert linhagem[0].status is BuildRecordStatus.SKIPPED
@@ -1116,9 +1081,7 @@ class TestRunCanonicalBuild:
             execucoes_de_qualidade=execucoes,
             policy=DEFAULT_COMMERCIAL_BUILD_POLICY,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         familias = await registros.family_decisions_of(saida.run.id, match_id(0))
         odds = next(f for f in familias if f.family is CoverageFamily.ODDS)
         assert odds.outcome is FamilyOutcome.EXCLUDED
@@ -1163,9 +1126,7 @@ class TestRunCanonicalBuild:
         ids de execução diferentes."""
         cenas = cenarios(3)
         execucao, execucoes, avaliacoes = await _com_avaliacao(cenas)
-        identidades = FakeCanonicalIdentityReader(
-            *(identity_facts(n) for n in range(3))
-        )
+        identidades = FakeCanonicalIdentityReader(*(identity_facts(n) for n in range(3)))
         impressoes = []
         for _ in range(2):
             saida = await _montar_build(
@@ -1200,9 +1161,7 @@ class TestRunCanonicalBuild:
             raise RuntimeError("terceiro lote quebrou")
 
         with pytest.raises(RuntimeError):
-            await caso.execute(
-                actor=ATOR, quality_run_id=execucao.id, batches=explode()
-            )
+            await caso.execute(actor=ATOR, quality_run_id=execucao.id, batches=explode())
         gravada = next(iter(build_runs.runs.values()))
         assert gravada.status is RunStatus.FAILED
 
@@ -1220,9 +1179,7 @@ class TestConsultas:
             execucoes_de_qualidade=execucoes,
             build_runs=build_runs,
             registros=registros,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
 
         lida = await GetCanonicalBuildRun(build_runs=build_runs).execute(saida.run.id)
         assert lida.id == saida.run.id
@@ -1305,9 +1262,7 @@ class TestMissingNuncaViraZero:
             build_run_id="33333333-3333-4333-8333-333333333333",
             match_outcome=MatchWriteOutcome.INSERTED,
         )
-        do_resultado = next(
-            r for r in registros if r.fact_type is CanonicalFactType.MATCH_RESULT
-        )
+        do_resultado = next(r for r in registros if r.fact_type is CanonicalFactType.MATCH_RESULT)
         assert do_resultado.status is BuildRecordStatus.SKIPPED
         assert do_resultado.fact_id is None
         assert "NÃO vira 0-0" in (do_resultado.reason or "")
@@ -1347,9 +1302,7 @@ class TestImpressaoDaPolitica:
         """§38: a serialização é determinística, e não depende de ordem de
         `dict`, de `repr` nem de endereço de memória."""
         gemea = replace(DEFAULT_RESEARCH_BUILD_POLICY)
-        assert policy_fingerprint(gemea) == policy_fingerprint(
-            DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        assert policy_fingerprint(gemea) == policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY)
         # E é estável entre chamadas — um `set` reordenado quebraria isto.
         assert policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY) == policy_fingerprint(
             DEFAULT_RESEARCH_BUILD_POLICY
@@ -1362,18 +1315,13 @@ class TestImpressaoDaPolitica:
             optional_families=frozenset({CoverageFamily.ODDS}),
         )
         assert adulterada.version == DEFAULT_RESEARCH_BUILD_POLICY.version
-        assert policy_fingerprint(adulterada) != policy_fingerprint(
-            DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        assert policy_fingerprint(adulterada) != policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY)
 
     def test_pesquisa_e_comercio_tem_impressoes_diferentes(self) -> None:
         """Elas têm a MESMA versão e produzem corpus diferentes — se a
         impressão não as distinguisse, dois builds seriam indistinguíveis
         pelos metadados que gravamos."""
-        assert (
-            DEFAULT_RESEARCH_BUILD_POLICY.version
-            == DEFAULT_COMMERCIAL_BUILD_POLICY.version
-        )
+        assert DEFAULT_RESEARCH_BUILD_POLICY.version == DEFAULT_COMMERCIAL_BUILD_POLICY.version
         assert policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY) != policy_fingerprint(
             DEFAULT_COMMERCIAL_BUILD_POLICY
         )
@@ -1389,13 +1337,9 @@ class TestImpressaoDaPolitica:
             execucoes_de_qualidade=execucoes,
             policy=DEFAULT_COMMERCIAL_BUILD_POLICY,
             build_runs=build_runs,
-        ).execute(
-            actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas)
-        )
+        ).execute(actor=ATOR, quality_run_id=execucao.id, batches=um_lote_de_candidatos(cenas))
         gravada = build_runs.runs[saida.run.id]
         assert gravada.build_policy_fingerprint == policy_fingerprint(
             DEFAULT_COMMERCIAL_BUILD_POLICY
         )
-        assert gravada.build_policy_fingerprint != policy_fingerprint(
-            DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        assert gravada.build_policy_fingerprint != policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY)

@@ -24,6 +24,7 @@ from pydantic import ValidationError as PydanticValidationError
 from rich.console import Console
 from rich.table import Table
 
+from apps.cli import corpus as comandos_de_corpus
 from apps.cli import dataset as comandos_de_dataset
 from apps.cli import resolution as comandos_de_resolucao
 from sports_intelligence.config.settings import (
@@ -47,6 +48,7 @@ console = Console()
 app.add_typer(comandos_de_dataset.app)
 app.add_typer(comandos_de_resolucao.app)
 app.add_typer(comandos_de_resolucao.fusion_app)
+app.add_typer(comandos_de_corpus.app)
 
 
 class Estado(StrEnum):

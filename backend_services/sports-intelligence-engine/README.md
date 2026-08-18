@@ -196,14 +196,28 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
 - **ADR-0009** — ausente nunca vira zero;
 - **ADR-0010** — requisição de usuário não dispara cálculo;
 - **ADR-0014** — o bruto é imutável, e a imutabilidade é imposta por ausência;
-- **ADR-0016** — `STAGED` não é `HISTORICAL_ACTIVE`.
+- **ADR-0016** — `STAGED` não é `HISTORICAL_ACTIVE`;
+- **ADR-0026** — uma versão publicada do corpus é imutável, e `DRAFT → READY`
+  não é uma aresta que exista;
+- **ADR-0027** — o PostgreSQL é a verdade; o Parquet é uma representação, e ela
+  é opcional.
 
 Contratos de dados:
 
 - [`docs/data/CANONICAL_FOOTBALL_MODEL.md`](docs/data/CANONICAL_FOOTBALL_MODEL.md)
 - [`docs/data/CANONICAL_DATA_DICTIONARY.md`](docs/data/CANONICAL_DATA_DICTIONARY.md)
 - [`docs/data/HISTORICAL_DATASET_INTAKE.md`](docs/data/HISTORICAL_DATASET_INTAKE.md)
+- [`docs/data/IDENTITY_RESOLUTION.md`](docs/data/IDENTITY_RESOLUTION.md)
+- [`docs/data/DATA_FUSION.md`](docs/data/DATA_FUSION.md)
+- [`docs/data/HISTORICAL_QUALITY_EXECUTION.md`](docs/data/HISTORICAL_QUALITY_EXECUTION.md)
+- [`docs/data/CANONICAL_BUILD_CORE.md`](docs/data/CANONICAL_BUILD_CORE.md)
+- [`docs/data/HISTORICAL_CANONICAL_CORPUS.md`](docs/data/HISTORICAL_CANONICAL_CORPUS.md)
 - [`docs/contracts/DATASET_MANIFEST_V1.md`](docs/contracts/DATASET_MANIFEST_V1.md)
+- [`docs/contracts/RESOLUTION_DECISION_V1.md`](docs/contracts/RESOLUTION_DECISION_V1.md)
+- [`docs/contracts/FUSION_OUTPUT_V1.md`](docs/contracts/FUSION_OUTPUT_V1.md)
+- [`docs/contracts/QUALITY_ASSESSMENT_V1.md`](docs/contracts/QUALITY_ASSESSMENT_V1.md)
+- [`docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md`](docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md)
+- [`docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md`](docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md)
 
 ---
 

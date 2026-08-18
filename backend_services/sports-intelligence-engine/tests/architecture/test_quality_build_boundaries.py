@@ -93,9 +93,7 @@ class TestDominioDeQualidadeEDeBuild:
 
     @pytest.mark.parametrize("pacote", list(PACOTES_DE_EXECUCAO))
     def test_a_execucao_nao_importa_adapters_nem_apps(self, pacote: str) -> None:
-        violacoes = internal_violations(
-            files_in(pacote), ("sports_intelligence.adapters", "apps")
-        )
+        violacoes = internal_violations(files_in(pacote), ("sports_intelligence.adapters", "apps"))
         assert not violacoes, str(violacoes)
 
 
@@ -158,9 +156,9 @@ class TestOConstrutorNaoReavaliaQualidade:
                 f"{construtor.__name__}.build sem `decision` — ele passaria a poder "
                 "construir sem que a política tivesse autorizado (§5)"
             )
-            assert (
-                assinatura.parameters["decision"].default is inspect.Parameter.empty
-            ), f"{construtor.__name__}.build com `decision` opcional"
+            assert assinatura.parameters["decision"].default is inspect.Parameter.empty, (
+                f"{construtor.__name__}.build com `decision` opcional"
+            )
 
     def test_a_politica_de_build_nao_le_o_vetor_de_qualidade(self) -> None:
         """Ela decide SOBRE o veredito, e não sobre as observações que o
@@ -305,22 +303,50 @@ class TestOLimiteDaFase:
 
         assert callable(assert_not_a_published_corpus)
 
-    def test_nao_existe_dataset_historico_nem_manifesto_do_corpus(self) -> None:
-        """§111. O PR-04 continua bloqueado ao fim do PR-04.2, e o código não
-        pode fingir o contrário."""
-        proibidos = (
-            "HistoricalCanonicalDataset",
-            "HISTORICAL_CANONICAL_READY",
-            "HISTORICAL_CANONICAL_MANIFEST",
-            "HISTORICAL_VECTOR_ACTIVE",
+    def test_o_limite_avancou_do_pr_04_2_para_o_pr_04_3(self) -> None:
+        """O que era proibido AQUI é o que o PR-04.3 entregou — e o registro
+        dessa sucessão é deliberado.
+
+        Este teste barrava `HistoricalCanonicalDataset`, o manifesto e o gate
+        `HISTORICAL_CANONICAL_READY` porque, ao fim do PR-04.2, o corpus
+        publicável não existia e o código não podia fingir que sim. Ele agora
+        existe: apagá-lo esconderia a fronteira, e mantê-lo como estava faria a
+        entrega do PR-04.3 aparecer como violação.
+
+        O QUE ELE PASSA A GUARDAR é a fronteira DESTA fase — a do PR-05.
+        """
+        from sports_intelligence.domain.corpus.versions import (
+            HistoricalCanonicalDataset,
+            assert_not_vector_active,
         )
-        encontrados: list[str] = []
-        for arquivo in files_in("domain", "historical", "application", "adapters"):
-            texto = arquivo.read_text(encoding="utf-8")
-            encontrados.extend(
-                f"{arquivo.name}: {nome}" for nome in proibidos if nome in texto
-            )
-        assert not encontrados, "\n".join(encontrados)
+
+        assert HistoricalCanonicalDataset is not None
+        assert callable(assert_not_vector_active)
+
+    def test_o_corpus_pronto_nao_e_espaco_vetorial_ativo(self) -> None:
+        """§4 do PR-04.3.
+
+            HISTORICAL_CANONICAL_READY  ≠  HISTORICAL_VECTOR_ACTIVE
+
+        Um corpus pronto é um corpus que o PR-05 pode LER. Feature,
+        `MatchStateVector` e indexação são o PR-05 inteiro.
+
+        A VERIFICAÇÃO É POR IMPORT E NÃO POR TEXTO, e a diferença importa:
+        `assert_not_vector_active` MENCIONA `MatchStateVector` na mensagem que
+        o recusa, e uma busca textual transformaria a guarda em violação — o
+        oposto exato do que ela faz.
+        """
+        violacoes = internal_violations(
+            [
+                arquivo
+                for arquivo in files_in(
+                    "domain/corpus", "historical/corpus", "application/use_cases"
+                )
+                if "corpus" in arquivo.as_posix()
+            ],
+            PACOTES_FUTUROS,
+        )
+        assert not violacoes, str(violacoes)
 
     def test_nao_existe_construtor_de_eventos(self) -> None:
         """§28, §92. O contrato fundido da V1 não carrega evento, e um

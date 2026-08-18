@@ -32,6 +32,7 @@ from apps.build_composition import (
     evidence_batches,
     rebuild_fusion_output,
 )
+from apps.corpus_composition import CorpusContainer, build_corpus_container
 from apps.resolution_composition import (
     ResolutionContainer,
     build_resolution_container,
@@ -128,6 +129,10 @@ class Container:
     #: CLI do PR-04 são a fase seguinte (§72, §73) — e existe para que os
     #: casos de uso sejam composicionalmente alcançáveis (§74).
     build: BuildContainer
+    #: O grafo do PR-04.3 — publicação do corpus. Diferente do `build`, ele JÁ
+    #: tem rota e comando: o §71 e o §75 exigem que criar, compor e publicar
+    #: sejam alcançáveis pelos dois caminhos, e pelos MESMOS casos de uso.
+    corpus: CorpusContainer
     archive: RawDatasetArchivePort
     clock: SystemClock
 
@@ -181,9 +186,7 @@ class Container:
         um registro cuja partida ficou `AMBIGUOUS` simplesmente não aparece,
         e a fusão nunca chega a vê-lo (ADR-0022).
         """
-        resolvidos = await resolved_match_map(
-            self.resolution.decisions, resolution_run_ids
-        )
+        resolvidos = await resolved_match_map(self.resolution.decisions, resolution_run_ids)
         registros: list[ResolvedSourceRecord] = []
         for run_id in resolution_run_ids:
             execucao = await self.resolution.get_resolution_run.execute(run_id)
@@ -268,11 +271,7 @@ class Container:
             archive=self.archive,
             resolution_run_ids=resolution_run_ids,
         )
-        caso = (
-            self.build.run_research_build
-            if policy is None
-            else self.build.build_for(policy)
-        )
+        caso = self.build.run_research_build if policy is None else self.build.build_for(policy)
         return await caso.execute(
             actor=actor,
             quality_run_id=quality_run_id,
@@ -333,9 +332,7 @@ def build_container(settings: AppSettings | None = None) -> Container:
         database=database,
         object_store=store,
         datasets=datasets,
-        register=RegisterDataset(
-            datasets=datasets, clock=clock, audit=audit, publisher=publisher
-        ),
+        register=RegisterDataset(datasets=datasets, clock=clock, audit=audit, publisher=publisher),
         attach=AttachDatasetFile(
             datasets=datasets,
             files=files,
@@ -373,6 +370,7 @@ def build_container(settings: AppSettings | None = None) -> Container:
         build=build_build_container(
             database=database, resolution=resolucao, clock=clock, audit=audit
         ),
+        corpus=build_corpus_container(database=database, clock=clock, audit=audit, store=store),
         archive=archive,
         clock=clock,
     )

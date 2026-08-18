@@ -132,8 +132,7 @@ class BuildCounts:
             records_built=self.records_built + other.records_built,
             records_reused=self.records_reused + other.records_reused,
             records_skipped=self.records_skipped + other.records_skipped,
-            records_review_required=self.records_review_required
-            + other.records_review_required,
+            records_review_required=self.records_review_required + other.records_review_required,
             records_failed=self.records_failed + other.records_failed,
             families_excluded=self.families_excluded + other.families_excluded,
         )
@@ -190,8 +189,7 @@ class CanonicalBuildRecord:
         comuns = set(self.included_families) & set(self.excluded_families)
         if comuns:
             raise ValidationError(
-                f"família incluída E excluída no mesmo registro: "
-                f"{sorted(f.value for f in comuns)}"
+                f"família incluída E excluída no mesmo registro: {sorted(f.value for f in comuns)}"
             )
 
     @classmethod
@@ -367,9 +365,7 @@ class CanonicalBuildRun:
 
     def fail(self, *, reason: str, at: Instant) -> Self:
         self._assert_can_finish()
-        return replace(
-            self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500]
-        )
+        return replace(self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500])
 
     def _assert_can_finish(self) -> None:
         if self.status.is_terminal:
@@ -394,22 +390,28 @@ class CanonicalBuildRun:
 
 
 def assert_not_a_published_corpus(run: CanonicalBuildRun) -> None:
-    """A guarda do limite DESTA fase. Recusa sempre.
+    """`CanonicalBuildRun ≠ HistoricalCanonicalDatasetVersion`. Recusa sempre.
 
-    O QUE SAI DAQUI SÃO FATOS CANÔNICOS PERSISTIDOS — não um corpus histórico
-    publicável. Falta a eles tudo que o PR-04.3 traz: a versão imutável do
-    dataset, o manifesto, a impressão do corpus, o Parquet e a interface que
-    os publica.
+    O QUE SAI DAQUI SÃO FATOS CANÔNICOS PERSISTIDOS, e eles são GLOBAIS: o
+    registro contém tudo que qualquer build já escreveu, e cresce depois. Um
+    corpus publicado é um RECORTE declarado e congelado — pertinência gravada
+    partida a partida, manifesto, impressão e escopo de uso.
 
-    Existe para ser chamada por qualquer caminho que pretenda tratar uma
-    execução de build como uma versão publicada do histórico (§110, §111).
+    O PR-04.3 ENTREGOU ESSA SEGUNDA COISA, e a guarda continua valendo
+    exatamente por isso: agora que as duas existem, confundi-las é possível.
+    Tratar uma execução de build como versão publicada faria o corpus de
+    pesquisa e o comercial se fundirem num só, e faria o conteúdo de uma
+    publicação mudar toda vez que alguém reprocessasse uma temporada.
+
+    Existe para ser chamada por qualquer caminho que pretenda essa confusão.
     """
     from sports_intelligence.domain.shared.errors import InvariantViolationError
 
     raise InvariantViolationError(
         f"a execução de build {run.id} produziu FATOS canônicos, não uma versão "
-        "publicável do corpus histórico. Faltam a versão imutável do dataset, o "
-        "manifesto e a impressão do corpus, que são o PR-04.3 (ADR-0016, ADR-0024).",
+        "publicada do corpus histórico. Uma versão é composta por um ou mais "
+        "builds e declara QUAIS fatos formam o corpus — ela mora em "
+        "`domain/corpus/versions.py` (ADR-0024, ADR-0026).",
         context={"run_id": run.id, "status": run.status.value},
     )
 
@@ -431,18 +433,12 @@ def counts_of(
     return BuildCounts(
         records_attempted=len(decisions),
         records_built=sum(1 for s in por_partida.values() if s is BuildRecordStatus.BUILT),
-        records_reused=sum(
-            1 for s in por_partida.values() if s is BuildRecordStatus.REUSED
-        ),
-        records_skipped=sum(
-            1 for s in por_partida.values() if s is BuildRecordStatus.SKIPPED
-        ),
+        records_reused=sum(1 for s in por_partida.values() if s is BuildRecordStatus.REUSED),
+        records_skipped=sum(1 for s in por_partida.values() if s is BuildRecordStatus.SKIPPED),
         records_review_required=sum(
             1 for s in por_partida.values() if s is BuildRecordStatus.REVIEW_REQUIRED
         ),
-        records_failed=sum(
-            1 for s in por_partida.values() if s is BuildRecordStatus.FAILED
-        ),
+        records_failed=sum(1 for s in por_partida.values() if s is BuildRecordStatus.FAILED),
         families_excluded=sum(len(d.excluded_families) for d in decisions),
     )
 

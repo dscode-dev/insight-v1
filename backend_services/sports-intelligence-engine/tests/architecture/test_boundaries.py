@@ -73,12 +73,8 @@ class TestDominioNaoConheceInfraestrutura:
 
 class TestDirecaoDaDependencia:
     def test_dominio_nao_importa_adapters(self) -> None:
-        violacoes = _violacoes_internas(
-            _arquivos("domain"), ("sports_intelligence.adapters",)
-        )
-        assert not violacoes, "domínio importando adapter:\n" + "\n".join(
-            map(str, violacoes)
-        )
+        violacoes = _violacoes_internas(_arquivos("domain"), ("sports_intelligence.adapters",))
+        assert not violacoes, "domínio importando adapter:\n" + "\n".join(map(str, violacoes))
 
     def test_dominio_nao_importa_application_nem_apps(self) -> None:
         """O domínio é a base. Importar a camada acima é ciclo, e ciclo é o
@@ -97,9 +93,7 @@ class TestDirecaoDaDependencia:
     def test_ports_nao_importam_adapters(self) -> None:
         """A inversão que dá nome ao padrão: adapter conhece port, nunca o
         contrário. Se o port importa o adapter, não há inversão nenhuma."""
-        violacoes = _violacoes_internas(
-            _arquivos("ports"), ("sports_intelligence.adapters",)
-        )
+        violacoes = _violacoes_internas(_arquivos("ports"), ("sports_intelligence.adapters",))
         assert not violacoes
 
 
@@ -120,7 +114,7 @@ class TestAppsNaoContornamAsCamadas:
         """A aplicação pede pelo port e recebe o adapter montado na borda.
         Importar o adapter direto amarra o processo à tecnologia.
 
-        QUATRO EXCEÇÕES DECLARADAS, e todas SÃO a borda:
+        CINCO EXCEÇÕES DECLARADAS, e todas SÃO a borda:
 
             `apps/_shared.py`                a tradução de erro para HTTP
             `apps/composition.py`            a raiz de composição
@@ -130,6 +124,9 @@ class TestAppsNaoContornamAsCamadas:
                                              dos candidatos fundidos, que é
                                              leitura de fonte pelo mesmo
                                              caminho da fusão
+            `apps/corpus_composition.py`     a do PR-04.3 — repositórios do
+                                             corpus e o materializador Parquet,
+                                             montados uma vez por processo
 
         Todo o resto pede pelo port e recebe o objeto já montado. Um nome novo
         nesta lista é sinal de que a composição vazou, e o sintoma prático de
@@ -141,6 +138,7 @@ class TestAppsNaoContornamAsCamadas:
             "composition.py",
             "resolution_composition.py",
             "build_composition.py",
+            "corpus_composition.py",
         }
         arquivos = [p for p in sorted(APPS.rglob("*.py")) if p.name not in excecoes]
         violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))
@@ -203,9 +201,7 @@ class TestApplicationNaoConheceInfraestrutura:
         assert not _violacoes(_arquivos("application"), INFRA_EXTERNA)
 
     def test_use_cases_nao_importam_adapters(self) -> None:
-        violacoes = _violacoes_internas(
-            _arquivos("application"), ("sports_intelligence.adapters",)
-        )
+        violacoes = _violacoes_internas(_arquivos("application"), ("sports_intelligence.adapters",))
         assert not violacoes
 
 
