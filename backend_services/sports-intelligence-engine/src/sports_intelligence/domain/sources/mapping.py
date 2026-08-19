@@ -27,10 +27,12 @@ from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Final, Self, final
 
+from sports_intelligence.domain.events.contract import inspect_contract
 from sports_intelligence.domain.shared.errors import ValidationError
 from sports_intelligence.domain.shared.identity import DatasetId, ProviderId
 from sports_intelligence.domain.shared.temporal import Instant
 from sports_intelligence.domain.shared.versioning import DatasetVersion
+from sports_intelligence.domain.sources.records_kind import RecordKind
 from sports_intelligence.domain.sources.semantics import SemanticRole, ValueKind
 
 MAX_COLUMNS_MAPPED: Final[int] = 128
@@ -135,9 +137,7 @@ class SourceFieldMapping:
         if raw is None:
             return ParsedValue.absent(self.role)
         if len(raw) > MAX_RAW_VALUE_LENGTH:
-            return ParsedValue.invalid(
-                self.role, raw[:80], f"valor com {len(raw)} caracteres"
-            )
+            return ParsedValue.invalid(self.role, raw[:80], f"valor com {len(raw)} caracteres")
         texto = self.transform.apply(raw)
         if not texto:
             return ParsedValue.absent(self.role)
@@ -238,9 +238,7 @@ def _converter(role: SemanticRole, texto: str, formato: str | None) -> ParsedVal
     )
 
 
-def _candidatos_de_formato(
-    declarado: str | None, catalogo: tuple[str, ...]
-) -> tuple[str, ...]:
+def _candidatos_de_formato(declarado: str | None, catalogo: tuple[str, ...]) -> tuple[str, ...]:
     """O formato declarado pela fonte, ou o catálogo inteiro.
 
     O DECLARADO GANHA E É O ÚNICO TENTADO. Cair para o catálogo quando o
@@ -313,6 +311,15 @@ class SourceMappingDefinition:
     status: MappingStatus
     created_at: Instant
     created_by: str
+    #: O QUE UMA LINHA DESTE ARQUIVO DESCREVE (PR-04.4.1 §5). O padrão é
+    #: `MATCH_RECORD`, que é o que todo mapeamento anterior a este PR
+    #: significa — e um default diferente reinterpretaria em silêncio a
+    #: declaração de quem já mapeou.
+    #:
+    #: ELE É DECLARADO PELO OPERADOR, nunca detectado do arquivo (§75, §76):
+    #: adivinhar a forma é o tipo de acerto que funciona em noventa e nove
+    #: datasets e corrompe o centésimo sem avisar.
+    record_kind: RecordKind = RecordKind.MATCH_RECORD
     #: O que a fonte diz sobre si mesma e que nenhuma coluna carrega: a
     #: convenção de temporada, o fuso padrão. Chaves fechadas.
     conventions: dict[str, str] = field(default_factory=dict)
@@ -344,6 +351,11 @@ class SourceMappingDefinition:
                 f"papel semântico atribuído a duas colunas: {repetidos} — qual das "
                 "duas o resolver deveria usar não estaria definido"
             )
+        # O CONTRATO DO `RecordKind` É CONFERIDO NA DECLARAÇÃO, e não na
+        # leitura: recusar aqui custa uma mensagem na configuração; descobrir
+        # no meio de um arquivo custa meio dataset processado (§7).
+        inspect_contract(kind=self.record_kind, roles=self.roles).assert_usable()
+
         desconhecidas = set(self.conventions) - _CONVENCOES_CONHECIDAS
         if desconhecidas:
             raise ValidationError(
@@ -364,6 +376,7 @@ class SourceMappingDefinition:
         created_by: str,
         conventions: dict[str, str] | None = None,
         description: str | None = None,
+        record_kind: RecordKind = RecordKind.MATCH_RECORD,
     ) -> Self:
         return cls(
             id=str(uuid.uuid4()),
@@ -377,6 +390,7 @@ class SourceMappingDefinition:
             created_by=created_by,
             conventions=conventions or {},
             description=description,
+            record_kind=record_kind,
         )
 
     def by_role(self, role: SemanticRole) -> SourceFieldMapping | None:
@@ -404,13 +418,25 @@ class SourceMappingDefinition:
         FALHA NO REGISTRO, e não na execução. Descobrir que falta o nome do
         visitante depois de processar cem mil linhas custa a execução inteira;
         descobrir no `POST` custa uma mensagem.
+
+        ELA NÃO SE APLICA A UM `EVENT_RECORD` (PR-04.4.1 §5). Um arquivo de
+        eventos não descreve partidas: ele as REFERENCIA, por
+        `MATCH_PROVIDER_ID`, contra o que a resolução já provou. Exigir dele o
+        nome dos dois times e o horário do jogo — repetidos em cada uma das
+        cem mil linhas — seria exigir que a linha de um evento carregasse a
+        identidade inteira da partida, que é exatamente a duplicação que a
+        referência existe para evitar.
+
+        O contrato do `EVENT_RECORD` é conferido no `__post_init__`, por
+        `inspect_contract` — ele tem exigências próprias, e elas são outras.
         """
         from sports_intelligence.domain.sources.semantics import MATCH_REQUIRED_ROLES
 
+        if self.record_kind.is_event_stream:
+            return
+
         faltando = MATCH_REQUIRED_ROLES - self.roles
-        tem_kickoff = bool(
-            self.roles & {SemanticRole.KICKOFF, SemanticRole.KICKOFF_DATE}
-        )
+        tem_kickoff = bool(self.roles & {SemanticRole.KICKOFF, SemanticRole.KICKOFF_DATE})
         if faltando or not tem_kickoff:
             problemas = sorted(r.value for r in faltando)
             if not tem_kickoff:

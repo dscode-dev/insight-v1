@@ -81,6 +81,7 @@ from sports_intelligence.domain.sources.mapping import (
     SourceMappingDefinition,
     ValueTransform,
 )
+from sports_intelligence.domain.sources.records_kind import RecordKind
 from sports_intelligence.domain.sources.semantics import SemanticRole
 from sports_intelligence.domain.teams.models import Team
 from sports_intelligence.ingestion.normalization.names import NameNormalizer
@@ -262,9 +263,7 @@ class PostgresEntityAliasRepository:
                 str(alias.provider_id) if alias.provider_id else None,
                 alias.valid_from,
                 alias.valid_to,
-                uuid.UUID(alias.resolution_decision_id)
-                if alias.resolution_decision_id
-                else None,
+                uuid.UUID(alias.resolution_decision_id) if alias.resolution_decision_id else None,
                 alias.created_at,
                 alias.created_by,
             )
@@ -588,9 +587,9 @@ class PostgresSourceMappingRepository:
                 INSERT INTO source_mapping_definitions (
                     id, dataset_id, version_major, version_minor, provider_id,
                     version, status, fields, conventions, description,
-                    created_at, created_by
+                    created_at, created_by, record_kind
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 """,
                 uuid.UUID(definition.id),
                 definition.dataset_id.value,
@@ -604,6 +603,11 @@ class PostgresSourceMappingRepository:
                 definition.description,
                 definition.created_at,
                 definition.created_by,
+                # O `RecordKind` PRECISA SOBREVIVER AO BANCO (PR-04.4.1 §5).
+                # Sem a coluna, um mapeamento gravado como `EVENT_RECORD` era
+                # relido como `MATCH_RECORD` — o default — e o próprio domínio
+                # recusava o mapeamento que acabara de ser aceito.
+                definition.record_kind.value,
             )
         return definition
 
@@ -728,9 +732,7 @@ class PostgresResolutionDecisionRepository:
     def __init__(self, database: Database) -> None:
         self._db = database
 
-    async def append_many(
-        self, decisions: Sequence[ResolutionDecision], *, run_id: str
-    ) -> int:
+    async def append_many(self, decisions: Sequence[ResolutionDecision], *, run_id: str) -> int:
         if not decisions:
             return 0
         async with self._db.acquire() as conexao, conexao.transaction():
@@ -843,9 +845,7 @@ class PostgresResolutionDecisionRepository:
             )
         return _para_decisao(linha, evidencias, alternativas)
 
-    async def resolved_entities_of_run(
-        self, run_id: str, subject: SubjectType
-    ) -> dict[str, str]:
+    async def resolved_entities_of_run(self, run_id: str, subject: SubjectType) -> dict[str, str]:
         async with self._db.acquire() as conexao:
             linhas = await conexao.fetch(
                 """
@@ -858,8 +858,7 @@ class PostgresResolutionDecisionRepository:
                 subject.value,
             )
         return {
-            linha["record_ref"]: f"{linha['canonical_entity_id']}|{linha['id']}"
-            for linha in linhas
+            linha["record_ref"]: f"{linha['canonical_entity_id']}|{linha['id']}" for linha in linhas
         }
 
     async def confidences_for_records(
@@ -889,9 +888,9 @@ class PostgresResolutionDecisionRepository:
             )
         saida: dict[str, dict[SubjectType, float]] = {}
         for linha in linhas:
-            saida.setdefault(linha["record_ref"], {})[
-                SubjectType(linha["subject_type"])
-            ] = float(linha["confidence"])
+            saida.setdefault(linha["record_ref"], {})[SubjectType(linha["subject_type"])] = float(
+                linha["confidence"]
+            )
         return saida
 
     @staticmethod
@@ -1027,9 +1026,7 @@ class PostgresReviewQueueRepository:
             )
         return _para_item_de_revisao(linha) if linha else None
 
-    async def update_status(
-        self, item: ResolutionReviewItem, *, expected_status: str
-    ) -> bool:
+    async def update_status(self, item: ResolutionReviewItem, *, expected_status: str) -> bool:
         """Condicional ao estado anterior — impede decisão dupla."""
         async with self._db.acquire() as conexao:
             resultado = await conexao.execute(
@@ -1047,9 +1044,7 @@ class PostgresReviewQueueRepository:
                 item.resolved_at,
                 item.resolved_by.id if item.resolved_by else None,
                 item.resolved_by.kind.value if item.resolved_by else None,
-                uuid.UUID(item.resolution_decision_id)
-                if item.resolution_decision_id
-                else None,
+                uuid.UUID(item.resolution_decision_id) if item.resolution_decision_id else None,
                 item.decision_reason,
                 expected_status,
             )
@@ -1080,8 +1075,7 @@ class PostgresFusionRunRepository:
                 run.triggered_by.kind.value,
             )
             await conexao.executemany(
-                "INSERT INTO fusion_run_inputs (fusion_run_id, resolution_run_id) "
-                "VALUES ($1, $2)",
+                "INSERT INTO fusion_run_inputs (fusion_run_id, resolution_run_id) VALUES ($1, $2)",
                 [(uuid.UUID(run.id), uuid.UUID(r)) for r in run.input_resolution_run_ids],
             )
         return run
@@ -1117,9 +1111,7 @@ class PostgresFusionRunRepository:
         except ValueError:
             return None
         async with self._db.acquire() as conexao:
-            linha = await conexao.fetchrow(
-                "SELECT * FROM fusion_runs WHERE id = $1", identificador
-            )
+            linha = await conexao.fetchrow("SELECT * FROM fusion_runs WHERE id = $1", identificador)
             if linha is None:
                 return None
             entradas = await conexao.fetch(
@@ -1199,9 +1191,7 @@ class PostgresFusionRunRepository:
             )
         return len(groups)
 
-    async def save_candidates(
-        self, run_id: str, candidates: Sequence[FusedMatchCandidate]
-    ) -> int:
+    async def save_candidates(self, run_id: str, candidates: Sequence[FusedMatchCandidate]) -> int:
         if not candidates:
             return 0
         async with self._db.acquire() as conexao, conexao.transaction():
@@ -1298,15 +1288,12 @@ class PostgresFusionRunRepository:
             [f.confidence for _, f in campos],
             [len(f.contributions) for _, f in campos],
         )
-        gravados = {
-            (linha["candidate_id"], linha["field_name"]): linha["id"] for linha in linhas
-        }
+        gravados = {(linha["candidate_id"], linha["field_name"]): linha["id"] for linha in linhas}
 
         contribuicoes = [
             (field_id, campo, contribuicao)
             for candidate_id, campo in campos
-            if (field_id := gravados.get((candidate_id, campo.field_name.value)))
-            is not None
+            if (field_id := gravados.get((candidate_id, campo.field_name.value))) is not None
             for contribuicao in campo.contributions
         ]
         if not contribuicoes:
@@ -1496,9 +1483,7 @@ def _para_mapeamento_de_fonte(linha: Any) -> SourceMappingDefinition:
     return SourceMappingDefinition(
         id=str(linha["id"]),
         dataset_id=DatasetId(linha["dataset_id"]),
-        dataset_version=DatasetVersion(
-            major=linha["version_major"], minor=linha["version_minor"]
-        ),
+        dataset_version=DatasetVersion(major=linha["version_major"], minor=linha["version_minor"]),
         provider_id=ProviderId(linha["provider_id"]),
         version=linha["version"],
         fields=tuple(
@@ -1512,6 +1497,7 @@ def _para_mapeamento_de_fonte(linha: Any) -> SourceMappingDefinition:
             for c in campos
         ),
         status=MappingStatus(linha["status"]),
+        record_kind=RecordKind(linha["record_kind"]),
         created_at=instant(linha["created_at"]),
         created_by=linha["created_by"],
         conventions=convencoes,
@@ -1525,14 +1511,10 @@ def _para_execucao(linha: Any) -> ResolutionRun:
     return ResolutionRun(
         id=str(linha["id"]),
         dataset_id=DatasetId(linha["dataset_id"]),
-        dataset_version=DatasetVersion(
-            major=linha["version_major"], minor=linha["version_minor"]
-        ),
+        dataset_version=DatasetVersion(major=linha["version_major"], minor=linha["version_minor"]),
         manifest_fingerprint=ContentHash(linha["manifest_fingerprint"]),
         versions=DecisionVersions(
-            resolver=ResolverVersion(
-                major=linha["resolver_major"], minor=linha["resolver_minor"]
-            ),
+            resolver=ResolverVersion(major=linha["resolver_major"], minor=linha["resolver_minor"]),
             normalizer=NormalizerVersion(
                 major=linha["normalizer_major"], minor=linha["normalizer_minor"]
             ),
@@ -1608,9 +1590,7 @@ def _para_decisao(
         method=ResolutionMethod(linha["method"]),
         confidence=ResolutionConfidence(linha["confidence"]),
         versions=DecisionVersions(
-            resolver=ResolverVersion(
-                major=linha["resolver_major"], minor=linha["resolver_minor"]
-            ),
+            resolver=ResolverVersion(major=linha["resolver_major"], minor=linha["resolver_minor"]),
             normalizer=NormalizerVersion(
                 major=linha["normalizer_major"], minor=linha["normalizer_minor"]
             ),
@@ -1699,9 +1679,7 @@ def _para_fusao(linha: Any, entradas: tuple[str, ...]) -> FusionRun:
     return FusionRun(
         id=str(linha["id"]),
         input_resolution_run_ids=entradas,
-        policy_version=PolicyVersion(
-            major=linha["policy_major"], minor=linha["policy_minor"]
-        ),
+        policy_version=PolicyVersion(major=linha["policy_major"], minor=linha["policy_minor"]),
         status=RunStatus(linha["status"]),
         started_at=instant(linha["started_at"]),
         triggered_by=_ator(linha["triggered_by"], linha["triggered_by_kind"]),
@@ -1758,12 +1736,8 @@ def _para_jogador(linha: Any) -> Player:
         canonical_name=linha["canonical_name"],
         date_of_birth=linha["date_of_birth"],
         nationality=linha["nationality"],
-        preferred_foot=PreferredFoot(linha["preferred_foot"])
-        if linha["preferred_foot"]
-        else None,
-        primary_position=Position(linha["primary_position"])
-        if linha["primary_position"]
-        else None,
+        preferred_foot=PreferredFoot(linha["preferred_foot"]) if linha["preferred_foot"] else None,
+        primary_position=Position(linha["primary_position"]) if linha["primary_position"] else None,
         active=linha["active"],
     )
 

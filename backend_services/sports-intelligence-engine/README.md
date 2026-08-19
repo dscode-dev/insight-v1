@@ -200,7 +200,9 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
 - **ADR-0026** — uma versão publicada do corpus é imutável, e `DRAFT → READY`
   não é uma aresta que exista;
 - **ADR-0027** — o PostgreSQL é a verdade; o Parquet é uma representação, e ela
-  é opcional.
+  é opcional;
+- **ADR-0028** — um registro histórico de evento é entidade repetida, e nunca
+  campo escalar de partida.
 
 Contratos de dados:
 
@@ -212,12 +214,15 @@ Contratos de dados:
 - [`docs/data/HISTORICAL_QUALITY_EXECUTION.md`](docs/data/HISTORICAL_QUALITY_EXECUTION.md)
 - [`docs/data/CANONICAL_BUILD_CORE.md`](docs/data/CANONICAL_BUILD_CORE.md)
 - [`docs/data/HISTORICAL_CANONICAL_CORPUS.md`](docs/data/HISTORICAL_CANONICAL_CORPUS.md)
+- [`docs/data/HISTORICAL_EVENT_CONTRACT.md`](docs/data/HISTORICAL_EVENT_CONTRACT.md)
+- [`docs/data/HISTORICAL_EVENT_CANONICALIZATION.md`](docs/data/HISTORICAL_EVENT_CANONICALIZATION.md)
 - [`docs/contracts/DATASET_MANIFEST_V1.md`](docs/contracts/DATASET_MANIFEST_V1.md)
 - [`docs/contracts/RESOLUTION_DECISION_V1.md`](docs/contracts/RESOLUTION_DECISION_V1.md)
 - [`docs/contracts/FUSION_OUTPUT_V1.md`](docs/contracts/FUSION_OUTPUT_V1.md)
 - [`docs/contracts/QUALITY_ASSESSMENT_V1.md`](docs/contracts/QUALITY_ASSESSMENT_V1.md)
 - [`docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md`](docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md)
 - [`docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md`](docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md)
+- [`docs/contracts/HISTORICAL_EVENT_RECORD_V1.md`](docs/contracts/HISTORICAL_EVENT_RECORD_V1.md)
 
 ---
 

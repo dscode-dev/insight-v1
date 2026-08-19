@@ -178,9 +178,56 @@ observado ou derivado, e a semântica temporal.
 | `GoalkeeperDetail` | `action_type`, `outcome` | nunca |
 | `DuelDetail` | `outcome`, `opponent_id?` | adversário opcional |
 
-> **`xg` é observado, nunca calculado por nós neste PR.** Quando o motor
-> calcular o próprio, será feature derivada com versão — e as duas coisas não
-> se misturam.
+> **`xg` é observado, nunca calculado por nós.** Ele entra pelo papel
+> `EVENT_XG` da fonte histórica (PR-04.4.1). Quando o motor calcular o
+> próprio, será feature derivada com versão — e as duas coisas não se
+> misturam.
+
+## Papéis semânticos de evento — PR-04.4.1
+
+Como uma **fonte histórica** declara um evento. Estes papéis só existem num
+mapeamento `EVENT_RECORD` — uma linha é um evento, e não uma partida
+([ADR-0028](../architecture/adr/0028-historical-event-records-are-repeated-entities.md)).
+
+| papel | significado | destino canônico | obrigatório? |
+|---|---|---|---|
+| `MATCH_PROVIDER_ID` | a partida a que o evento pertence | `match_id`, via resolução | **sim** |
+| `EVENT_TYPE` | o rótulo CRU do tipo | `type`, via `EventTypeMapping` | **sim** |
+| `EVENT_PERIOD` | o período | `clock.period` | **sim** |
+| `EVENT_MINUTE` | o minuto | `clock.minute` | **sim** |
+| `EVENT_STOPPAGE` | o `+3` de `45+3` | `clock.stoppage` | não (padrão 0) |
+| `EVENT_PROVIDER_ID` | id do evento no provedor | `source_event_key` | recomendado — **sem ele não há idempotência** |
+| `EVENT_SEQUENCE` | a ordem do provedor | desempate da ordenação | recomendado |
+| `EVENT_TEAM_PROVIDER_ID` | id do time no provedor | `team_id`, via resolução | conforme o tipo |
+| `EVENT_TEAM_NAME` | nome do time | evidência, não identidade | não |
+| `EVENT_PLAYER_PROVIDER_ID` | id do jogador no provedor | `player_id`, via resolução | conforme o tipo |
+| `EVENT_PLAYER_NAME` | nome do jogador | evidência, não identidade | não |
+| `EVENT_X` / `EVENT_Y` | origem, normalizada em `[0,1]` | `start_location` | par completo ou nada |
+| `EVENT_END_X` / `EVENT_END_Y` | destino, normalizado em `[0,1]` | `end_location` | par completo ou nada |
+| `EVENT_REVISION_TYPE` | `NEW` / `CORRECTION` / `CANCELLATION` | `revision`, `status` | não (padrão `NEW`) |
+| `EVENT_SUPERSEDES_PROVIDER_ID` | qual evento do provedor isto revisa | `supersedes` | quando há revisão |
+| `EVENT_OUTCOME` | desfecho | `ShotDetail.outcome` | conforme o tipo |
+| `EVENT_BODY_PART` | parte do corpo | `ShotDetail.body_part` | não |
+| `EVENT_XG` | xG **observado pela fonte** | `ShotDetail.xg` | não |
+| `EVENT_CARD_TYPE` | amarelo / segundo amarelo / vermelho | `CardDetail.card_type` | conforme o tipo |
+| `EVENT_PLAYER_OUT_PROVIDER_ID` | quem sai | `SubstitutionDetail.player_out` | par com o de baixo |
+| `EVENT_PLAYER_IN_PROVIDER_ID` | quem entra | `SubstitutionDetail.player_in` | par com o de cima |
+
+> **`EVENT_XG` é observado, e a distinção sobrevive ao pipeline.** Três estados
+> diferentes: papel não declarado, papel declarado com célula vazia
+> (`FeatureValue` indisponível, com motivo) e valor presente. `xg unavailable`
+> não é `xg = 0`.
+
+> **Não existe `EVENT_SECOND`.** `MatchClock` não tem onde guardar segundos, e
+> um papel cujo valor é descartado afirma que o dado entrou quando ele não
+> entrou.
+
+> **Não existe `EVENT_1_TYPE`.** Modelar uma coleção como colunas numeradas
+> quebra no primeiro jogo com mais eventos que colunas — e o catálogo é
+> fechado, então esses nomes não podem sequer ser escritos.
+
+Detalhe completo em
+[HISTORICAL_EVENT_CONTRACT.md](HISTORICAL_EVENT_CONTRACT.md).
 
 ## OddsQuote
 

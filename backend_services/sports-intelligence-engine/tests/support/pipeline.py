@@ -68,6 +68,7 @@ from sports_intelligence.domain.sources.mapping import (
     SourceFieldMapping,
     SourceMappingDefinition,
 )
+from sports_intelligence.domain.sources.records_kind import RecordKind
 from sports_intelligence.ingestion.historical.raw_archive import RawDatasetArchive
 from sports_intelligence.ingestion.validation.structural import (
     StructuralValidator,
@@ -226,9 +227,7 @@ class Pipeline:
         )
         relatorio = await self._validate.execute(actor=OPERADOR, dataset_id=dataset.id)
         if relatorio.has_blocking_issues:
-            raise AssertionError(
-                f"o cenário produziu um arquivo inválido: {relatorio.issues[:3]}"
-            )
+            raise AssertionError(f"o cenário produziu um arquivo inválido: {relatorio.issues[:3]}")
         return await self._stage.execute(
             actor=OPERADOR, dataset_id=dataset.id, reason="cenário de teste"
         )
@@ -240,11 +239,13 @@ class Pipeline:
         provider: ProviderId,
         fields: Sequence[SourceFieldMapping],
         conventions: dict[str, str] | None = None,
+        record_kind: RecordKind = RecordKind.MATCH_RECORD,
     ) -> None:
         await self.resolution.register_mapping.execute(
             actor=OPERADOR,
             dataset_id=dataset.id,
             definition=SourceMappingDefinition.draft(
+                record_kind=record_kind,
                 dataset_id=dataset.id,
                 dataset_version=dataset.version,
                 provider_id=provider,
@@ -258,9 +259,7 @@ class Pipeline:
 
     # -------------------------------------------------- resolução e fusão --
 
-    async def resolve(
-        self, dataset_id: DatasetId, *, actor: Actor = SERVICO
-    ) -> ResolutionOutput:
+    async def resolve(self, dataset_id: DatasetId, *, actor: Actor = SERVICO) -> ResolutionOutput:
         dataset = await self.datasets.by_id(dataset_id)
         assert dataset is not None
         mapeamento = await self.resolution.source_mappings.active_for(dataset_id)
@@ -276,9 +275,7 @@ class Pipeline:
             actor=actor, dataset_id=dataset_id, batches=lotes
         )
 
-    async def resolved_records(
-        self, run_ids: Sequence[str]
-    ) -> tuple[ResolvedSourceRecord, ...]:
+    async def resolved_records(self, run_ids: Sequence[str]) -> tuple[ResolvedSourceRecord, ...]:
         """Os registros que a fusão vai ver — só os que a resolução resolveu."""
         resolvidos = await resolved_match_map(self.resolution.decisions, run_ids)
         saida: list[ResolvedSourceRecord] = []
@@ -314,9 +311,9 @@ class Pipeline:
         return await self.resolution.run_fusion.execute(
             actor=actor,
             resolution_run_ids=list(run_ids),
-            records=list(records) if records is not None else list(
-                await self.resolved_records(run_ids)
-            ),
+            records=list(records)
+            if records is not None
+            else list(await self.resolved_records(run_ids)),
         )
 
     async def _impressao(self, dataset: Dataset) -> Any:

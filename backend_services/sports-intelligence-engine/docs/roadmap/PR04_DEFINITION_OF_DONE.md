@@ -1,6 +1,8 @@
 # PR-04 — Data Quality & Historical Canonical Build · checklist de fechamento
 
-Conferência do **DoD ORIGINAL do PR-04**, item a item, ao fim do PR-04.3.
+Conferência do **DoD ORIGINAL do PR-04**, item a item. Escrita ao fim do
+PR-04.3 e **atualizada no PR-04.4.1**, que avançou o blocker de eventos sem
+fechá-lo.
 
 > **Qualquer requisito original não entregue aparece aqui como BLOCKER, e não é
 > reclassificado como dívida.** Um item rebaixado silenciosamente para «dívida»
@@ -15,6 +17,7 @@ PR-04.2   Quality Execution & Canonical Build Core
 PR-04.2.1 Final Closure & Repository Integrity Hardening
 PR-04.3   Historical Corpus Materialization, Manifest, Interfaces & Production Proof
 PR-04.3.1 Corpus Integrity & Final Closure
+PR-04.4.1 Historical Event Contract & Canonicalization Pipeline
 ```
 
 **Três categorias, e nenhuma quarta vaga** (§52):
@@ -124,43 +127,78 @@ BLOCKED                          aplicável, não entregue, e não reclassificad
 
 ---
 
+## 7. Canonicalização de eventos (PR-04.4.1)
+
+Este bloco **não estava no DoD original como incremento próprio** — ele nasceu
+da Opção A da análise de capacidade. Ele avança o blocker de eventos; não o
+fecha.
+
+| # | requisito | onde | estado |
+|---|-----------|------|--------|
+| 7.1 | Papéis semânticos de evento, catálogo FECHADO | 22 papéis `EVENT_*`, `SemanticRole.is_event` | ✅ PR-04.4.1 |
+| 7.2 | Forma do registro DECLARADA, nunca inferida | `RecordKind`, migration 0010, ADR-0028 | ✅ PR-04.4.1 |
+| 7.3 | Contrato de fonte de eventos com `missing` ≠ `weak` ≠ `misplaced` | `EventContractReport`, `inspect_contract` | ✅ PR-04.4.1 |
+| 7.4 | Leitura linha-por-evento sobre o leitor do PR-02 | `EventRowReader` — sem pilha paralela | ✅ PR-04.4.1 |
+| 7.5 | Referências traduzidas em LOTE, sem N+1 | 3 consultas por lote, medidas | ✅ PR-04.4.1 |
+| 7.6 | Elegibilidade com guardas ordenadas e motivo fechado | `EventExclusionReason`, 8 motivos | ✅ PR-04.4.1 |
+| 7.7 | Identidade canônica DERIVADA, reprocessamento idempotente | `uuid5(match, source_key, revision)` | ✅ PR-04.4.1 |
+| 7.8 | Ordem canônica que não depende do arquivo nem do lote | `ordering_key` + sequência por `(partida, período)` | ✅ PR-04.4.1 |
+| 7.9 | Correção ≠ cancelamento | `CORRECTED` vs `CANCELLED`, ADR-0013 | ✅ PR-04.4.1 |
+| 7.10 | Observado ≠ derivado: xG da fonte, três estados | `FeatureValue`, ADR-0009 | ✅ PR-04.4.1 |
+| 7.11 | Linhagem por evento, inclusive do que NÃO entrou | `canonical_event_build_records` | ✅ PR-04.4.1 |
+| 7.12 | Execução persistida, imutável, com contagens que fecham | `canonical_event_build_runs` + constraint | ✅ PR-04.4.1 |
+| 7.13 | Benchmark de 100.000 registros de evento | 39,4 s · 2.536 ev/s · 30 MB · 602 consultas | ✅ PR-04.4.1 |
+| 7.14 | Três tamanhos de lote medidos, default justificado | 250 / 1.000 / 5.000 | ✅ PR-04.4.1 |
+| 7.15 | Documento de baseline | `docs/performance/PR0441_EVENT_CANONICALIZATION_BASELINE.md` | ✅ PR-04.4.1 |
+| 7.16 | ADR da decisão de forma | ADR-0028 | ✅ PR-04.4.1 |
+| 7.17 | Pertinência de evento no corpus, Parquet, manifesto | — | ❌ PR-04.4.2 |
+| 7.18 | Resolução de evento entre provedores | — | ❌ fora de escopo declarado |
+
 ## Itens do escopo ORIGINAL que NÃO foram entregues
 
-### BLOCKED — construção canônica de eventos
+### BLOCKED — eventos canônicos NO CORPUS
 
-O DoD original do PR-04 mencionou eventos canônicos. **Eles não estão
-implementados**, e a análise estágio a estágio está em
+**O estado mudou no PR-04.4.1, e mudou pela metade.** A escolha registrada
+como «Opção A» na análise de capacidade foi executada: existe hoje um pipeline
+completo de canonicalização de eventos, do contrato de fonte ao PostgreSQL. O
+que **não** existe é a integração desses eventos ao corpus publicado.
+
+| estágio | estado |
+|---------|--------|
+| papéis semânticos de evento (22, `EVENT_*`) | ✅ PR-04.4.1 |
+| contrato de fonte linha-por-evento (`RecordKind`) | ✅ PR-04.4.1 |
+| leitura linha-por-evento | ✅ PR-04.4.1 |
+| elegibilidade por evento (5 guardas ordenadas) | ✅ PR-04.4.1 |
+| `CanonicalEventBuilder`, identidade derivada | ✅ PR-04.4.1 |
+| `canonical_match_events` + linhagem por evento | ✅ PR-04.4.1 |
+| **pertinência de evento no corpus** | ❌ **BLOCKED** |
+| **`events.parquet`** | ❌ **BLOCKED** |
+| **contagem de eventos no manifesto** | ❌ **BLOCKED** |
+| **resolução de evento entre provedores** | ❌ fora de escopo declarado |
+
+A análise estágio a estágio, com o histórico da classificação anterior, está em
 [`docs/data/EVENT_CAPABILITY_ANALYSIS.md`](../data/EVENT_CAPABILITY_ANALYSIS.md).
 
-O resumo: o VOCABULÁRIO de domínio existe desde o PR-01 — `CanonicalMatchEvent`,
-coordenadas, detalhes, envelope, idempotência e até um port de repositório. O
-PIPELINE não existe em nenhum estágio: não há `SemanticRole` de evento, não há
-contrato de fonte linha-por-evento, não há fusão de evento, não há construtor,
-não há tabela, não há Parquet.
+**Por que isto não fecha o PR-04.** O DoD original fala de eventos **no build
+canônico histórico**, e um build histórico é uma versão publicada do corpus.
+Eventos que existem no PostgreSQL e não aparecem em nenhuma versão não
+satisfazem esse requisito: quem lê o corpus continua sem eles, e o manifesto
+continua reportando `NOT_DECLARED` — corretamente.
 
-**Por que não classificamos como `NOT_APPLICABLE`:** eventos são dado de
-futebol real e o motor vai precisar deles. «Não aplicável» seria falso.
+**Por que isto também não é `NOT_APPLICABLE`:** eventos são dado de futebol
+real e o motor vai precisar deles.
 
-**Por que não classificamos como `DONE`:** nenhum dataset atual declarar
-eventos não prova que o pipeline os suporta (§39). Fechar por ausência de
-fixture é exatamente o que o §48 proíbe.
-
-**Consequência:** a construção canônica de eventos é **pré-requisito nomeado**
-de qualquer `FeatureSpace` que dependa de eventos — xG por evento, Player
-Influence por ação, Tactical Graph, Pressure, trajetórias. O PR-05 pode
-começar sobre `MATCH`, `LINEUP` e `ODDS`; o que precisar de evento fica
-bloqueado por esta ausência.
+**Consequência, atualizada:** features que leem eventos **do PostgreSQL** por
+partida deixaram de estar bloqueadas. Features que dependem de eventos
+**publicados numa versão** — leitura analítica pelo Parquet, contagem no
+manifesto, reprodutibilidade por versão — continuam bloqueadas até o
+PR-04.4.2.
 
 ```
 PR-04 STILL BLOCKED
-blocker único: canonical EVENT build not implemented
+blocker único: canonical EVENT corpus integration (PR-04.4.2)
+                pipeline de canonicalização: ENTREGUE no PR-04.4.1
 ```
-
-**As duas saídas estão no documento de análise**, e a escolha entre elas é de
-quem responde pelo roadmap: fechar a capacidade num PR próprio, ou emendar
-formalmente o escopo do PR-04 registrando eventos como pré-requisito do PR-05.
-Emendar por conta própria e declarar o PR fechado seria a reclassificação
-silenciosa do §48, só que com mais parágrafos.
 
 ---
 
@@ -176,8 +214,10 @@ histórico misturaria dimensão com fato.
 ### `SPATIAL` como família independente
 
 Coordenadas são atributo de evento (`PitchCoordinate` vive em
-`domain/events/`). Sem evento não há onde pendurá-las. **Bloqueada por EVENT, e
-não separadamente.**
+`domain/events/`). O registro canônico de eventos **já as guarda** desde o
+PR-04.4.1 — par completo, intervalo `[0,1]`, referencial declarado. O que
+continua ausente é a família `SPATIAL` **no corpus publicado**. **Bloqueada
+junto com a integração de eventos, e não separadamente.**
 
 ### `TRACKING` na V1
 
@@ -212,12 +252,20 @@ trocar quem executa, e não o que o cliente vê.
 ## Observação de higiene do repositório
 
 A árvore **não** está `ruff format`-limpa: 111 arquivos anteriores a este PR
-divergem do `line-length = 100` configurado. **Não é regressão deste PR** — o
-gate do projeto é `ruff check .` (ver `Makefile`), e ele passa. Rodar
-`ruff format` sobre a árvore inteira aqui teria acrescentado 111 arquivos de
-ruído a um PR sobre o corpus, tornando-o irrevisável; a formatação em massa
-merece um commit próprio, e fica registrada aqui em vez de acontecer em
-silêncio.
+divergem do `line-length = 100` configurado. **Não é regressão de nenhum destes
+PRs** — o gate do projeto é `ruff check .` (ver `Makefile`), e ele passa. Rodar
+`ruff format` sobre a árvore inteira teria acrescentado 111 arquivos de ruído a
+um PR sobre outra coisa, tornando-o irrevisável; a formatação em massa merece
+um commit próprio, e fica registrada aqui em vez de acontecer em silêncio.
+
+**No PR-04.4.1 isso voltou a acontecer e foi revertido.** Um `ruff format`
+sobre `src/` reformatou 61 arquivos alheios ao PR. A reversão foi feita por
+critério verificável, e não por inspeção visual: para cada arquivo, se
+`format(versão do HEAD) == format(versão atual)`, então a única diferença era
+de layout — formatação preserva tokens — e o arquivo foi restaurado do HEAD.
+Os 4 arquivos com mudança real de conteúdo (`adapters/postgres/resolution.py`,
+`domain/sources/mapping.py`, `domain/sources/semantics.py`,
+`tests/support/pipeline.py`) permaneceram.
 
 ---
 
@@ -227,5 +275,8 @@ silêncio.
 PR-04 STILL BLOCKED
 ```
 
-O único blocker é a construção canônica de eventos. Tudo o mais — os 45 itens
-do DoD original mais os 14 do PR-04.3.1 — está `DONE` e verificado.
+O único blocker é a **integração de eventos ao corpus publicado**
+(`PR-04.4.2`). O pipeline de canonicalização que ele pressupõe foi entregue e
+verificado no PR-04.4.1 — 100.000 registros contra PostgreSQL real. Tudo o
+mais — os 45 itens do DoD original mais os 14 do PR-04.3.1 — está `DONE` e
+verificado.

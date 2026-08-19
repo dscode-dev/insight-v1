@@ -92,6 +92,63 @@ class SemanticRole(StrEnum):
     ODDS_DRAW = "ODDS_DRAW"
     ODDS_AWAY = "ODDS_AWAY"
 
+    # ---- eventos (PR-04.4.1). UMA LINHA É UM EVENTO, e nenhum destes papéis
+    # aparece num `MATCH_RECORD`: eles descrevem um fato pontual da partida,
+    # não um atributo dela. A separação é imposta pelo `RecordKind` e
+    # verificada no mapeamento — um arquivo não pode ser as duas coisas.
+    #
+    # NÃO EXISTE `EVENT_1_*`. Modelar uma coleção como colunas numeradas
+    # quebra no primeiro jogo com mais eventos que colunas (§9).
+    EVENT_PROVIDER_ID = "EVENT_PROVIDER_ID"
+    EVENT_TYPE = "EVENT_TYPE"
+    EVENT_PERIOD = "EVENT_PERIOD"
+    EVENT_MINUTE = "EVENT_MINUTE"
+    #: O `+3` de `45+3`. SEPARADO do minuto porque achatá-los confunde o
+    #: terceiro minuto de acréscimo do primeiro tempo com o terceiro do
+    #: segundo — momentos táticos opostos (§15, `MatchClock`).
+    EVENT_STOPPAGE = "EVENT_STOPPAGE"
+    #: A ordem DENTRO do período, quando a fonte a declara. É o desempate do
+    #: §18: dois eventos no mesmo minuto precisam de ordem determinística, e
+    #: inventá-la sem procedência seria fabricar sequência (§17).
+    EVENT_SEQUENCE = "EVENT_SEQUENCE"
+    EVENT_TEAM_PROVIDER_ID = "EVENT_TEAM_PROVIDER_ID"
+    EVENT_TEAM_NAME = "EVENT_TEAM_NAME"
+    EVENT_PLAYER_PROVIDER_ID = "EVENT_PLAYER_PROVIDER_ID"
+    EVENT_PLAYER_NAME = "EVENT_PLAYER_NAME"
+    #: Coordenadas NORMALIZADAS pela fonte, em [0,1]. O motor não converte
+    #: metros: as dimensões do campo variam e a fonte é quem as conhece.
+    EVENT_X = "EVENT_X"
+    EVENT_Y = "EVENT_Y"
+    EVENT_END_X = "EVENT_END_X"
+    EVENT_END_Y = "EVENT_END_Y"
+    #: `NEW` / `CORRECTION` / `CANCELLATION`. A revisão é DECLARADA pela
+    #: fonte; deduzi-la de um id repetido faria toda reingestão parecer
+    #: correção (§21, §22, §23).
+    EVENT_REVISION_TYPE = "EVENT_REVISION_TYPE"
+    EVENT_SUPERSEDES_PROVIDER_ID = "EVENT_SUPERSEDES_PROVIDER_ID"
+
+    # ---- detalhes tipados. Só os que os contratos do PR-01 já sabem receber:
+    # um papel cujo valor não tem onde morar é um papel que descarta dado em
+    # silêncio.
+    EVENT_OUTCOME = "EVENT_OUTCOME"
+    EVENT_BODY_PART = "EVENT_BODY_PART"
+    #: xG OBSERVADO pela fonte. Nunca calculado aqui (§119).
+    EVENT_XG = "EVENT_XG"
+    EVENT_CARD_TYPE = "EVENT_CARD_TYPE"
+    EVENT_PLAYER_OUT_PROVIDER_ID = "EVENT_PLAYER_OUT_PROVIDER_ID"
+    EVENT_PLAYER_IN_PROVIDER_ID = "EVENT_PLAYER_IN_PROVIDER_ID"
+
+    @property
+    def is_event(self) -> bool:
+        """Se este papel só faz sentido num `EVENT_RECORD`.
+
+        A PROPRIEDADE EXISTE PARA A GUARDA DO MAPEAMENTO: um arquivo de
+        partidas com `EVENT_MINUTE` mapeado, ou um de eventos sem
+        `EVENT_TYPE`, são erros de declaração — e é melhor recusá-los na
+        configuração do que descobrir na leitura.
+        """
+        return self in _EVENTO
+
     @property
     def is_identity(self) -> bool:
         """Se este papel participa da RESOLUÇÃO de identidade.
@@ -131,7 +188,7 @@ class SemanticRole(StrEnum):
         se um desacordo é conflito, e se uma licença restrita contamina o fato
         canônico. Deixá-la implícita faria cada leitor decidir sozinho.
         """
-        return self in _RÓTULOS_DE_IDENTIDADE
+        return self in _RÓTULOS_DE_IDENTIDADE_COMPLETOS
 
     @property
     def is_factual(self) -> bool:
@@ -237,7 +294,75 @@ _ODDS: Final[frozenset[SemanticRole]] = frozenset(
     }
 )
 
+#: OS PAPÉIS DE EVENTO. Fechado, e a lista é a definição de `is_event`.
+_EVENTO: Final[frozenset[SemanticRole]] = frozenset(
+    {
+        SemanticRole.EVENT_PROVIDER_ID,
+        SemanticRole.EVENT_TYPE,
+        SemanticRole.EVENT_PERIOD,
+        SemanticRole.EVENT_MINUTE,
+        SemanticRole.EVENT_STOPPAGE,
+        SemanticRole.EVENT_SEQUENCE,
+        SemanticRole.EVENT_TEAM_PROVIDER_ID,
+        SemanticRole.EVENT_TEAM_NAME,
+        SemanticRole.EVENT_PLAYER_PROVIDER_ID,
+        SemanticRole.EVENT_PLAYER_NAME,
+        SemanticRole.EVENT_X,
+        SemanticRole.EVENT_Y,
+        SemanticRole.EVENT_END_X,
+        SemanticRole.EVENT_END_Y,
+        SemanticRole.EVENT_REVISION_TYPE,
+        SemanticRole.EVENT_SUPERSEDES_PROVIDER_ID,
+        SemanticRole.EVENT_OUTCOME,
+        SemanticRole.EVENT_BODY_PART,
+        SemanticRole.EVENT_XG,
+        SemanticRole.EVENT_CARD_TYPE,
+        SemanticRole.EVENT_PLAYER_OUT_PROVIDER_ID,
+        SemanticRole.EVENT_PLAYER_IN_PROVIDER_ID,
+    }
+)
+
+#: OS PAPÉIS DE EVENTO QUE SÃO SÓ RÓTULO (PR-04.2.1 §4, PR-04.4.1 §49).
+#:
+#: `EVENT_TEAM_NAME` e `EVENT_PLAYER_NAME` servem para RECONHECER quem agiu; o
+#: evento canônico não é construído a partir do texto, e sim do
+#: `TeamId`/`PlayerId` que a resolução já provou. Contá-los na pegada de
+#: licença faria uma fonte restrita condenar um evento por ter dito o nome do
+#: jogador — a mesma lavagem pelo caminho da identidade que o PR-04.2.1
+#: fechou para partidas.
+#:
+#: O QUE NÃO ESTÁ AQUI é o que a fonte AFIRMA: tipo, período, minuto,
+#: acréscimo, coordenadas, desfecho, xG. Esses são fato, e quem os afirma é
+#: procedência factual do evento.
+_ROTULOS_DE_EVENTO: Final[frozenset[SemanticRole]] = frozenset(
+    {
+        SemanticRole.EVENT_TEAM_NAME,
+        SemanticRole.EVENT_PLAYER_NAME,
+        SemanticRole.EVENT_TEAM_PROVIDER_ID,
+        SemanticRole.EVENT_PLAYER_PROVIDER_ID,
+        SemanticRole.EVENT_PLAYER_OUT_PROVIDER_ID,
+        SemanticRole.EVENT_PLAYER_IN_PROVIDER_ID,
+        SemanticRole.EVENT_PROVIDER_ID,
+        SemanticRole.EVENT_SUPERSEDES_PROVIDER_ID,
+    }
+)
+#: Os rótulos de identidade DEPOIS de o PR-04.4.1 acrescentar os de evento. A
+#: união mora numa constante só porque `is_identity_label` precisa enxergar as
+#: duas famílias — uma fronteira que valesse para partida e não para evento
+#: seria uma porta aberta com um cadeado ao lado.
+_RÓTULOS_DE_IDENTIDADE_COMPLETOS: Final[frozenset[SemanticRole]] = (
+    _RÓTULOS_DE_IDENTIDADE | _ROTULOS_DE_EVENTO
+)
+
 _TIPOS: Final[dict[SemanticRole, ValueKind]] = {
+    SemanticRole.EVENT_MINUTE: ValueKind.INTEGER,
+    SemanticRole.EVENT_STOPPAGE: ValueKind.INTEGER,
+    SemanticRole.EVENT_SEQUENCE: ValueKind.INTEGER,
+    SemanticRole.EVENT_X: ValueKind.DECIMAL,
+    SemanticRole.EVENT_Y: ValueKind.DECIMAL,
+    SemanticRole.EVENT_END_X: ValueKind.DECIMAL,
+    SemanticRole.EVENT_END_Y: ValueKind.DECIMAL,
+    SemanticRole.EVENT_XG: ValueKind.DECIMAL,
     SemanticRole.ROUND_NUMBER: ValueKind.INTEGER,
     SemanticRole.KICKOFF: ValueKind.TIMESTAMP,
     SemanticRole.KICKOFF_DATE: ValueKind.DATE,
