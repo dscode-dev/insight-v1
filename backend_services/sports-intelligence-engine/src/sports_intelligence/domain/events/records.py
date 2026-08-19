@@ -206,7 +206,7 @@ def ordering_key(record: HistoricalEventRecord) -> tuple[int, int, int, int, str
     `EventContractReport.weak` avisa disso na configuração.
     """
     return (
-        _ORDEM_DO_PERIODO.get(record.clock.period, 99),
+        record.clock.period.order,
         record.clock.minute,
         record.clock.stoppage,
         record.sequence if record.sequence is not None else 0,
@@ -214,17 +214,6 @@ def ordering_key(record: HistoricalEventRecord) -> tuple[int, int, int, int, str
     )
 
 
-#: A ordem dos períodos, escrita por extenso. `Period` é um `StrEnum` e a
-#: ordem alfabética dele não é a ordem do jogo — `EXTRA_TIME_FIRST` viria
-#: antes de `FIRST_HALF`, e a prorrogação apareceria antes do primeiro tempo.
-_ORDEM_DO_PERIODO: dict[Period, int] = {
-    Period.PRE_MATCH: 0,
-    Period.FIRST_HALF: 1,
-    Period.HALF_TIME: 2,
-    Period.SECOND_HALF: 3,
-    Period.EXTRA_TIME_FIRST: 4,
-    Period.EXTRA_TIME_BREAK: 5,
-    Period.EXTRA_TIME_SECOND: 6,
-    Period.PENALTY_SHOOTOUT: 7,
-    Period.FULL_TIME: 8,
-}
+# A ORDEM DOS PERÍODOS MORA EM `Period.order` (PR-05.1 §10). Ela estava
+# escrita por extenso aqui, no adapter, no corpus e nos duplos — quatro cópias
+# da mesma afirmação sobre futebol, e a quarta seria a que divergiria.

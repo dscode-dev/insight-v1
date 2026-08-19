@@ -873,8 +873,12 @@ class TestAMaterializacao:
         await publicado["corpus"].publish_version.execute(
             actor=PUBLICADOR, version_id=saida.version.id, reason="publicação"
         )
+        # A CHAVE JÁ VEM COM O `v`. `str(DatasetVersion)` é `"v1.0"`, e não
+        # `"1.0"` — acrescentar um segundo prefixo aqui produzia
+        # `.../vv1.0/manifest.json`, que não existe, e a asserção reprovava um
+        # manifesto que estava gravado no lugar certo.
         manifesto = await minio_only.head(
-            f"corpus/historical-core/v{saida.version.version}/manifest.json"
+            f"corpus/historical-core/{saida.version.version}/manifest.json"
         )
         assert manifesto is not None
 

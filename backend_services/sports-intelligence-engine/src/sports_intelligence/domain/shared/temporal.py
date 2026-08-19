@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import NewType, Self, final
+from typing import Final, NewType, Self, final
 
 #: Um instante em UTC, sempre com fuso. O tipo distinto existe para que uma
 #: assinatura diga o que aceita: `datetime` sozinho não distingue um instante
@@ -70,6 +70,23 @@ class Period(StrEnum):
     FULL_TIME = "FULL_TIME"
 
     @property
+    def order(self) -> int:
+        """A posição desta fase na ORDEM DO JOGO.
+
+        POR QUE ELA MORA AQUI (PR-05.1 §10). Três módulos já carregavam a
+        mesma tabela — o adapter de eventos, o canonicalizador e a
+        serialização do corpus —, e os três a escreviam por extenso. Uma
+        quarta cópia no motor de features seria a que finalmente divergiria, e
+        a divergência apareceria como dois fatos do mesmo jogo em ordens
+        diferentes conforme quem os ordenou.
+
+        A ORDEM NÃO É A DECLARAÇÃO DO ENUM por acidente: ela é a do jogo, e
+        `PRE_MATCH < FIRST_HALF < … < FULL_TIME` é uma afirmação sobre futebol,
+        não sobre a sintaxe do arquivo.
+        """
+        return _ORDEM_DAS_FASES[self]
+
+    @property
     def is_ball_in_play(self) -> bool:
         """Se o relógio da partida corre nesta fase.
 
@@ -83,6 +100,22 @@ class Period(StrEnum):
             Period.EXTRA_TIME_FIRST,
             Period.EXTRA_TIME_SECOND,
         )
+
+
+#: A ordem das fases, escrita UMA vez. Ela é consultada por `Period.order`, e
+#: quem precisa ordenar fatos de uma partida usa a propriedade — nunca uma
+#: cópia local.
+_ORDEM_DAS_FASES: Final[dict[Period, int]] = {
+    Period.PRE_MATCH: 0,
+    Period.FIRST_HALF: 1,
+    Period.HALF_TIME: 2,
+    Period.SECOND_HALF: 3,
+    Period.EXTRA_TIME_FIRST: 4,
+    Period.EXTRA_TIME_BREAK: 5,
+    Period.EXTRA_TIME_SECOND: 6,
+    Period.PENALTY_SHOOTOUT: 7,
+    Period.FULL_TIME: 8,
+}
 
 
 @final

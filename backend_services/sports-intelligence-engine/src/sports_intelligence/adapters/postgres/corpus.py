@@ -983,57 +983,77 @@ class PostgresCorpusCompositionReader:
 
     @staticmethod
     async def _escalacoes(conexao: Any, match_ids: Sequence[Any]) -> dict[Any, tuple[Lineup, ...]]:
-        """As escalações e as entradas delas — UMA consulta, com junção."""
-        linhas = await conexao.fetch(
-            """
-            SELECT l.match_id, l.team_id, l.formation, e.player_id, e.status,
-                   e.shirt_number, e.position, e.captain
-            FROM lineups l
-            JOIN lineup_entries e
-              ON e.match_id = l.match_id AND e.team_id = l.team_id
-            WHERE l.match_id = ANY($1::uuid[])
-            ORDER BY l.match_id, l.team_id, e.player_id
-            """,
-            list(match_ids),
-        )
-        agrupado: dict[tuple[Any, Any], list[Any]] = {}
-        formacoes: dict[tuple[Any, Any], str | None] = {}
-        for linha in linhas:
-            chave = (linha["match_id"], linha["team_id"])
-            agrupado.setdefault(chave, []).append(linha)
-            formacoes[chave] = linha["formation"]
-
-        por_partida: dict[Any, list[Lineup]] = {}
-        for (partida, time), entradas in agrupado.items():
-            por_partida.setdefault(partida, []).append(
-                Lineup(
-                    match_id=MatchId(partida),
-                    team_id=TeamId(time),
-                    entries=tuple(_para_entrada(linha) for linha in entradas),
-                    formation=_para_formacao(formacoes[(partida, time)]),
-                )
-            )
-        return {partida: tuple(v) for partida, v in por_partida.items()}
+        return await lineups_of(conexao, match_ids)
 
     @staticmethod
     async def _cotacoes(
         conexao: Any, match_ids: Sequence[Any]
     ) -> dict[Any, tuple[CanonicalOddsObservation, ...]]:
-        linhas = await conexao.fetch(
+        return await odds_of(conexao, match_ids)
+
+
+async def lineups_of(conexao: Any, match_ids: Sequence[Any]) -> dict[Any, tuple[Lineup, ...]]:
+    """As escalações e as entradas delas — UMA consulta, com junção.
+
+    PÚBLICA PORQUE DOIS LEITORES A USAM (PR-05.2): a composição do corpus e a
+    reconstrução de estado precisam da mesma escalação, e duas consultas
+    divergiriam no dia em que uma ganhasse uma coluna.
+    """
+    linhas = await conexao.fetch(
             """
-            SELECT match_id, bookmaker, market, selection, decimal_odds, line,
-                   observed_at, provider_id, record_ref, license_class,
-                   recorded_at
-            FROM canonical_odds_observations
-            WHERE match_id = ANY($1::uuid[])
-            ORDER BY match_id, bookmaker, market, selection
+        SELECT l.match_id, l.team_id, l.formation, e.player_id, e.status,
+               e.shirt_number, e.position, e.captain
+        FROM lineups l
+        JOIN lineup_entries e
+          ON e.match_id = l.match_id AND e.team_id = l.team_id
+        WHERE l.match_id = ANY($1::uuid[])
+        ORDER BY l.match_id, l.team_id, e.player_id
             """,
-            list(match_ids),
+        list(match_ids),
+    )
+    agrupado: dict[tuple[Any, Any], list[Any]] = {}
+    formacoes: dict[tuple[Any, Any], str | None] = {}
+    for linha in linhas:
+        chave = (linha["match_id"], linha["team_id"])
+        agrupado.setdefault(chave, []).append(linha)
+        formacoes[chave] = linha["formation"]
+
+    por_partida: dict[Any, list[Lineup]] = {}
+    for (partida, time), entradas in agrupado.items():
+        por_partida.setdefault(partida, []).append(
+            Lineup(
+                match_id=MatchId(partida),
+                team_id=TeamId(time),
+                entries=tuple(_para_entrada(linha) for linha in entradas),
+                formation=_para_formacao(formacoes[(partida, time)]),
+            )
         )
-        por_partida: dict[Any, list[CanonicalOddsObservation]] = {}
-        for linha in linhas:
-            por_partida.setdefault(linha["match_id"], []).append(_para_odd(linha))
-        return {partida: tuple(v) for partida, v in por_partida.items()}
+    return {partida: tuple(v) for partida, v in por_partida.items()}
+
+async def odds_of(
+    conexao: Any, match_ids: Sequence[Any]
+) -> dict[Any, tuple[CanonicalOddsObservation, ...]]:
+    """As cotações daquelas partidas — UMA consulta.
+
+    PÚBLICA PELO MESMO MOTIVO DE `lineups_of` (PR-05.2): a composição do corpus
+    e a reconstrução de estado leem as mesmas linhas, e duas consultas
+    divergiriam.
+    """
+    linhas = await conexao.fetch(
+        """
+        SELECT match_id, bookmaker, market, selection, decimal_odds, line,
+               observed_at, provider_id, record_ref, license_class,
+               recorded_at
+        FROM canonical_odds_observations
+        WHERE match_id = ANY($1::uuid[])
+        ORDER BY match_id, bookmaker, market, selection
+        """,
+        list(match_ids),
+    )
+    por_partida: dict[Any, list[CanonicalOddsObservation]] = {}
+    for linha in linhas:
+        por_partida.setdefault(linha["match_id"], []).append(_para_odd(linha))
+    return {partida: tuple(v) for partida, v in por_partida.items()}
 
 
 # ============================================================== mapeamento ==
@@ -1157,14 +1177,15 @@ def _contribuicoes(bruto: Any) -> list[dict[str, Any]]:
     return list(bruto or [])
 
 
-def _para_fatos(
-    linha: Any,
-    *,
-    lineups: tuple[Lineup, ...],
-    odds: tuple[CanonicalOddsObservation, ...],
-) -> MatchCorpusFacts:
-    familias = tuple(CoverageFamily(f) for f in linha["included_families"])
-    partida = Match(
+def match_from_row(linha: Any) -> Match:
+    """A `Match` canônica a partir da linha da junção.
+
+    ELA É PÚBLICA E COMPARTILHADA (PR-05.2). A composição do corpus e a leitura
+    de estado histórico montam a MESMA partida a partir das MESMAS colunas;
+    dois mapeadores divergiriam no primeiro campo novo, e a divergência
+    apareceria como duas leituras discordando sobre o mesmo jogo.
+    """
+    return Match(
         id=MatchId(linha["match_id"]),
         competition_id=CompetitionId(linha["competition_id"]),
         season_id=SeasonId(linha["season_id"]),
@@ -1189,8 +1210,17 @@ def _para_fatos(
         venue=None if linha["venue_name"] is None else Venue(name=linha["venue_name"]),
         neutral_venue=linha["neutral_venue"],
     )
+
+
+def _para_fatos(
+    linha: Any,
+    *,
+    lineups: tuple[Lineup, ...],
+    odds: tuple[CanonicalOddsObservation, ...],
+) -> MatchCorpusFacts:
+    familias = tuple(CoverageFamily(f) for f in linha["included_families"])
     return MatchCorpusFacts(
-        match=partida,
+        match=match_from_row(linha),
         competition=CompetitionCode(linha["competition_code"]),
         season_label=linha["season_label"],
         included_families=familias,

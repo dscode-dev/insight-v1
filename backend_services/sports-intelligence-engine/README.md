@@ -202,7 +202,14 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
 - **ADR-0027** — o PostgreSQL é a verdade; o Parquet é uma representação, e ela
   é opcional;
 - **ADR-0028** — um registro histórico de evento é entidade repetida, e nunca
-  campo escalar de partida — no intake e no corpus.
+  campo escalar de partida — no intake e no corpus;
+- **ADR-0029** — a geração de features usa semântica AS-KNOWN: tempo efetivo
+  não é tempo de conhecimento, e o desconhecido falha fechado;
+- **ADR-0030** — definições e espaços de feature são contratos semânticos
+  versionados, e a ordem do espaço é parte da identidade dele;
+- **ADR-0031** — o estado histórico da partida é reconstruído sob demanda e
+  nunca armazenado: ele é função do corpus e da política, e uma linha gravada
+  não carrega essas dependências.
 
 Contratos de dados:
 
@@ -224,6 +231,20 @@ Contratos de dados:
 - [`docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md`](docs/contracts/HISTORICAL_CANONICAL_MANIFEST_V1.md)
 - [`docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md`](docs/contracts/HISTORICAL_CANONICAL_DATASET_V1.md)
 - [`docs/contracts/HISTORICAL_EVENT_RECORD_V1.md`](docs/contracts/HISTORICAL_EVENT_RECORD_V1.md)
+
+Contratos de feature (PR-05.1 — contratos, sem features):
+
+- [`docs/features/FEATURE_CONTRACT_V1.md`](docs/features/FEATURE_CONTRACT_V1.md)
+- [`docs/features/TEMPORAL_SEMANTICS_V1.md`](docs/features/TEMPORAL_SEMANTICS_V1.md)
+- [`docs/features/TEMPORAL_LEAKAGE_MODEL.md`](docs/features/TEMPORAL_LEAKAGE_MODEL.md)
+- [`docs/features/FEATURE_SPACE_V1.md`](docs/features/FEATURE_SPACE_V1.md)
+- [`docs/features/NORMALIZATION_CONTRACT_V1.md`](docs/features/NORMALIZATION_CONTRACT_V1.md)
+
+Estado histórico da partida (PR-05.2 — estado, sem feature):
+
+- [`docs/features/HISTORICAL_MATCH_STATE_V1.md`](docs/features/HISTORICAL_MATCH_STATE_V1.md)
+- [`docs/features/MATCH_STATE_RECONSTRUCTION.md`](docs/features/MATCH_STATE_RECONSTRUCTION.md)
+- [`docs/features/STATE_COMPONENT_AVAILABILITY.md`](docs/features/STATE_COMPONENT_AVAILABILITY.md)
 
 ---
 

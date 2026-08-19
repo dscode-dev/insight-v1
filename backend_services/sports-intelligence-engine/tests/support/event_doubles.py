@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from typing import Final, final
+from typing import final
 
 from sports_intelligence.domain.events.build import (
     EventBuildRecord,
@@ -33,22 +33,11 @@ from sports_intelligence.domain.shared.identity import (
     MatchId,
     ProviderId,
 )
-from sports_intelligence.domain.shared.temporal import Instant, Period
+from sports_intelligence.domain.shared.temporal import Instant
 
-#: A ordem dos períodos, para a leitura determinística. É a mesma constante do
-#: adapter — duas cópias divergiriam, e a divergência apareceria como duas
-#: leituras discordando sobre os mesmos fatos.
-_ORDEM: Final[dict[Period, int]] = {
-    Period.PRE_MATCH: 0,
-    Period.FIRST_HALF: 1,
-    Period.HALF_TIME: 2,
-    Period.SECOND_HALF: 3,
-    Period.EXTRA_TIME_FIRST: 4,
-    Period.EXTRA_TIME_BREAK: 5,
-    Period.EXTRA_TIME_SECOND: 6,
-    Period.PENALTY_SHOOTOUT: 7,
-    Period.FULL_TIME: 8,
-}
+# A ordem dos períodos vem de `Period.order` (PR-05.1 §10): um duplo com
+# tabela própria poderia concordar com o real por acidente e divergir dele na
+# primeira fase nova.
 
 
 @final
@@ -165,7 +154,7 @@ class FakeCanonicalEventWriter:
         return sorted(
             candidatos,
             key=lambda e: (
-                _ORDEM[e.clock.period],
+                e.clock.period.order,
                 e.clock.minute,
                 e.clock.stoppage,
                 e.sequence,

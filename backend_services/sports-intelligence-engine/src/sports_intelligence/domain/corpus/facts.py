@@ -70,22 +70,6 @@ MATERIALIZABLE_FAMILIES: Final[frozenset[CoverageFamily]] = frozenset(
 )
 
 
-#: A ordem dos períodos, para a ordenação canônica dos eventos. Ela é a mesma
-#: do adapter e do canonicalizador — três cópias divergiriam, e a divergência
-#: apareceria como impressões diferentes sobre os mesmos eventos.
-_ORDEM_DO_PERIODO: Final[dict[str, int]] = {
-    "PRE_MATCH": 0,
-    "FIRST_HALF": 1,
-    "HALF_TIME": 2,
-    "SECOND_HALF": 3,
-    "EXTRA_TIME_FIRST": 4,
-    "EXTRA_TIME_BREAK": 5,
-    "EXTRA_TIME_SECOND": 6,
-    "PENALTY_SHOOTOUT": 7,
-    "FULL_TIME": 8,
-}
-
-
 @final
 @dataclass(frozen=True, slots=True)
 class MatchCorpusFacts:
@@ -442,7 +426,7 @@ class MatchCorpusFacts:
             sorted(
                 self.events,
                 key=lambda e: (
-                    _ORDEM_DO_PERIODO.get(e.clock.period.value, 99),
+                    e.clock.period.order,
                     e.clock.minute,
                     e.clock.stoppage,
                     e.sequence,

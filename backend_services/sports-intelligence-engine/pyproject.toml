@@ -141,6 +141,7 @@ markers = [
     "smoke: prova que o processo sobe e responde",
     "integration: exige PostgreSQL e object store de verdade",
     "performance: mede tempo e memória; não afirma SLO",
+    "property: prova uma INVARIANTE sobre todo um conjunto de entradas",
 ]
 
 [tool.coverage.run]
