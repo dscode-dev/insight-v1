@@ -29,10 +29,17 @@ CanonicalMatchEvent                   fato canônico, com detalhe tipado
 canonical_match_events  +  canonical_event_build_records
 ```
 
-**E PARA AQUI.** A canonicalização **não** escreve pertinência de corpus,
-**não** gera `events.parquet` e **não** toca o manifesto. Isso é o PR-04.4.2,
-e antecipá-lo faria eventos entrarem numa versão publicada sem passar pelo
-gate que existe exatamente para isso.
+**E PARA AQUI — no registro canônico.** A canonicalização não escreve
+pertinência de corpus, não gera `events.parquet` e não toca o manifesto. Ela
+termina com o fato gravado; publicá-lo é outra decisão, tomada por outra
+execução, sob outro gate.
+
+**O degrau seguinte existe desde o PR-04.4.2** e está em
+[HISTORICAL_CANONICAL_CORPUS.md](HISTORICAL_CANONICAL_CORPUS.md): uma versão do
+corpus DECLARA quais execuções de evento publica, grava a pertinência evento a
+evento e escreve o `events.parquet`. A separação entre os dois continua sendo
+o ponto: o registro é global e cresce; a versão é um recorte declarado e
+congelado.
 
 ---
 
@@ -214,9 +221,9 @@ Detalhes, comparação entre lotes e a prova de determinismo:
 
 | não faz | por quê |
 |---------|---------|
-| resolução de evento entre provedores | dois provedores descrevendo o mesmo gol é um problema próprio; `UncertainSameEvent` **não** vira `ForceMerge` |
-| fusão campo a campo de eventos | não existe neste PR, e a ausência é declarada |
-| pertinência de corpus, Parquet, manifesto | PR-04.4.2 |
+| pertinência de corpus, Parquet, manifesto | é o PR-04.4.2, e ele já existe |
+| fusão campo a campo de eventos | não existe, e a ausência é declarada |
+| resolução de evento entre provedores | continua fora — `UncertainSameEvent ⇏ ForceMerge` |
 | qualquer feature derivada | PR-05 |
 
 ---

@@ -191,6 +191,17 @@ class VersionInputs:
     #: A linhagem para trás: fusões e resoluções que alimentaram os builds.
     fusion_run_ids: tuple[str, ...] = ()
     resolution_run_ids: tuple[str, ...] = ()
+    #: AS EXECUÇÕES DE CANONICALIZAÇÃO DE EVENTO que esta versão publica
+    #: (PR-04.4.2 §5). Vazio significa «esta versão não publica eventos», e é
+    #: uma declaração legítima — não uma omissão a ser corrigida derivando
+    #: eventos das partidas. É este campo que permite duas versões das MESMAS
+    #: partidas, uma com eventos e outra sem.
+    event_build_run_ids: tuple[str, ...] = ()
+    #: A política de elegibilidade de evento sob a qual eles foram construídos,
+    #: e a versão da tabela de tipos. Elas respondem «produzido de que jeito»,
+    #: que é pergunta do manifesto e não da impressão (§101).
+    event_policy_versions: tuple[int, ...] = ()
+    event_type_mapping_versions: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.build_run_ids:
@@ -200,6 +211,7 @@ class VersionInputs:
         for nome, valores in (
             ("build_run_ids", self.build_run_ids),
             ("quality_run_ids", self.quality_run_ids),
+            ("event_build_run_ids", self.event_build_run_ids),
         ):
             if len(set(valores)) != len(valores):
                 raise ValidationError(
@@ -207,8 +219,14 @@ class VersionInputs:
                 )
 
     def as_canonical(self) -> dict[str, object]:
-        """A forma completa, para o manifesto — COM os ids (traversal)."""
-        return {
+        """A forma completa, para o manifesto — COM os ids (traversal).
+
+        AS CHAVES DE EVENTO SÓ APARECEM QUANDO HÁ EVENTO. Uma versão que não
+        publica eventos produz exatamente o documento que produzia antes do
+        PR-04.4.2 — e é isso que mantém os manifestos já publicados válidos sob
+        o mesmo schema, sem retrofit (§103).
+        """
+        forma: dict[str, object] = {
             "build_output_fingerprints": sorted(f.value for f in self.build_output_fingerprints),
             "build_policy_fingerprints": sorted(f.value for f in self.build_policy_fingerprints),
             "build_policy_versions": sorted(str(v) for v in self.build_policy_versions),
@@ -221,6 +239,11 @@ class VersionInputs:
             "quality_run_ids": sorted(self.quality_run_ids),
             "resolution_run_ids": sorted(self.resolution_run_ids),
         }
+        if self.event_build_run_ids:
+            forma["event_build_run_ids"] = sorted(self.event_build_run_ids)
+            forma["event_policy_versions"] = sorted(self.event_policy_versions)
+            forma["event_type_mapping_versions"] = sorted(self.event_type_mapping_versions)
+        return forma
 
     def semantic_form(self) -> dict[str, object]:
         """O que entra na IMPRESSÃO — sem os identificadores de execução (§31).

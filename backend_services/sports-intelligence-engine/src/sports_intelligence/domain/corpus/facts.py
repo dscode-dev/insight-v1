@@ -33,7 +33,15 @@ from sports_intelligence.domain.corpus.fingerprint import (
     decimal_text,
     instant_text,
 )
+from sports_intelligence.domain.corpus.membership import EventCorpusCounts
 from sports_intelligence.domain.datasets.content import ContentHash
+from sports_intelligence.domain.events.canonical import CanonicalMatchEvent
+from sports_intelligence.domain.events.canonical_form import (
+    EVENT_DETAIL_SCHEMA_VERSION,
+    detail_form,
+    detail_kind,
+    event_content_form,
+)
 from sports_intelligence.domain.matches.lineup import Lineup
 from sports_intelligence.domain.matches.models import Match
 from sports_intelligence.domain.matches.result import MatchResult, Score
@@ -41,12 +49,41 @@ from sports_intelligence.domain.odds.models import CanonicalOddsObservation
 from sports_intelligence.domain.quality.coverage import FAMILY_ORDER, CoverageFamily
 from sports_intelligence.domain.shared.errors import ValidationError
 
-#: As famílias que este PR sabe materializar. `EVENT` não está aqui pela mesma
-#: razão do PR-04.2: nenhum `SemanticRole` carrega evento, então não há o que
-#: escrever — e um arquivo vazio afirmaria uma cobertura que não existe.
+#: As famílias que o motor sabe materializar.
+#:
+#: `EVENT` ENTROU NO PR-04.4.2, e a entrada tem data porque a ausência tinha
+#: motivo: até o PR-04.4.1 não havia pipeline de evento nenhum, e publicar uma
+#: família sem saber escrevê-la faria o manifesto prometer conteúdo
+#: inexistente. Hoje há registro canônico, e o corpus escreve dele.
+#:
+#: `PLAYER`, `SPATIAL` e `TRACKING` continuam fora, e por razões diferentes:
+#: jogador entra por REFERÊNCIA (dentro de `LINEUP` e dos eventos), o espacial
+#: é ATRIBUTO de evento — as coordenadas viajam nas linhas de evento, não numa
+#: família própria —, e tracking está fora da V1 por decisão do PR-04.1.
 MATERIALIZABLE_FAMILIES: Final[frozenset[CoverageFamily]] = frozenset(
-    {CoverageFamily.MATCH, CoverageFamily.LINEUP, CoverageFamily.ODDS}
+    {
+        CoverageFamily.MATCH,
+        CoverageFamily.LINEUP,
+        CoverageFamily.ODDS,
+        CoverageFamily.EVENT,
+    }
 )
+
+
+#: A ordem dos períodos, para a ordenação canônica dos eventos. Ela é a mesma
+#: do adapter e do canonicalizador — três cópias divergiriam, e a divergência
+#: apareceria como impressões diferentes sobre os mesmos eventos.
+_ORDEM_DO_PERIODO: Final[dict[str, int]] = {
+    "PRE_MATCH": 0,
+    "FIRST_HALF": 1,
+    "HALF_TIME": 2,
+    "SECOND_HALF": 3,
+    "EXTRA_TIME_FIRST": 4,
+    "EXTRA_TIME_BREAK": 5,
+    "EXTRA_TIME_SECOND": 6,
+    "PENALTY_SHOOTOUT": 7,
+    "FULL_TIME": 8,
+}
 
 
 @final
@@ -70,6 +107,15 @@ class MatchCorpusFacts:
     result: MatchResult | None = None
     lineups: tuple[Lineup, ...] = ()
     odds: tuple[CanonicalOddsObservation, ...] = ()
+    #: OS EVENTOS QUE ESTA VERSÃO PUBLICA desta partida, em ordem canônica.
+    #:
+    #: ELES NÃO VÊM DO BUILD DE PARTIDA (PR-04.4.2 §5). Um `CanonicalBuildRun`
+    #: constrói partida, escalação e odds; eventos vêm de execuções próprias, e
+    #: quais delas a versão publica é declaração da VERSÃO. É por isso que a
+    #: mesma partida pode entrar num corpus com eventos e noutro sem — e
+    #: derivar pertinência de «o evento existe e a partida está no corpus»
+    #: apagaria justamente essa diferença.
+    events: tuple[CanonicalMatchEvent, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.included_families:
@@ -84,6 +130,29 @@ class MatchCorpusFacts:
                 f"{self.match.id} inclui {nomes}, que este PR não materializa. "
                 "Publicar a família sem saber escrevê-la faria o manifesto "
                 "prometer conteúdo que não existe no corpus"
+            )
+        # `EVENT` DECLARADA SEM EVENTO É PROMESSA VAZIA. A família diz «esta
+        # partida contribui eventos»; sem nenhum, o Parquet não teria linha, a
+        # contagem do manifesto ficaria zero e a cobertura afirmaria presença.
+        # A recusa aqui é o que impede a incoerência de nascer.
+        if CoverageFamily.EVENT in self.included_families and not self.events:
+            raise ValidationError(
+                f"{self.match.id} declara a família EVENT e não traz evento nenhum — "
+                "a família é a promessa de conteúdo, e ela ficaria vazia no arquivo "
+                "e no manifesto (PR-04.4.2 §52)"
+            )
+        if self.events and CoverageFamily.EVENT not in self.included_families:
+            raise ValidationError(
+                f"{self.match.id} carrega {len(self.events)} evento(s) e não declara "
+                "a família EVENT — eles seriam impressos e não escritos, e a "
+                "impressão discordaria do arquivo"
+            )
+        de_outra_partida = [e for e in self.events if e.match_id != self.match.id]
+        if de_outra_partida:
+            raise ValidationError(
+                f"{self.match.id} recebeu evento de {de_outra_partida[0].match_id} — "
+                "um evento pendurado na partida errada atribui o fato a quem não o "
+                "praticou"
             )
 
     @property
@@ -123,6 +192,7 @@ class MatchCorpusFacts:
         `TeamId`, e é o `TeamId` que esta forma carrega.
         """
         return {
+            "events": [event_content_form(e) for e in self._eventos_ordenados()],
             "lineups": [
                 self._lineup_form(lineup)
                 for lineup in sorted(self.lineups, key=lambda x: str(x.team_id))
@@ -162,6 +232,16 @@ class MatchCorpusFacts:
                     str(linha["line"]),
                 ),
             )
+        # OS EVENTOS ENTRAM NA IMPRESSÃO (PR-04.4.2 §10 ao §15). É o que faz
+        # «as mesmas partidas com um evento a mais» ser um corpus DIFERENTE —
+        # e sem isso a impressão diria «igual» sobre dois conteúdos que o PR-05
+        # leria de formas diferentes.
+        #
+        # A CHAVE SÓ APARECE QUANDO A FAMÍLIA ENTROU, como as outras: um corpus
+        # sem eventos produz exatamente os mesmos bytes de antes deste PR, e é
+        # isso que mantém as versões já publicadas reproduzíveis (§62, §117).
+        if self.includes(CoverageFamily.EVENT):
+            forma["events"] = [event_content_form(e) for e in self._eventos_ordenados()]
         return forma
 
     def _match_form(self) -> dict[str, object]:
@@ -259,6 +339,8 @@ class MatchCorpusFacts:
             return self._lineup_rows()
         if family is CoverageFamily.ODDS:
             return self._odds_rows()
+        if family is CoverageFamily.EVENT:
+            return self._event_rows()
         return []
 
     def _match_row(self) -> dict[str, object]:
@@ -339,6 +421,97 @@ class MatchCorpusFacts:
                     "line": observacao.line,
                     # `None` quando a fonte não declara. Nunca o kickoff.
                     "observed_at": observacao.observed_at,
+                }
+            )
+        return linhas
+
+
+    # ------------------------------------------------------------ eventos --
+
+    def _eventos_ordenados(self) -> tuple[CanonicalMatchEvent, ...]:
+        """Os eventos em ORDEM CANÔNICA — a mesma da impressão e do arquivo.
+
+        A ORDEM É `(período, minuto, acréscimo, sequência, id)`, e ela é
+        aplicada AQUI e não confiada à leitura: a impressão do corpus é
+        calculada sobre esta lista, e uma ordem herdada do `ORDER BY` faria a
+        impressão mudar no dia em que alguém acrescentasse uma coluna ao
+        índice. O `id` no fim é o desempate total — dois eventos no mesmo
+        instante com a mesma sequência ainda são dois eventos distintos (§7).
+        """
+        return tuple(
+            sorted(
+                self.events,
+                key=lambda e: (
+                    _ORDEM_DO_PERIODO.get(e.clock.period.value, 99),
+                    e.clock.minute,
+                    e.clock.stoppage,
+                    e.sequence,
+                    str(e.id),
+                ),
+            )
+        )
+
+    def event_counts(self) -> EventCorpusCounts:
+        """Os números desta partida para o manifesto (§31)."""
+        return EventCorpusCounts.of(self.events)
+
+    def _event_rows(self) -> list[dict[str, object]]:
+        """As linhas de `events.parquet` desta partida.
+
+        AUSENTE É `None` EM TODA COLUNA OPCIONAL (§23). Um evento sem jogador
+        tem `player_id` nulo, e nunca um UUID zerado; um sem coordenada tem
+        `x`/`y` nulos, e nunca `0.0` — que é o canto do campo, uma posição
+        perfeitamente válida.
+        """
+        linhas: list[dict[str, object]] = []
+        for evento in self._eventos_ordenados():
+            detalhe = detail_form(evento.detail)
+            inicio, fim = evento.start_location, evento.end_location
+            linhas.append(
+                {
+                    "event_id": str(evento.id),
+                    "match_id": str(self.match.id),
+                    "competition": self.competition.value,
+                    "season": self.season_label,
+                    "team_id": None if evento.team_id is None else str(evento.team_id),
+                    "player_id": None if evento.player_id is None else str(evento.player_id),
+                    "event_type": evento.type.value,
+                    "period": evento.clock.period.value,
+                    "minute": evento.clock.minute,
+                    "stoppage": evento.clock.stoppage,
+                    "sequence": evento.sequence,
+                    "status": evento.status.value,
+                    "revision": evento.revision,
+                    "supersedes_event_id": (
+                        None if evento.supersedes is None else str(evento.supersedes)
+                    ),
+                    "start_x": None if inicio is None else inicio.x,
+                    "start_y": None if inicio is None else inicio.y,
+                    "end_x": None if fim is None else fim.x,
+                    "end_y": None if fim is None else fim.y,
+                    # O REFERENCIAL VIAJA COM O PONTO (ADR-0012). Sem ele,
+                    # `0.8` de uma fonte e `0.8` de outra querem dizer coisas
+                    # opostas, e a coluna vira número sem significado.
+                    "coordinate_frame": None if inicio is None else inicio.frame.value,
+                    "detail_kind": detail_kind(evento.detail),
+                    # O DETALHE VAI COMO JSON CANÔNICO E VERSIONADO (§20), e
+                    # nunca como `repr()` de objeto Python: `repr` não é
+                    # estável entre versões da linguagem, e um arquivo do
+                    # corpus precisa ser legível daqui a anos.
+                    "detail": (
+                        None if detalhe is None else canonical_json(detalhe).decode("utf-8")
+                    ),
+                    "detail_schema_version": (
+                        None if detalhe is None else EVENT_DETAIL_SCHEMA_VERSION
+                    ),
+                    # O xG PROMOVIDO A COLUNA. `None` quando o detalhe não fala
+                    # de xG e `None` com motivo quando a fonte declarou e não
+                    # veio — nunca `0.0`, que é um valor observado (§24).
+                    "xg": None if detalhe is None else detalhe.get("xg"),
+                    "xg_unavailable_reason": (
+                        None if detalhe is None else detalhe.get("xg_unavailable_reason")
+                    ),
+                    "license_class": evento.provenance.license_class.value,
                 }
             )
         return linhas

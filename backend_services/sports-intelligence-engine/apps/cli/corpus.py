@@ -121,6 +121,10 @@ def build_version(
     version: Annotated[str, typer.Option(help="Ex.: 1.0")],
     usage: Annotated[UsageScope, typer.Option()] = UsageScope.RESEARCH,
     build_run: Annotated[list[str] | None, typer.Option(help="id de build")] = None,
+    event_run: Annotated[
+        list[str] | None,
+        typer.Option(help="id de execução de canonicalização de EVENTO (repetível)"),
+    ] = None,
     quality_run: Annotated[str | None, typer.Option()] = None,
     scope: Annotated[
         list[str] | None,
@@ -144,6 +148,10 @@ def build_version(
     entradas = VersionInputs(
         build_run_ids=tuple(build_run),
         quality_run_ids=() if quality_run is None else (quality_run,),
+        # SEM `--event-run`, A VERSÃO NÃO PUBLICA EVENTOS, e isso é uma
+        # declaração — não uma omissão a ser corrigida derivando eventos das
+        # partidas (PR-04.4.2 §5).
+        event_build_run_ids=tuple(event_run or ()),
     )
 
     async def acao(contêiner: Any) -> Any:
@@ -160,6 +168,7 @@ def build_version(
     console.print(
         f"[green]composta[/green] {saida.version.version} "
         f"[{saida.version.status}] · {saida.members_written} partida(s) · "
+        f"{saida.event_members_written} evento(s) · "
         f"{saida.objects_written} objeto(s)"
     )
     console.print(f"impressão: [bold]{saida.manifest.corpus_fingerprint.value}[/bold]")
@@ -223,6 +232,70 @@ def list_versions(
             (versao.corpus_fingerprint.value[:16] if versao.corpus_fingerprint else "—"),
         )
     console.print(tabela)
+
+
+@app.command("profile")
+def show_profile(version_id: Annotated[str, typer.Argument()]) -> None:
+    """O perfil da versão: contagens e cobertura — inclusive de EVENTO.
+
+    ELE LÊ O MANIFESTO, e não recalcula nada (PR-04.4.2 §54, §57). O manifesto
+    é o que foi PUBLICADO; recontar a partir do banco produziria um segundo
+    número para a mesma pergunta, e os dois divergiriam no dia em que alguém
+    apagasse uma linha que não devia.
+
+    O QUE ELE NÃO MOSTRA: chutes por jogo, taxa de conversão, gols por liga.
+    Isso é analítica esportiva — tem versão de modelo e mora no PR-05.
+    """
+
+    async def acao(contêiner: Any) -> Any:
+        return await contêiner.corpus.manifests.by_version(version_id)
+
+    manifesto = _executar(acao)
+    if manifesto is None:
+        console.print(f"[yellow]versão {version_id} sem manifesto[/yellow]")
+        raise typer.Exit(code=1)
+
+    console.print(
+        f"[bold]{manifesto.dataset_name} {manifesto.dataset_version}[/bold] "
+        f"[{manifesto.scope.usage.value}] · {manifesto.counts.matches} partida(s)"
+    )
+    eventos = manifesto.counts.events
+    if eventos.total:
+        console.print(
+            f"eventos: [bold]{eventos.total}[/bold] · "
+            f"{eventos.with_player} com jogador · "
+            f"{eventos.with_coordinates} com coordenada de "
+            f"{eventos.spatially_eligible} espacialmente elegíveis"
+        )
+        por_tipo = Table(title="eventos por tipo")
+        por_tipo.add_column("tipo")
+        por_tipo.add_column("total", justify="right")
+        for tipo, quantos in sorted(eventos.by_type.items()):
+            por_tipo.add_row(tipo, str(quantos))
+        console.print(por_tipo)
+        por_estado = ", ".join(f"{k}={v}" for k, v in sorted(eventos.by_status.items()))
+        # `CORRECTED` E `CANCELLED` APARECEM, e é deliberado: o total conta
+        # TODOS os registros publicados, e chamá-lo de «eventos efetivos»
+        # descreveria outra coisa (§53).
+        console.print(f"[dim]por estado: {por_estado}[/dim]")
+    else:
+        console.print("[dim]esta versão não publica eventos[/dim]")
+
+    cobertura = Table(title="cobertura por família")
+    cobertura.add_column("família")
+    cobertura.add_column("estado")
+    cobertura.add_column("com dado", justify="right")
+    cobertura.add_column("total", justify="right")
+    cobertura.add_column("razão", justify="right")
+    for familia in manifesto.coverage:
+        cobertura.add_row(
+            familia.family,
+            familia.state,
+            str(familia.matches_with_data),
+            str(familia.matches_total),
+            "—" if familia.ratio is None else f"{familia.ratio:.1%}",
+        )
+    console.print(cobertura)
 
 
 @app.command("manifest")

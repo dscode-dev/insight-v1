@@ -103,6 +103,32 @@ class EventType(StrEnum):
     def is_stoppage(self) -> bool:
         return self in _INTERRUPCOES
 
+    @property
+    def supports_location(self) -> bool:
+        """Se este tipo de evento ACONTECE num ponto do campo.
+
+        ELA EXISTE PARA O DENOMINADOR DA COBERTURA ESPACIAL (PR-04.4.2 §27).
+        «Quantos eventos têm coordenada» dividido por «quantos eventos há» é
+        uma fração desonesta: o apito inicial, a substituição e o cartão não
+        têm coordenada porque não são ações localizadas — contá-los no
+        denominador faria uma fonte espacialmente completa parecer ter 70% de
+        cobertura, e ninguém saberia se o buraco é da fonte ou da conta.
+
+        O QUE FICA DE FORA, e por quê:
+
+            estruturais      o apito não acontece num ponto
+            interrupções     VAR e paralisação por lesão descrevem o relógio
+            substituição     acontece na linha lateral, e o ponto não descreve
+                             a ação — descreve o protocolo
+            cartão           a punição é do árbitro, e a posição em que ele
+                             mostra o cartão não é o fato
+
+        Fontes que publicam coordenada para algum destes NÃO são penalizadas:
+        a coordenada é gravada do mesmo jeito. O que a propriedade decide é
+        quem entra na CONTA, não quem tem direito a ter posição.
+        """
+        return self in _COM_LOCAL
+
 
 _SEM_TIME: Final = frozenset(
     {
@@ -149,5 +175,32 @@ _INTERRUPCOES: Final = frozenset(
         EventType.VAR,
         EventType.INJURY_STOPPAGE,
         EventType.GENERAL_STOPPAGE,
+    }
+)
+
+#: OS TIPOS QUE ACONTECEM NUM PONTO DO CAMPO. Ele é escrito por extenso, e não
+#: derivado de «tudo menos os estruturais»: a substituição e o cartão também
+#: não são localizados, e uma regra derivada os incluiria em silêncio.
+_COM_LOCAL: Final = frozenset(
+    {
+        EventType.PASS,
+        EventType.CARRY,
+        EventType.DRIBBLE,
+        EventType.SHOT,
+        EventType.GOAL,
+        EventType.PRESSURE,
+        EventType.RECOVERY,
+        EventType.INTERCEPTION,
+        EventType.TACKLE,
+        EventType.DUEL,
+        EventType.BLOCK,
+        EventType.CLEARANCE,
+        EventType.FOUL,
+        EventType.OFFSIDE,
+        EventType.CORNER,
+        EventType.FREE_KICK,
+        EventType.THROW_IN,
+        EventType.GOAL_KICK,
+        EventType.GOALKEEPER_ACTION,
     }
 )

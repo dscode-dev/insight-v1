@@ -26,12 +26,15 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, final
 
 from sports_intelligence.domain.corpus.composition import (
     ComposedMatchCorpusFacts,
+    EventExclusionTally,
+    PublishedEvent,
     compose,
+    compose_events,
 )
 from sports_intelligence.domain.corpus.facts import (
     MATERIALIZABLE_FAMILIES,
@@ -41,7 +44,7 @@ from sports_intelligence.domain.corpus.manifest import (
     MANIFEST_SCHEMA_VERSION,
     HistoricalCanonicalManifest,
 )
-from sports_intelligence.domain.corpus.membership import CorpusMember
+from sports_intelligence.domain.corpus.membership import CorpusEventMember, CorpusMember
 from sports_intelligence.domain.corpus.scope import CorpusScope
 from sports_intelligence.domain.corpus.versions import (
     DatasetVersionStatus,
@@ -49,6 +52,7 @@ from sports_intelligence.domain.corpus.versions import (
     HistoricalCanonicalDatasetVersion,
     VersionInputs,
 )
+from sports_intelligence.domain.quality.coverage import CoverageFamily
 from sports_intelligence.domain.quality.licensing import UsageScope
 from sports_intelligence.domain.quality.policy import HistoricalQualityPolicy
 from sports_intelligence.domain.shared.actor import Actor
@@ -68,6 +72,7 @@ from sports_intelligence.ports.object_store.corpus import CanonicalCorpusMateria
 from sports_intelligence.ports.repositories.corpus import (
     CanonicalManifestRepositoryPort,
     CorpusCompositionReaderPort,
+    CorpusEventReaderPort,
     CorpusMembershipRepositoryPort,
     HistoricalCanonicalDatasetRepositoryPort,
 )
@@ -78,6 +83,18 @@ from sports_intelligence.ports.repositories.quality import (
 #: O tamanho do lote da composição. Nomeado porque ele é o parâmetro que o
 #: §88 varia para provar que a impressão NÃO depende dele.
 DEFAULT_COMPOSITION_BATCH: int = 500
+
+#: O TETO DE EVENTOS POR PEDAÇO da composição (PR-04.4.2 §46, §90).
+#:
+#: O lote de composição conta PARTIDAS, e essa unidade deixou de bastar quando
+#: eventos entraram: quinhentas partidas com dado de evento completo são mais de
+#: um milhão de eventos, e materializar a página inteira faria o pico de memória
+#: seguir o corpus em vez do lote. Então a página é fatiada por VOLUME DE
+#: EVENTO, com a contagem vindo de um agregado barato antes da leitura.
+#:
+#: Uma partida sozinha nunca é partida ao meio: os eventos dela são a unidade
+#: mínima, porque a impressão do conteúdo dela precisa de todos.
+DEFAULT_EVENT_ROWS_BATCH: int = 20_000
 
 
 @final
@@ -141,6 +158,9 @@ class CorpusBuildOutput:
     #: qualidade, cobertura e licença sem uma segunda varredura (§133). O que
     #: o gate faz com ele é CONFERIR contra o banco, não confiar (§67).
     manifest: HistoricalCanonicalManifest
+    #: Quantos EVENTOS entraram na versão. Zero é uma resposta legítima: a
+    #: versão pode não publicar eventos, e isso é declaração, não falha (§52).
+    event_members_written: int = 0
 
 
 @final
@@ -165,6 +185,10 @@ class BuildCorpusVersion:
     materializer: CanonicalCorpusMaterializerPort | None = None
     quality_policy: HistoricalQualityPolicy | None = None
     batch_size: int = DEFAULT_COMPOSITION_BATCH
+    #: O leitor de eventos. `None` compõe versões SEM eventos, e isso continua
+    #: sendo um corpus válido — é o que toda versão anterior ao PR-04.4.2 é.
+    events: CorpusEventReaderPort | None = None
+    event_rows_batch: int = DEFAULT_EVENT_ROWS_BATCH
 
     async def execute(
         self,
@@ -186,6 +210,7 @@ class BuildCorpusVersion:
         # em `BUILDING` com pertinência parcial gravada, e o motivo da recusa
         # não depende de nada que a varredura descubra.
         await self._assert_escopos_compativeis(inputs, scope.usage)
+        inputs = await self._com_procedencia_de_evento(inputs, scope.usage)
 
         rascunho = await self._abrir(
             dataset_id=dataset_id,
@@ -241,6 +266,7 @@ class BuildCorpusVersion:
                 context={"version_id": construindo.id},
             )
         await self.datasets.register_builds(validando.id, inputs.build_run_ids)
+        await self.datasets.register_event_builds(validando.id, inputs.event_build_run_ids)
         await _auditar(
             self.audit,
             self.clock,
@@ -281,6 +307,7 @@ class BuildCorpusVersion:
         await self.manifests.record_objects(validando.id, resultado.objects)
         return CorpusBuildOutput(
             version=validando,
+            event_members_written=resultado.event_members_written,
             members_written=resultado.members_written,
             objects_written=len(resultado.objects),
             materialized=self.materializer is not None,
@@ -314,6 +341,55 @@ class BuildCorpusVersion:
                 "de pesquisa com rótulo comercial (PR-04.3.1 §27)",
                 context={"usage": usage.value, "divergent": detalhe},
             )
+
+    async def _com_procedencia_de_evento(
+        self, inputs: VersionInputs, usage: UsageScope
+    ) -> VersionInputs:
+        """Confere o escopo das execuções de evento e anexa a procedência.
+
+        A CONFERÊNCIA É A DO §27, APLICADA A EVENTO (§35). Compor um corpus
+        comercial com uma execução de evento de PESQUISA traria de volta,
+        pela porta do evento, exatamente o dado restrito que a política
+        comercial excluiu — e o rótulo da versão continuaria dizendo
+        «comercial».
+
+        A PROCEDÊNCIA É ANEXADA AQUI porque ela pertence ao manifesto e não à
+        requisição: quem publica declara QUAIS execuções entram; sob que
+        política elas rodaram é fato gravado, e perguntá-lo ao chamador
+        deixaria o manifesto repetir o que o banco já sabe — com a chance de
+        divergir.
+        """
+        if not inputs.event_build_run_ids:
+            return inputs
+        if self.events is None:
+            raise ValidationError(
+                f"a versão declara {len(inputs.event_build_run_ids)} execução(ões) de "
+                "evento e a composição não tem leitor de evento configurado — ela "
+                "publicaria a declaração sem o conteúdo (PR-04.4.2 §5)"
+            )
+        escopos = await self.events.usage_scopes_of(inputs.event_build_run_ids)
+        ausentes = [b for b in inputs.event_build_run_ids if b not in escopos]
+        if ausentes:
+            raise NotFoundError(
+                f"execução(ões) de canonicalização de evento não encontrada(s): "
+                f"{sorted(ausentes)}"
+            )
+        divergentes = {b: e for b, e in escopos.items() if e is not usage}
+        if divergentes:
+            detalhe = ", ".join(f"{b[:8]}={e.value}" for b, e in sorted(divergentes.items()))
+            raise ValidationError(
+                f"a versão declara escopo {usage.value} e recebeu execução(ões) de "
+                f"evento de outro escopo: {detalhe}. Os eventos restritos que a "
+                "política comercial excluiu voltariam por esta porta, e o corpus "
+                "continuaria se chamando comercial (PR-04.4.2 §35)",
+                context={"usage": usage.value, "divergent": detalhe},
+            )
+        politicas, tabelas = await self.events.policy_versions_of(inputs.event_build_run_ids)
+        return replace(
+            inputs,
+            event_policy_versions=politicas,
+            event_type_mapping_versions=tabelas,
+        )
 
     async def _abrir(
         self,
@@ -370,6 +446,7 @@ class BuildCorpusVersion:
         )
         objetos: list[Any] = []
         gravados = 0
+        eventos_gravados = 0
         cursor: str | None = None
         # O ÍNDICE DE PEDAÇO POR PARTIÇÃO. Ele existe para que a
         # materialização aconteça LOTE A LOTE: acumular uma partição inteira
@@ -408,22 +485,120 @@ class BuildCorpusVersion:
             # concordam, recusa quando divergem —, e nenhuma cláusula
             # `DISTINCT ON` sabe tomá-la.
             compostas = _compor_por_partida(lote)
-            vereditos = await self._vereditos(compostas, quality_run_id)
-            membros: list[CorpusMember] = [
-                acumulador.absorb(fatos, assessment=vereditos.get(fatos.match_id))
-                for fatos in compostas
-            ]
-            gravados += await self.membership.append_members(version.id, membros)
-            await self._absorver_exclusoes(acumulador, inputs, compostas)
-            if self.materializer is not None:
-                objetos.extend(await self._materializar_lote(dataset, version, compostas, pedacos))
+            # A PÁGINA É FATIADA POR VOLUME DE EVENTO (§46, §90). Sem eventos
+            # declarados há UM pedaço, e o caminho é exatamente o de antes.
+            for pedaco in await self._fatiar(compostas, inputs):
+                com_eventos = await self._com_eventos(pedaco, inputs)
+                vereditos = await self._vereditos(com_eventos, quality_run_id)
+                membros: list[CorpusMember] = [
+                    acumulador.absorb(fatos, assessment=vereditos.get(fatos.match_id))
+                    for fatos in com_eventos
+                ]
+                gravados += await self.membership.append_members(version.id, membros)
+                # A PERTINÊNCIA DE EVENTO VEM DEPOIS DA DE PARTIDA, e na mesma
+                # ordem sempre: a chave estrangeira composta exige que a
+                # partida já esteja na versão — um evento pendurado numa
+                # partida que não está no corpus não teria a quem pertencer.
+                eventos_gravados += await self._gravar_eventos(version.id, com_eventos)
+                await self._absorver_exclusoes(acumulador, inputs, com_eventos)
+                if self.materializer is not None:
+                    objetos.extend(
+                        await self._materializar_lote(dataset, version, com_eventos, pedacos)
+                    )
 
+        await self._absorver_exclusoes_de_evento(acumulador, inputs)
         return _ResultadoDaComposicao(
             members_written=gravados,
+            event_members_written=eventos_gravados,
             fingerprint=acumulador.fingerprint(),
             objects=tuple(objetos),
             accumulator=acumulador,
         )
+
+    # --------------------------------------------------------- eventos --
+
+    async def _fatiar(
+        self,
+        compostas: Sequence[ComposedMatchCorpusFacts],
+        inputs: VersionInputs,
+    ) -> list[tuple[ComposedMatchCorpusFacts, ...]]:
+        """Corta a página em pedaços com teto de EVENTOS (§46, §90).
+
+        A CONTAGEM VEM ANTES DA LEITURA, e é um agregado: perguntar «quantos
+        eventos vocês têm» custa uma consulta e permite decidir quantos trazer.
+        Ler primeiro e medir depois seria descobrir o pico de memória tendo já
+        pagado por ele.
+
+        UMA PARTIDA NUNCA É PARTIDA AO MEIO. Se uma única partida passar do
+        teto sozinha, ela vira um pedaço inteiro: a impressão do conteúdo dela
+        precisa de todos os eventos dela ao mesmo tempo, e metade produziria
+        uma impressão de uma partida que não existe.
+        """
+        if self.events is None or not inputs.event_build_run_ids or not compostas:
+            return [tuple(compostas)]
+        contagens = await self.events.count_events(
+            inputs.event_build_run_ids, [f.match_id for f in compostas]
+        )
+        pedacos: list[tuple[ComposedMatchCorpusFacts, ...]] = []
+        atual: list[ComposedMatchCorpusFacts] = []
+        acumulado = 0
+        for fatos in compostas:
+            quantos = contagens.get(fatos.match_id, 0)
+            if atual and acumulado + quantos > self.event_rows_batch:
+                pedacos.append(tuple(atual))
+                atual, acumulado = [], 0
+            atual.append(fatos)
+            acumulado += quantos
+        if atual:
+            pedacos.append(tuple(atual))
+        return pedacos
+
+    async def _com_eventos(
+        self,
+        pedaco: Sequence[ComposedMatchCorpusFacts],
+        inputs: VersionInputs,
+    ) -> tuple[ComposedMatchCorpusFacts, ...]:
+        """Anexa a cada partida os eventos que ESTA versão publica (§5).
+
+        `compose_events` VEM ANTES DO ANEXO porque é ela que recusa o conflito:
+        o mesmo evento canônico vindo de duas execuções com conteúdos
+        diferentes não vira «o último ganha» — vira publicação bloqueada (§69).
+        """
+        if self.events is None or not inputs.event_build_run_ids or not pedaco:
+            return tuple(pedaco)
+        por_partida = await self.events.events_of(
+            inputs.event_build_run_ids, [f.match_id for f in pedaco]
+        )
+        anexadas: list[ComposedMatchCorpusFacts] = []
+        for fatos in pedaco:
+            candidatos: Sequence[PublishedEvent] = por_partida.get(fatos.match_id, ())
+            anexadas.append(fatos.with_events(compose_events(candidatos)))
+        return tuple(anexadas)
+
+    async def _gravar_eventos(
+        self, version_id: str, lote: Sequence[ComposedMatchCorpusFacts]
+    ) -> int:
+        membros: list[CorpusEventMember] = [
+            membro for fatos in lote for membro in fatos.event_members()
+        ]
+        if not membros:
+            return 0
+        return await self.membership.append_event_members(version_id, membros)
+
+    async def _absorver_exclusoes_de_evento(
+        self, acumulador: CorpusAccumulator, inputs: VersionInputs
+    ) -> None:
+        """O que a canonicalização recusou, para o manifesto (§37).
+
+        UMA CONSULTA PARA A VERSÃO INTEIRA, e não uma por lote: é um agregado
+        sobre a linhagem daquelas execuções, e ele não muda conforme a página.
+        """
+        if self.events is None or not inputs.event_build_run_ids:
+            return
+        tally: EventExclusionTally = await self.events.exclusions_of(inputs.event_build_run_ids)
+        if not tally.by_reason:
+            return
+        acumulador.absorb_event_exclusions(by_reason=tally.by_reason, licenses=tally.licenses)
 
     async def _vereditos(
         self, lote: Sequence[ComposedMatchCorpusFacts], quality_run_id: str | None
@@ -520,6 +695,7 @@ class _ResultadoDaComposicao:
     fingerprint: Any
     objects: tuple[Any, ...]
     accumulator: CorpusAccumulator
+    event_members_written: int = 0
 
 
 @final
@@ -622,6 +798,7 @@ class PublishCorpusVersion:
                 "o manifesto descreve outra versão — publicá-lo faria o corpus "
                 "carregar a descrição de um conteúdo que não é o dele"
             )
+        await self._conferir_eventos(version, manifest)
         gravados = await self.membership.count_members(version.id)
         if gravados != manifest.counts.matches:
             raise ValidationError(
@@ -640,6 +817,50 @@ class PublishCorpusVersion:
                 "a impressão do manifesto difere da que a composição calculou: o "
                 "conteúdo mudou entre compor e publicar, e o que seria publicado "
                 "não é o que foi conferido (§68)"
+            )
+
+    async def _conferir_eventos(
+        self,
+        version: HistoricalCanonicalDatasetVersion,
+        manifest: HistoricalCanonicalManifest,
+    ) -> None:
+        """A reconciliação de eventos do §51 — três números que precisam bater.
+
+            pertinência gravada   quantos eventos o BANCO diz que a versão tem
+            manifesto             quantos ela DECLARA ter
+            linhas do Parquet     quantos de fato foram ESCRITOS
+
+        UMA DISCORDÂNCIA AQUI NÃO É ARREDONDAMENTO. Ela significa lote perdido,
+        lote em dobro, ou arquivo escrito pela metade — e publicar assim faria
+        o manifesto mentir sobre o conteúdo para sempre, porque a versão é
+        imutável.
+
+        O ARQUIVO SÓ ENTRA NA CONTA QUANDO EXISTE. Uma versão publicada sem
+        Parquet é legítima (ADR-0027): a verdade está no PostgreSQL, e o
+        arquivo é representação.
+        """
+        declarados = manifest.counts.events.total
+        gravados = await self.membership.count_event_members(version.id)
+        if gravados != declarados:
+            raise ValidationError(
+                f"o manifesto declara {declarados} evento(s) e o banco tem {gravados}. "
+                "A diferença é um lote perdido ou um lote em dobro, e publicar assim "
+                "faria a descrição mentir sobre o conteúdo (PR-04.4.2 §51)"
+            )
+        linhas = sum(
+            o.row_count for o in manifest.objects if o.family == CoverageFamily.EVENT.value
+        )
+        if linhas and linhas != declarados:
+            raise ValidationError(
+                f"o manifesto declara {declarados} evento(s) e os arquivos de evento "
+                f"somam {linhas} linha(s). O corpus publicaria um número que o "
+                "arquivo não tem (PR-04.4.2 §51, §121)"
+            )
+        if declarados and not linhas and self.materializer is not None:
+            raise ValidationError(
+                f"a versão declara {declarados} evento(s) e nenhum objeto de evento "
+                "foi escrito. Com materialização ligada, a família EVENT sem arquivo "
+                "é conteúdo prometido e não entregue (PR-04.4.2 §119)"
             )
 
     async def _superar_anterior(

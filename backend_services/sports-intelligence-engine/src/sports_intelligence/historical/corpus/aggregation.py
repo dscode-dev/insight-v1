@@ -21,6 +21,7 @@ para eventos apagaria a diferença entre «as fontes não trabalham com eventos�
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Final, final
 
@@ -34,7 +35,11 @@ from sports_intelligence.domain.corpus.manifest import (
     LicenseSummary,
     QualitySummary,
 )
-from sports_intelligence.domain.corpus.membership import CorpusMember, MembershipCounts
+from sports_intelligence.domain.corpus.membership import (
+    CorpusMember,
+    EventCorpusCounts,
+    MembershipCounts,
+)
 from sports_intelligence.domain.corpus.scope import CorpusScope
 from sports_intelligence.domain.datasets.content import ContentHash
 from sports_intelligence.domain.quality.assessment import BuildEligibility
@@ -51,6 +56,14 @@ from sports_intelligence.domain.shared.provenance import LicenseClass
 
 #: A ordem em que os eixos entram no resumo — a mesma da impressão (§33).
 _EIXOS: Final[tuple[str, ...]] = tuple(d.value.lower() for d in DIMENSION_ORDER)
+
+#: As famílias cuja cobertura é medida sobre os EVENTOS publicados, e não sobre
+#: o que a avaliação de qualidade declarou (PR-04.4.2 §26, §29). `SPATIAL` está
+#: aqui porque coordenada é atributo de evento: sem evento não há o que cobrir,
+#: e com evento a cobertura é uma fração de eventos — não de partidas.
+_FAMILIAS_DE_EVENTO: Final[frozenset[CoverageFamily]] = frozenset(
+    {CoverageFamily.EVENT, CoverageFamily.SPATIAL}
+)
 
 
 @final
@@ -116,6 +129,21 @@ class CorpusAccumulator:
     _motivos: dict[str, dict[str, int]] = field(default_factory=dict)
     _licenca_da_exclusao: dict[str, str] = field(default_factory=dict)
 
+    # --- eventos ---------------------------------------------------------
+    #: Os números de evento do corpus inteiro e por partição. Eles NÃO vêm da
+    #: avaliação de qualidade: vêm do que a versão de fato publica, evento a
+    #: evento (PR-04.4.2 §29). A avaliação responde «a fonte prometeu
+    #: eventos?»; isto responde «quantos entraram», e as duas perguntas têm
+    #: respostas diferentes com frequência.
+    _eventos: EventCorpusCounts = field(default_factory=lambda: EventCorpusCounts())
+    _eventos_por_particao: dict[str, EventCorpusCounts] = field(default_factory=dict)
+    #: As licenças dos eventos publicados e as dos que ficaram de fora, com o
+    #: motivo. É o §37: «events=0» não explica nada; «excluído por
+    #: LICENSE_POLICY, RESEARCH_ONLY, num build COMMERCIAL» explica.
+    _licencas_de_evento: set[LicenseClass] = field(default_factory=set)
+    _eventos_excluidos: dict[str, int] = field(default_factory=dict)
+    _licencas_excluidas_de_evento: set[str] = field(default_factory=set)
+
     # --- problemas -------------------------------------------------------
     _por_codigo: dict[str, int] = field(default_factory=dict)
     _por_severidade: dict[str, int] = field(default_factory=dict)
@@ -152,6 +180,7 @@ class CorpusAccumulator:
         self._impressao.add(membro)
         self.counts = self.counts.merged_with(MembershipCounts.of((membro,)))
         self._familias_incluidas.update(facts.included_families)
+        self._absorver_eventos(facts, membro.partition_key)
 
         if assessment is not None:
             self._absorver_qualidade(assessment.assessment.quality)
@@ -179,9 +208,32 @@ class CorpusAccumulator:
             if decisao.license_class is not None:
                 self._licenca_da_exclusao[familia] = decisao.license_class.value
 
+    def absorb_event_exclusions(
+        self, *, by_reason: Mapping[str, int], licenses: Iterable[str]
+    ) -> None:
+        """Os eventos que a canonicalização NÃO publicou, com o motivo (§37).
+
+        POR QUE ISTO ENTRA NO MANIFESTO DO CORPUS. Um corpus comercial cujos
+        eventos restritos ficaram de fora tem `events=0` para aquelas partidas
+        — e `events=0` é indistinguível de «a fonte não tinha eventos». A
+        diferença é jurídica e é exatamente a que uma auditoria pergunta: o
+        dado existe, e o direito de publicá-lo NESTE escopo é que falta
+        (ADR-0025).
+        """
+        for motivo, quantos in by_reason.items():
+            if quantos <= 0:
+                continue
+            self._eventos_excluidos[motivo] = self._eventos_excluidos.get(motivo, 0) + quantos
+        self._licencas_excluidas_de_evento.update(licenses)
+
     def fingerprint(self) -> ContentHash:
         """A impressão semântica do corpus acumulado (PR-04.3.1 §5)."""
         return self._impressao.finish(self.counts)
+
+    @property
+    def event_counts(self) -> EventCorpusCounts:
+        """Os números de evento do corpus inteiro (§31)."""
+        return self._eventos
 
     def note_skipped(self, count: int = 1) -> None:
         """Partidas que a composição encontrou e não incluiu (§27)."""
@@ -210,28 +262,66 @@ class CorpusAccumulator:
         PR-04.1).
         """
         return tuple(
-            self._resumo_de(familia, self._cobertura.get(familia)) for familia in FAMILY_ORDER
+            self._resumo_de_familia(familia, self._cobertura.get(familia), self._eventos)
+            for familia in FAMILY_ORDER
         )
 
     def coverage_by_partition(self) -> dict[str, list[dict[str, object]]]:
+        """A cobertura por partição — com EVENT e SPATIAL da partição (§32).
+
+        OS NÚMEROS DE EVENTO SÃO OS DAQUELA PARTIÇÃO, e não os do corpus: uma
+        competição com eventos e outra sem é o caso normal, e repetir o total
+        global em cada linha faria a partição sem eventos parecer tê-los.
+        """
+        particoes = {*self._cobertura_por_particao, *self._eventos_por_particao}
         return {
             particao: [
-                self._resumo_de(familia, acumulado).as_canonical()
-                for familia, acumulado in sorted(familias.items(), key=lambda par: par[0].value)
+                self._resumo_de_familia(
+                    familia,
+                    self._cobertura_por_particao.get(particao, {}).get(familia),
+                    self._eventos_por_particao.get(particao, EventCorpusCounts()),
+                ).as_canonical()
+                for familia in FAMILY_ORDER
+                if familia in self._cobertura_por_particao.get(particao, {})
+                or (
+                    familia in _FAMILIAS_DE_EVENTO
+                    and self._eventos_por_particao.get(particao, EventCorpusCounts()).total
+                )
             ]
-            for particao, familias in sorted(self._cobertura_por_particao.items())
+            for particao in sorted(particoes)
         }
 
     def license_summary(self) -> LicenseSummary:
+        """O resumo de licença — agora com a família `EVENT` (§33, §37).
+
+        AS LICENÇAS DOS EVENTOS PUBLICADOS ENTRAM EM `licenses_present`, e
+        pela mesma razão das outras famílias: um corpus que publica eventos
+        `RESEARCH_ONLY` precisa declará-lo, senão o resumo afirma um direito de
+        uso que o conteúdo não tem.
+        """
+        licencas = {*self._licencas, *self._licencas_de_evento}
+        excluidas = set(self._familias_excluidas)
+        motivos = {k: dict(v) for k, v in self._motivos.items()}
+        licencas_da_exclusao = dict(self._licenca_da_exclusao)
+        if self._eventos_excluidos:
+            # A FAMÍLIA EVENT APARECE COMO EXCLUÍDA quando eventos existiam e
+            # não entraram. `events=0` sozinho seria indistinguível de «não há
+            # evento nenhum na fonte» (§37).
+            excluidas.add(CoverageFamily.EVENT)
+            motivos[CoverageFamily.EVENT.value] = dict(sorted(self._eventos_excluidos.items()))
+            if self._licencas_excluidas_de_evento:
+                licencas_da_exclusao[CoverageFamily.EVENT.value] = ",".join(
+                    sorted(self._licencas_excluidas_de_evento)
+                )
         return LicenseSummary(
             usage_scope=self.usage.value,
-            licenses_present=tuple(sorted(lic.value for lic in self._licencas)),
+            licenses_present=tuple(sorted(lic.value for lic in licencas)),
             independent_support=tuple(sorted(lic.value for lic in self._suporte_independente)),
             families_included=tuple(f.value for f in FAMILY_ORDER if f in self._familias_incluidas),
-            families_excluded=tuple(f.value for f in FAMILY_ORDER if f in self._familias_excluidas),
-            exclusion_reasons={k: dict(v) for k, v in self._motivos.items()},
-            exclusion_licenses=dict(self._licenca_da_exclusao),
-            requires_attribution=any(lic.requires_attribution for lic in self._licencas),
+            families_excluded=tuple(f.value for f in FAMILY_ORDER if f in excluidas),
+            exclusion_reasons=motivos,
+            exclusion_licenses=licencas_da_exclusao,
+            requires_attribution=any(lic.requires_attribution for lic in licencas),
         )
 
     def issue_summary(self) -> IssueSummary:
@@ -314,6 +404,96 @@ class CorpusAccumulator:
                 self._por_severidade[severidade] = self._por_severidade.get(severidade, 0) + 1
             if len(self._exemplos) < MAX_ISSUE_EXAMPLES:
                 self._exemplos.append(f"{codigo}: {problema.subject}")
+
+    def _absorver_eventos(
+        self, facts: ComposedMatchCorpusFacts, particao: tuple[str, str]
+    ) -> None:
+        """Conta os eventos desta partida — e só os que ela PUBLICA.
+
+        ELE NÃO GUARDA EVENTO NENHUM. O que sobrevive ao lote são contadores;
+        acumular os eventos de dez mil partidas para contá-los no fim é
+        exatamente o pico de memória que o §90 proíbe.
+        """
+        if not facts.events:
+            return
+        contagem = facts.event_counts()
+        self._eventos = self._eventos.merged_with(contagem)
+        # AS CONTAGENS DO MANIFESTO SEGUEM JUNTO, e não são remontadas no fim:
+        # duas somas do mesmo fluxo divergiriam no primeiro campo novo, e a
+        # divergência apareceria como o rodapé da impressão discordando do
+        # corpo (`CorpusFingerprintBuilder.finish` recusa exatamente isso).
+        self.counts = self.counts.with_events(contagem)
+        chave = f"{particao[0]}/{particao[1]}"
+        self._eventos_por_particao[chave] = self._eventos_por_particao.get(
+            chave, EventCorpusCounts()
+        ).merged_with(contagem)
+        for evento in facts.events:
+            self._licencas_de_evento.add(evento.provenance.license_class)
+
+    @staticmethod
+    def _resumo_de_familia(
+        family: CoverageFamily,
+        acumulado: _CoberturaAcumulada | None,
+        eventos: EventCorpusCounts,
+    ) -> FamilyCoverageSummary:
+        """O resumo de uma família — com EVENT e SPATIAL vindos do PUBLICADO.
+
+        AS DUAS FAMÍLIAS DE EVENTO NÃO SAEM DA AVALIAÇÃO (§29, §30). A
+        avaliação de qualidade fala do que a FONTE declarou; estas falam do que
+        o corpus PUBLICA, e a diferença é o assunto inteiro: um dataset que
+        declara eventos e cujo escopo comercial os excluiu por licença tem
+        declaração e não tem conteúdo.
+
+        SEM EVENTO PUBLICADO, o comportamento é o de antes deste PR: o que a
+        avaliação disser vale, inclusive `NOT_DECLARED`.
+        """
+        if family in _FAMILIAS_DE_EVENTO and eventos.total:
+            return CorpusAccumulator._resumo_de_evento(family, acumulado, eventos)
+        return CorpusAccumulator._resumo_de(family, acumulado)
+
+    @staticmethod
+    def _resumo_de_evento(
+        family: CoverageFamily,
+        acumulado: _CoberturaAcumulada | None,
+        eventos: EventCorpusCounts,
+    ) -> FamilyCoverageSummary:
+        """`EVENT` e `SPATIAL` medidas sobre o conteúdo publicado (§28, §30).
+
+        `EVENT` É `AVAILABILITY_ONLY`, E ISSO É HONESTIDADE, não limitação.
+        Medir cobertura de evento exigiria saber quantos eventos a partida
+        DEVERIA ter, e ninguém sabe: não há denominador — nem a fonte declara,
+        nem o motor tem autoridade para estimar. Inventar
+        `expected = 1000` produziria uma porcentagem que parece medida e é
+        chute (§30).
+
+        `SPATIAL` É `MEASURED` porque aqui o denominador EXISTE e é honesto: os
+        eventos que acontecem num ponto do campo. Um apito inicial sem
+        coordenada não é cobertura faltando (§27).
+        """
+        total_partidas = 0 if acumulado is None else acumulado.total
+        if family is CoverageFamily.EVENT:
+            return FamilyCoverageSummary(
+                family=family.value,
+                state=CoverageState.AVAILABILITY_ONLY.value,
+                matches_with_data=eventos.matches_with_events,
+                matches_total=max(total_partidas, eventos.matches_with_events),
+                available_total=eventos.total,
+                expected_total=None,
+            )
+        return FamilyCoverageSummary(
+            family=family.value,
+            state=(
+                CoverageState.MEASURED.value
+                if eventos.spatially_eligible
+                # SEM EVENTO ESPACIALMENTE ELEGÍVEL não há denominador, e a
+                # cobertura é indefinida — nunca 0% (§28).
+                else CoverageState.AVAILABILITY_ONLY.value
+            ),
+            matches_with_data=eventos.matches_with_coordinates,
+            matches_total=max(total_partidas, eventos.matches_with_events),
+            available_total=eventos.with_coordinates,
+            expected_total=eventos.spatially_eligible or None,
+        )
 
     @staticmethod
     def _resumo_de(

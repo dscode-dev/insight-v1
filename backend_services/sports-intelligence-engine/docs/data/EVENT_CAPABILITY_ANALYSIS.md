@@ -2,7 +2,8 @@
 
 Conferência exigida pelo **PR-04.3.1 §38–§51**, feita em **2026-08-18**.
 **Atualizada em 2026-08-18 pelo PR-04.4.1**, que escolheu a Opção A e
-implementou os seis primeiros estágios.
+implementou os seis primeiros estágios, e **encerrada em 2026-08-19 pelo
+PR-04.4.2**, que integrou os eventos ao corpus publicado.
 
 > **O histórico desta página é parte dela.** A classificação anterior
 > (`NOT_IMPLEMENTED`) está preservada abaixo, com a data e o motivo. Apagá-la
@@ -21,38 +22,48 @@ implementou os seis primeiros estágios.
 
 ---
 
-## Veredito — 2026-08-18, depois do PR-04.4.1
+## Veredito — 2026-08-19, depois do PR-04.4.2
 
 ```
-EVENT      CANONICAL_PIPELINE_SUPPORTED · CORPUS_INTEGRATION_PENDING
+EVENT      SUPPORTED_END_TO_END
 PLAYER     coberto por referência; sem família independente
-SPATIAL    atributo de evento; o registro canônico já o guarda, o corpus não
+SPATIAL    SUPORTADO COMO DIMENSÃO DE COBERTURA DE EVENTO
 TRACKING   fora da V1, por decisão anterior
 ```
 
-**O que a primeira linha quer dizer, exatamente.** O motor **sabe** construir
-um evento canônico a partir de uma fonte histórica, e o faz de ponta a ponta
-até o PostgreSQL — cem mil registros medidos. O que ele **ainda não faz** é
-publicar esses eventos numa versão do corpus: pertinência, Parquet e contagem
-no manifesto são o PR-04.4.2.
-
-As duas metades precisam de nomes diferentes porque falham diferente:
+**O que `SUPPORTED_END_TO_END` quer dizer, exatamente.** O caminho existe
+inteiro e é exercido contra PostgreSQL e MinIO reais:
 
 ```
-CanonicalPipelineSupported     «o motor sabe construir»      sim, no PR-04.4.1
-CorpusIntegrationPending       «uma versão publica eventos»  não, é o PR-04.4.2
+arquivo bruto → contrato de fonte de evento → registro estruturado
+   → referências traduzidas → elegibilidade → CanonicalMatchEvent
+   → registro canônico PostgreSQL
+   → pertinência de evento POR VERSÃO
+   → events.parquet
+   → contagens e cobertura no manifesto
+   → READY
 ```
 
-Chamar isso de `DONE` faria uma feature que precisa de eventos publicados
-acreditar que pode consumi-los da versão do corpus, quando a versão não os
-tem.
+E as duas metades que o PR-04.4.1 precisou separar voltaram a ser uma só:
+
+```
+CanonicalPipelineSupported     «o motor sabe construir»      PR-04.4.1
+CorpusIntegrationSupported     «uma versão publica eventos»  PR-04.4.2
+```
+
+**O que continua fora, e é declaração e não lacuna:** resolução de evento
+ENTRE PROVEDORES. Dois provedores descrevendo o mesmo gol continuam terminando
+em dois eventos canônicos distintos, e o motor não tenta adivinhar que são o
+mesmo — `UncertainSameEvent` não vira `ForceMerge`. Quando isso for necessário,
+é um PR próprio com resolução, evidência e revisão humana, como a de identidade
+de time e jogador foi no PR-03.
 
 ---
 
 ## O caminho, estágio a estágio
 
-O PR-04.3.1 §40 pediu o traçado concreto. Ele quebrava no primeiro degrau;
-hoje quebra no sétimo:
+O PR-04.3.1 §40 pediu o traçado concreto. Ele quebrava no primeiro degrau, e
+depois no sétimo; hoje ele não quebra:
 
 | # | estágio | estado | evidência |
 |---|---------|--------|-----------|
@@ -62,16 +73,26 @@ hoje quebra no sétimo:
 | 4 | elegibilidade de evento | **PRONTO** (PR-04.4.1) | `EventEligibilityEvaluator`, cinco guardas ordenadas |
 | 5 | `CanonicalEventBuilder` | **PRONTO** (PR-04.4.1) | `historical/events/builder.py`, id derivado por `uuid5` |
 | 6 | persistência `canonical_match_events` | **PRONTO** (PR-04.4.1) | migration `0009`, com linhagem por evento |
-| 7 | pertinência no corpus | **AUSENTE** | `EVENT ∉ MATERIALIZABLE_FAMILIES` |
-| 8 | linhas de evento no Parquet | **AUSENTE** | não há schema de evento |
-| 9 | contagem no manifesto | reporta `NOT_DECLARED` | que continua sendo a verdade |
+| 7 | pertinência no corpus | **PRONTO** (PR-04.4.2) | `historical_canonical_event_members`, migration `0011` |
+| 8 | linhas de evento no Parquet | **PRONTO** (PR-04.4.2) | `family=EVENT`, schema declarado, zstd |
+| 9 | contagem no manifesto | **PRONTO** (PR-04.4.2) | `counts.events`, cobertura `EVENT` e `SPATIAL` |
 
 **O estágio que não existe e não é omissão.** Resolução de evento **entre
 provedores** — dois provedores descrevendo o mesmo gol terminando no mesmo
 evento canônico. O PR-04.4.1 trata cada fonte isoladamente, por decisão
-explícita: `UncertainSameEvent` não vira `ForceMerge`, e uma fusão
+explícita, e o PR-04.4.2 **não** a reintroduz na publicação: `Publication ↛
+EventReconciliation`, com teste de arquitetura que recusa o import. Uma fusão
 probabilística de eventos criada para fechar checklist atribuiria fatos a quem
 não os praticou.
+
+**O que o PR-04.4.2 acrescentou como decisão nova:**
+
+| decisão | onde |
+|---------|------|
+| a pertinência de evento é DECLARADA pela versão, nunca derivada da partida | `VersionInputs.event_build_run_ids` |
+| eventos entram na impressão semântica do corpus | `MatchCorpusFacts.content_form` |
+| conflito de conteúdo sob a MESMA identidade bloqueia | `content_digest` + `compose_events` |
+| o denominador da cobertura espacial é honesto | `EventType.supports_location` |
 
 ---
 
@@ -172,16 +193,18 @@ classificamos como `DONE` por ausência de fixture — que é exatamente o que o
 ```
 EVENT = BLOCKED                       (PR-04.3.1)
 EVENT = PARCIALMENTE DESBLOQUEADO     (PR-04.4.1)
-        pipeline canônico pronto · integração ao corpus pendente
+EVENT = SUPPORTED_END_TO_END          (PR-04.4.2)
 ```
 
-**O que o PR-04.4.1 desbloqueia, e o que continua bloqueado.** Quem lê os
-eventos **do PostgreSQL** — pela partida, em ordem determinística — já tem o
-dado. Quem depende de eventos **publicados numa versão do corpus** (leitura
-analítica pelo Parquet, contagem no manifesto, reprodutibilidade por versão)
-continua bloqueado até o PR-04.4.2.
+**O que isso desbloqueia.** Uma feature que precise de eventos pode consumi-los
+da **versão publicada do corpus** — pelo Parquet, para leitura analítica, ou
+pelo PostgreSQL, pela pertinência da versão. As duas respondem a mesma
+pergunta e a versão é imutável, então o resultado é reproduzível.
 
-**O PR-04 continua sem estar fechado por esta razão**, e não por outra.
+**O que ela NÃO desbloqueia, e é o limite do PR-04 inteiro:** nenhuma feature
+está calculada. xG por ação, Player Influence, Tactical Graph e Pressure
+continuam sendo trabalho do PR-05 — o que existe agora é o dado observado de
+que eles precisam.
 
 ---
 
@@ -217,10 +240,15 @@ identidade coberta.**
 **SPATIAL** — coordenadas são atributo de evento (`PitchCoordinate` vive em
 `domain/events/`). Sem evento, não há onde pendurá-las, e uma família
 `SPATIAL` independente seria uma tabela de pontos sem o que eles descrevem.
-**Classificação (PR-04.4.1): o registro canônico já guarda a coordenada** —
-`start_x/y`, `end_x/y` e o referencial declarado, com constraint de par
-completo e de intervalo `[0,1]`. O que continua ausente é a família `SPATIAL`
-**no corpus**, bloqueada junto com a integração de eventos.
+**Classificação (PR-04.4.2): `SUPPORTED AS EVENT COVERAGE DIMENSION`.** As
+coordenadas viajam nas linhas de evento — `start_x/y`, `end_x/y` e o
+referencial declarado, com constraint de par completo e de intervalo `[0,1]` no
+banco e no Parquet. A cobertura `SPATIAL` do manifesto é MEDIDA, com o
+denominador honesto do §27: os eventos que **acontecem num ponto do campo**.
+
+**Ela continua não sendo uma família independente do corpus**, e isso não
+mudou: um arquivo `spatial.parquet` seria uma tabela de pontos sem o que eles
+descrevem. O ponto pertence ao evento, e é com ele que viaja.
 
 **TRACKING** — fora da V1 por decisão anterior (PR-04.1 §20). O catálogo a
 NOMEIA justamente para que a ausência seja declarada em vez de esquecida.

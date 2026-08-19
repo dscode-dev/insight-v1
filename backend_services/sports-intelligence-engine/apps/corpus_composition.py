@@ -20,6 +20,7 @@ from typing import Any, final
 from sports_intelligence.adapters.postgres.corpus import (
     PostgresCanonicalManifestRepository,
     PostgresCorpusCompositionReader,
+    PostgresCorpusEventReader,
     PostgresCorpusMembershipRepository,
     PostgresHistoricalCorpusRepository,
 )
@@ -50,6 +51,10 @@ class CorpusContainer:
     membership: PostgresCorpusMembershipRepository
     manifests: PostgresCanonicalManifestRepository
     composition: PostgresCorpusCompositionReader
+    #: O leitor dos eventos que uma versão publica (PR-04.4.2). Ele está sempre
+    #: montado; o que decide se eventos entram é a VERSÃO, que declara — ou não
+    #: — execuções de canonicalização de evento.
+    events: PostgresCorpusEventReader
 
     create_dataset: CreateHistoricalDataset
     build_version: BuildCorpusVersion
@@ -73,6 +78,7 @@ def build_corpus_container(
     membership = PostgresCorpusMembershipRepository(database)
     manifests = PostgresCanonicalManifestRepository(database)
     composicao = PostgresCorpusCompositionReader(database)
+    eventos = PostgresCorpusEventReader(database)
     assessments = PostgresQualityAssessmentRepository(database)
     materializador = None if store is None else ParquetCorpusMaterializer(store)
 
@@ -81,11 +87,13 @@ def build_corpus_container(
         membership=membership,
         manifests=manifests,
         composition=composicao,
+        events=eventos,
         create_dataset=CreateHistoricalDataset(datasets=datasets, clock=clock, audit=audit),
         build_version=BuildCorpusVersion(
             datasets=datasets,
             membership=membership,
             composition=composicao,
+            events=eventos,
             assessments=assessments,
             manifests=manifests,
             clock=clock,

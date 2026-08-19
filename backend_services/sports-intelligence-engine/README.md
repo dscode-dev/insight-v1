@@ -202,7 +202,7 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
 - **ADR-0027** — o PostgreSQL é a verdade; o Parquet é uma representação, e ela
   é opcional;
 - **ADR-0028** — um registro histórico de evento é entidade repetida, e nunca
-  campo escalar de partida.
+  campo escalar de partida — no intake e no corpus.
 
 Contratos de dados:
 
@@ -216,6 +216,7 @@ Contratos de dados:
 - [`docs/data/HISTORICAL_CANONICAL_CORPUS.md`](docs/data/HISTORICAL_CANONICAL_CORPUS.md)
 - [`docs/data/HISTORICAL_EVENT_CONTRACT.md`](docs/data/HISTORICAL_EVENT_CONTRACT.md)
 - [`docs/data/HISTORICAL_EVENT_CANONICALIZATION.md`](docs/data/HISTORICAL_EVENT_CANONICALIZATION.md)
+- [`docs/data/EVENT_CAPABILITY_ANALYSIS.md`](docs/data/EVENT_CAPABILITY_ANALYSIS.md)
 - [`docs/contracts/DATASET_MANIFEST_V1.md`](docs/contracts/DATASET_MANIFEST_V1.md)
 - [`docs/contracts/RESOLUTION_DECISION_V1.md`](docs/contracts/RESOLUTION_DECISION_V1.md)
 - [`docs/contracts/FUSION_OUTPUT_V1.md`](docs/contracts/FUSION_OUTPUT_V1.md)

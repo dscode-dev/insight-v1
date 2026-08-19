@@ -1,6 +1,6 @@
 # ADR-0027 — PostgreSQL é a verdade; o Parquet é uma representação
 
-**Status:** aceito · **Data:** 2026-08-18
+**Status:** aceito · **Data:** 2026-08-18 · **Confirmado para eventos:** 2026-08-19 (PR-04.4.2)
 
 ## Contexto
 
@@ -106,3 +106,20 @@ detectável, ainda que não impedida.
 `TRACKING`. Não é esquecimento: o contrato fundido da V1 não carrega esses
 dados, e escrever arquivos vazios para eles afirmaria uma cobertura que não
 existe. O manifesto os reporta como `NOT_DECLARED`, que é a verdade.
+
+**Emenda de 2026-08-19 (PR-04.4.2): `EVENT` passou a ser coberto**, e a decisão
+deste ADR vale para ele sem mudança nenhuma. O `events.parquet` é uma
+representação colunar da tabela `canonical_match_events` recortada pela versão;
+**o PostgreSQL continua sendo a verdade**, e apagar o bucket não perde nada —
+regerar é recompor a mesma versão, que é imutável.
+
+Duas coisas que a emenda deixa explícitas:
+
+- **uma versão publicada SEM Parquet continua legítima.** A pertinência de
+  evento mora no PostgreSQL, e é ela que o gate reconcilia. O arquivo é
+  opcional aqui como era antes;
+- **`SPATIAL` não ganhou arquivo próprio.** A coordenada é atributo do evento e
+  viaja nas colunas dele; uma família espacial separada seria uma tabela de
+  pontos sem o que eles descrevem.
+
+`PLAYER` e `TRACKING` continuam fora, pelas razões originais.

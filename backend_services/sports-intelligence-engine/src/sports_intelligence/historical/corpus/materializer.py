@@ -12,7 +12,9 @@ schemas são constantes deste módulo, e uma coluna nova é um diff.
 
 AUSENTE É `NULL`, E `NULL` NÃO É ZERO (§46). Zero é um placar; ausente é a
 falta de um. Um `0` no lugar de um `NULL` produz média errada que soma
-perfeitamente — o pior tipo de defeito, porque nada denuncia.
+perfeitamente — o pior tipo de defeito, porque nada denuncia. Nos eventos a
+mesma regra tem um caso próprio: `xg = 0.0` é um chute que a fonte MEDIU como
+quase impossível, e `xg` ausente é um chute que ela não mediu (PR-04.4.2 §24).
 
 ODDS SÃO `decimal128` E NUNCA `double` (§47). `float(Decimal("2.05"))` não é
 2.05, e o erro aparece exatamente onde dói: duas casas cotando o mesmo preço
@@ -104,6 +106,68 @@ def _schemas() -> dict[CoverageFamily, Any]:
                 pa.field("position", pa.string()),
                 pa.field("tactical_role", pa.string()),
                 pa.field("captain", pa.bool_(), nullable=False),
+            ]
+        ),
+        # ------------------------------------------------------- eventos --
+        #
+        # UMA LINHA É UM EVENTO (ADR-0028). Não há coluna `event_1_type`, não
+        # há array de eventos dentro da partida: a granularidade do arquivo é a
+        # do fato, e é ela que permite «todos os chutes de cabeça de 2024» ser
+        # uma varredura com poda em vez de uma leitura do corpus inteiro.
+        #
+        # NÃO EXISTE COLUNA `second`. O relógio canônico é
+        # `(período, minuto, acréscimo)`; uma coluna de segundos teria de ser
+        # sempre nula, e uma coluna sempre nula afirma que o dado poderia estar
+        # ali — quando o motor nunca o recebeu (§19, PR-04.4.1).
+        CoverageFamily.EVENT: pa.schema(
+            [
+                pa.field("event_id", pa.string(), nullable=False),
+                pa.field("match_id", pa.string(), nullable=False),
+                pa.field("competition", pa.string(), nullable=False),
+                pa.field("season", pa.string(), nullable=False),
+                # NULO QUANDO O EVENTO NÃO PERTENCE A UM TIME — o apito final
+                # não é do mandante —, e nunca um UUID inventado (§23).
+                pa.field("team_id", pa.string()),
+                # NULO QUANDO NÃO HÁ EXECUTANTE. Um gol contra registrado só
+                # pelo time é um gol; forçar um jogador aqui atribuiria o fato
+                # a quem não o praticou.
+                pa.field("player_id", pa.string()),
+                pa.field("event_type", pa.string(), nullable=False),
+                pa.field("period", pa.string(), nullable=False),
+                pa.field("minute", pa.int32(), nullable=False),
+                pa.field("stoppage", pa.int32(), nullable=False),
+                pa.field("sequence", pa.int32(), nullable=False),
+                pa.field("status", pa.string(), nullable=False),
+                pa.field("revision", pa.int32(), nullable=False),
+                # NULO NA REVISÃO 1. Uma cadeia começa em algum lugar.
+                pa.field("supersedes_event_id", pa.string()),
+                # NULO QUANDO A FONTE NÃO DÁ COORDENADA. Nunca `0.0`, que é o
+                # canto do campo — uma posição perfeitamente válida (§23, §25).
+                pa.field("start_x", pa.float64()),
+                pa.field("start_y", pa.float64()),
+                pa.field("end_x", pa.float64()),
+                pa.field("end_y", pa.float64()),
+                # O REFERENCIAL VIAJA COM O PONTO (ADR-0012): `0.8` sob
+                # referenciais diferentes quer dizer coisas opostas.
+                pa.field("coordinate_frame", pa.string()),
+                # O DETALHE TIPADO EM DUAS COLUNAS (§20): o discriminador
+                # separado do payload. Assim «todos os chutes» é um predicado
+                # sobre uma coluna de string, e não um `LIKE` dentro de JSON.
+                pa.field("detail_kind", pa.string()),
+                pa.field("detail", pa.string()),
+                pa.field("detail_schema_version", pa.string()),
+                # O xG SOBE PARA COLUNA PRÓPRIA, e continua dentro do detalhe.
+                # A duplicação é deliberada: o JSON é o payload tipado
+                # COMPLETO, e a coluna é o escalar que a leitura analítica
+                # filtra sem abrir JSON nenhum.
+                #
+                # TRÊS ESTADOS, E OS TRÊS SOBREVIVEM (§23, §24):
+                #     0.0  medido, e quase impossível
+                #     NULL com motivo   a fonte declarou e não veio
+                #     NULL sem motivo   este tipo de detalhe não fala de xG
+                pa.field("xg", pa.float64()),
+                pa.field("xg_unavailable_reason", pa.string()),
+                pa.field("license_class", pa.string(), nullable=False),
             ]
         ),
         CoverageFamily.ODDS: pa.schema(

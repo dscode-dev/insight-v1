@@ -29,15 +29,23 @@ coisa nem outra — ele escolhia.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Final, Self, final
 
 from sports_intelligence.domain.competitions.catalog import CompetitionCode
 from sports_intelligence.domain.corpus.facts import MatchCorpusFacts
 from sports_intelligence.domain.corpus.fingerprint import canonical_json
-from sports_intelligence.domain.corpus.membership import BuildContribution, CorpusMember
+from sports_intelligence.domain.corpus.membership import (
+    BuildContribution,
+    CorpusEventMember,
+    CorpusMember,
+    EventCorpusCounts,
+)
 from sports_intelligence.domain.datasets.content import ContentHash
+from sports_intelligence.domain.events.canonical import CanonicalMatchEvent
+from sports_intelligence.domain.events.canonical_form import event_content_digest
 from sports_intelligence.domain.matches.result import MatchResult
 from sports_intelligence.domain.quality.coverage import FAMILY_ORDER, CoverageFamily
 from sports_intelligence.domain.shared.errors import ConflictError, ValidationError
@@ -46,6 +54,13 @@ from sports_intelligence.domain.shared.identity import MatchId
 #: Os campos que definem se dois builds afirmam o MESMO fato. Nomeados porque
 #: a lista é a definição de conflito — acrescentar um aqui é decidir que mais
 #: uma divergência bloqueia publicação, e isso é uma decisão, não um detalhe.
+#:
+#: `events` NÃO ESTÁ AQUI, e a ausência é uma decisão (PR-04.4.2 §69). Eventos
+#: não vêm de um `CanonicalBuildRun`: eles vêm de execuções próprias, declaradas
+#: pela VERSÃO, e por isso não há «dois builds de partida discordando sobre os
+#: eventos» — os dois recebem exatamente o mesmo conjunto. O conflito de evento
+#: existe, mas ele é entre execuções de EVENTO, e quem o recusa é
+#: `compose_events`.
 FACTUAL_KEYS: Final[tuple[str, ...]] = ("match", "lineups", "odds")
 
 
@@ -94,6 +109,11 @@ class ComposedMatchCorpusFacts:
     contributions: tuple[BuildContribution, ...]
     #: Os fatos, tomados de qualquer contribuinte — todos afirmam o mesmo.
     facts: MatchCorpusFacts
+    #: OS EVENTOS QUE ESTA VERSÃO PUBLICA desta partida, com a linhagem de cada
+    #: um. Vazio quando a versão não declarou execução de evento nenhuma — que
+    #: é o caso de todo corpus anterior ao PR-04.4.2, e continua sendo um
+    #: corpus perfeitamente válido (§52).
+    published_events: tuple[PublishedEvent, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.contributions:
@@ -130,6 +150,61 @@ class ComposedMatchCorpusFacts:
     def content_fingerprint(self) -> ContentHash:
         """O digest do conteúdo publicado, sobre a UNIÃO das famílias."""
         return self.facts.content_fingerprint()
+
+    @property
+    def events(self) -> tuple[CanonicalMatchEvent, ...]:
+        """Os eventos publicados — DELEGADOS aos fatos, nunca duplicados.
+
+        Guardar uma segunda lista aqui abriria a chance de ela divergir da que
+        o Parquet e a impressão usam, e a divergência apareceria como o
+        manifesto contando um número que o arquivo não tem.
+        """
+        return self.facts.events
+
+    def event_counts(self) -> EventCorpusCounts:
+        return self.facts.event_counts()
+
+    # -------------------------------------------------------- eventos --
+
+    def with_events(self, published: Sequence[PublishedEvent]) -> ComposedMatchCorpusFacts:
+        """A mesma partida, agora publicando estes eventos (§5).
+
+        POR QUE OS EVENTOS ENTRAM DEPOIS DA COMPOSIÇÃO, e não dentro dela. A
+        composição resolve «o que os builds de PARTIDA afirmam sobre esta
+        partida»; eventos não vêm de build de partida nenhum — vêm de
+        execuções de canonicalização que a VERSÃO declara. Misturá-los na
+        composição faria a mesma pergunta ter duas fontes de autoridade.
+
+        SEM EVENTO, NADA MUDA. A família não entra, a impressão não muda e o
+        arquivo não é escrito — é o mesmo objeto de antes, e é isso que faz
+        uma versão sem eventos ser byte a byte o que sempre foi.
+        """
+        if not published:
+            return self
+        eventos = tuple(p.event for p in published)
+        familias = tuple(
+            f for f in FAMILY_ORDER if f in {*self.included_families, CoverageFamily.EVENT}
+        )
+        return replace(
+            self,
+            included_families=familias,
+            facts=replace(self.facts, included_families=familias, events=eventos),
+            published_events=tuple(published),
+        )
+
+    def event_members(self) -> tuple[CorpusEventMember, ...]:
+        """A pertinência de cada evento desta partida, para gravar (§6)."""
+        return tuple(
+            CorpusEventMember.of(
+                event_id=publicado.event.id,
+                match_id=self.match_id,
+                competition=self.competition,
+                season_label=self.season_label,
+                event_build_run_ids=publicado.build_run_ids,
+                content_digest=ContentHash(event_content_digest(publicado.event)),
+            )
+            for publicado in self.published_events
+        )
 
     def as_member(self) -> CorpusMember:
         return CorpusMember.of(
@@ -332,3 +407,102 @@ def _resultado_de(contribuicoes: Sequence[MatchCorpusFacts]) -> MatchResult | No
         if CoverageFamily.MATCH in contribuicao.included_families:
             return contribuicao.result
     return None
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class PublishedEvent:
+    """Um evento canônico que uma versão publica, com a linhagem dele.
+
+    O EVENTO É UM E AS EXECUÇÕES SÃO VÁRIAS (PR-04.4.2 §66, §68). Quando duas
+    canonicalizações produzem o mesmo evento — a segunda é reprocessamento e o
+    id é derivado, então ele é literalmente o mesmo —, o corpus recebe UMA
+    pertinência e DUAS linhagens. Guardar uma execução só apagaria metade da
+    resposta a «de onde veio este evento», e a metade apagada seria tão
+    verdadeira quanto a que ficou.
+    """
+
+    event: CanonicalMatchEvent
+    build_run_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.build_run_ids:
+            raise ValidationError(
+                f"evento {self.event.id} publicado sem execução de origem — a "
+                "linhagem até o arquivo bruto começaria já quebrada"
+            )
+
+
+def compose_events(candidates: Sequence[PublishedEvent]) -> tuple[PublishedEvent, ...]:
+    """Compõe os eventos que várias execuções trouxeram. Recusa conflito.
+
+    AS TRÊS SITUAÇÕES, e elas são as do §22 do PR-04.3.1 aplicadas a evento:
+
+        identidade repetida    duas execuções produziram o MESMO evento. Não é
+                               defeito: é reprocessamento, e o id derivado
+                               garante que seja literalmente o mesmo
+        conteúdo equivalente   uma pertinência, DUAS linhagens. Nenhuma vence,
+                               porque não há disputa
+        conteúdo conflitante   a mesma identidade afirmando fatos diferentes.
+                               NADA é publicado
+
+    O TERCEIRO CASO É ESTRUTURALMENTE RARO e por isso mesmo é grave: a
+    identidade canônica é derivada de `(partida, chave da fonte, revisão)`, e
+    duas execuções sobre o MESMO dado produzem o mesmo conteúdo. Chegar aqui
+    com digests diferentes significa que a mesma chave de origem passou a
+    descrever outro fato — a fonte reescreveu o passado sem dizer, ou o
+    mapeamento mudou de significado. Escolher um dos dois seria o motor
+    decidindo qual versão da história é verdade.
+
+    A ORDEM DA SAÍDA É A DO `event_id`, e ela não depende da ordem da entrada:
+    é o que faz o lote não vazar para a impressão (§16, §17).
+    """
+    por_id: dict[uuid.UUID, PublishedEvent] = {}
+    digests: dict[uuid.UUID, str] = {}
+    for candidato in candidates:
+        identificador = candidato.event.id
+        digest = event_content_digest(candidato.event)
+        anterior = por_id.get(identificador)
+        if anterior is None:
+            por_id[identificador] = candidato
+            digests[identificador] = digest
+            continue
+        if digests[identificador] != digest:
+            raise ConflictError(
+                f"o evento {identificador} chega de duas execuções afirmando fatos "
+                f"diferentes ({digests[identificador][:12]} contra {digest[:12]}). A "
+                "identidade canônica diz que é o mesmo evento e o conteúdo diz que "
+                "não — publicar escolheria qual das duas versões da história é "
+                "verdade, e essa decisão não é do motor (PR-04.4.2 §69)",
+                context={
+                    "event_id": str(identificador),
+                    "match_id": str(candidato.event.match_id),
+                    "left": digests[identificador],
+                    "right": digest,
+                },
+            )
+        por_id[identificador] = PublishedEvent(
+            event=anterior.event,
+            build_run_ids=tuple(sorted({*anterior.build_run_ids, *candidato.build_run_ids})),
+        )
+    return tuple(por_id[chave] for chave in sorted(por_id, key=str))
+
+
+@final
+@dataclass(frozen=True, slots=True)
+class EventExclusionTally:
+    """O que a canonicalização de evento NÃO publicou, e por quê (§37).
+
+    ELA NÃO É UMA CONTAGEM DE DEFEITO. O motivo mais comum aqui é
+    `LICENSE_POLICY`, e ele não diz que o dado é ruim: diz que o direito de
+    publicá-lo NESTE escopo não existe. Sem esta tally, um corpus comercial
+    apareceria com `events=0` para aquelas partidas — indistinguível de «a
+    fonte não tinha eventos», que é uma situação completamente diferente.
+    """
+
+    by_reason: dict[str, int] = field(default_factory=dict)
+    licenses: tuple[str, ...] = ()
+
+    @property
+    def total(self) -> int:
+        return sum(self.by_reason.values())

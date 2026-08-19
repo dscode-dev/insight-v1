@@ -22,16 +22,21 @@ sem tocar no que já foi publicado.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping, Sequence
 from typing import Protocol, runtime_checkable
 
 from sports_intelligence.domain.build.decisions import BuildDecision
+from sports_intelligence.domain.corpus.composition import (
+    EventExclusionTally,
+    PublishedEvent,
+)
 from sports_intelligence.domain.corpus.facts import MatchCorpusFacts
 from sports_intelligence.domain.corpus.manifest import (
     CorpusObjectRef,
     HistoricalCanonicalManifest,
 )
-from sports_intelligence.domain.corpus.membership import CorpusMember
+from sports_intelligence.domain.corpus.membership import CorpusEventMember, CorpusMember
 from sports_intelligence.domain.corpus.versions import (
     DatasetVersionStatus,
     HistoricalCanonicalDataset,
@@ -144,6 +149,20 @@ class HistoricalCanonicalDatasetRepositoryPort(Protocol):
 
     async def build_run_ids_of(self, version_id: str) -> Sequence[str]: ...
 
+    async def register_event_builds(
+        self, version_id: str, event_build_run_ids: Sequence[str]
+    ) -> int:
+        """Liga a versão às execuções de EVENTO que ela publica (§5).
+
+        SEPARADA DE `register_builds` porque são coisas diferentes: um
+        `CanonicalBuildRun` constrói partidas, um `CanonicalEventBuildRun`
+        constrói eventos, e juntá-las numa tabela só faria a pergunta «quais
+        versões usaram este build» devolver duas espécies de resposta.
+        """
+        ...
+
+    async def event_build_run_ids_of(self, version_id: str) -> Sequence[str]: ...
+
     async def versions_using_build(
         self, build_run_id: str, *, limit: int = 20
     ) -> Sequence[HistoricalCanonicalDatasetVersion]:
@@ -188,6 +207,33 @@ class CorpusMembershipRepositoryPort(Protocol):
 
     async def count_members(self, version_id: str) -> int:
         """A contagem REAL, do banco. É ela que o §67 compara ao manifesto."""
+        ...
+
+    async def append_event_members(
+        self, version_id: str, members: Sequence[CorpusEventMember]
+    ) -> int:
+        """Grava a pertinência de eventos. IDEMPOTENTE por `(versão, evento)`.
+
+        A IDEMPOTÊNCIA AQUI VALE O DOBRO (§68). Além do retry, ela é o que faz
+        o mesmo evento vindo de DUAS execuções produzir uma pertinência só —
+        com as duas contribuições gravadas ao lado, na mesma transação.
+        """
+        ...
+
+    async def count_event_members(self, version_id: str) -> int:
+        """A contagem REAL de eventos da versão. É ela que o §51 reconcilia."""
+        ...
+
+    async def event_members_of_match(
+        self, version_id: str, match_id: MatchId
+    ) -> Sequence[CorpusEventMember]:
+        """Os eventos daquela partida NAQUELA versão — a travessia do §65."""
+        ...
+
+    async def versions_containing_event(
+        self, event_id: uuid.UUID, *, limit: int = 20
+    ) -> Sequence[str]:
+        """Em quais versões este evento entrou. A travessia para frente."""
         ...
 
     async def versions_containing(self, match_id: MatchId, *, limit: int = 20) -> Sequence[str]:
@@ -325,5 +371,73 @@ class CorpusCompositionReaderPort(Protocol):
         ELAS NÃO VÊM EM `page_facts` de propósito: o que ficou de fora não tem
         fato para carregar, e enfiá-lo num objeto chamado «fatos» faria a
         exclusão parecer conteúdo.
+        """
+        ...
+
+
+@runtime_checkable
+class CorpusEventReaderPort(Protocol):
+    """Os eventos canônicos que uma versão publica (PR-04.4.2 §42).
+
+    ELE LÊ O REGISTRO CANÔNICO, e nunca o registro de origem. Republicar a
+    partir do bruto faria a publicação reconstruir fatos — e reconstruir é
+    reavaliar identidade, qualidade e licença de novo, com resultado que pode
+    divergir do que já está gravado. Publicar é LEITURA (§39, §40, §41).
+
+    A SELEÇÃO É POR EXECUÇÃO DE EVENTO, e não por partida (§5). «Os eventos
+    desta partida» é global e cresce depois; «os eventos que estas execuções
+    produziram para esta partida» é o que a versão declarou publicar.
+    """
+
+    async def usage_scopes_of(
+        self, event_build_run_ids: Sequence[str]
+    ) -> Mapping[str, UsageScope]:
+        """O escopo de uso de cada execução de evento.
+
+        É A CONFERÊNCIA DO §27 APLICADA A EVENTO: compor um corpus comercial
+        com execuções de pesquisa traria de volta, pela porta do evento,
+        exatamente o dado restrito que a política comercial excluiu.
+        """
+        ...
+
+    async def policy_versions_of(
+        self, event_build_run_ids: Sequence[str]
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """As versões de política e de tabela de tipos daquelas execuções.
+
+        Elas respondem «produzido de que jeito», que é pergunta do MANIFESTO —
+        e não da impressão semântica, que só responde «é o mesmo conteúdo?».
+        """
+        ...
+
+    async def count_events(
+        self, event_build_run_ids: Sequence[str], match_ids: Sequence[MatchId]
+    ) -> Mapping[MatchId, int]:
+        """Quantos eventos cada partida traria — SEM trazê-los (§46, §90).
+
+        POR QUE CONTAR ANTES DE LER. Uma página de composição são centenas de
+        partidas, e um jogo com dado de evento completo tem milhares de
+        eventos: ler a página inteira de uma vez colocaria milhões de eventos
+        na memória. A contagem é um agregado barato e é o que permite fatiar a
+        página em pedaços com teto de eventos.
+        """
+        ...
+
+    async def events_of(
+        self, event_build_run_ids: Sequence[str], match_ids: Sequence[MatchId]
+    ) -> Mapping[MatchId, tuple[PublishedEvent, ...]]:
+        """Os eventos daquelas partidas, com a linhagem plural de cada um.
+
+        A LINHAGEM É PLURAL (§66, §68): quando duas execuções produziram o
+        mesmo evento, as duas voltam — o corpus grava uma pertinência e duas
+        contribuições.
+        """
+        ...
+
+    async def exclusions_of(self, event_build_run_ids: Sequence[str]) -> EventExclusionTally:
+        """Os eventos que aquelas execuções recusaram, por motivo (§37).
+
+        UMA CONSULTA PARA A VERSÃO INTEIRA, e não uma por partida: é um
+        agregado sobre a linhagem, e ele não cresce com o número de lotes.
         """
         ...

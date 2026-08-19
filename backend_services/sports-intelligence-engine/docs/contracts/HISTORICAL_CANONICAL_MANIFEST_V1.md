@@ -75,16 +75,51 @@ comparáveis.
     "build_policy_versions":       ["v1.0"],
     "build_policy_fingerprints":   ["…"],
     "quality_policy_versions":     ["v1.0"],
-    "quality_policy_fingerprints": ["…"]
+    "quality_policy_fingerprints": ["…"],
+
+    // AS TRÊS CHAVES DE EVENTO SÓ APARECEM QUANDO A VERSÃO PUBLICA EVENTOS
+    // (PR-04.4.2). A ausência delas é a forma dos manifestos anteriores, e
+    // continua sendo uma declaração legítima: «esta versão não publica
+    // eventos». Nada é retrofitado (§103).
+    "event_build_run_ids":         ["…"],
+    "event_policy_versions":       [1],
+    "event_type_mapping_versions": [1]
   },
 
   "counts": {
     "matches": 10000,
-    "by_family":    { "MATCH": 10000, "ODDS": 8412 },
-    "by_partition": { "PREMIER_LEAGUE/2024/25": 380 }
+    "by_family":    { "MATCH": 10000, "ODDS": 8412, "EVENT": 9800 },
+    "by_partition": { "PREMIER_LEAGUE/2024/25": 380 },
+
+    // MESMA REGRA: `events` só existe quando há evento. Ela entra no RODAPÉ da
+    // impressão semântica, então emiti-la como `0` num corpus sem eventos
+    // mudaria a impressão de toda versão já publicada (§62, §117).
+    "events": {
+      "total":                    100000,
+      "by_type":                  { "PASS": 60000, "SHOT": 20000, "CARD": 10000 },
+      "by_status":                { "ACTIVE": 99000, "CORRECTED": 900, "CANCELLED": 100 },
+      "with_player":              98000,
+      "with_team":                99500,
+      "with_coordinates":         90000,
+      "spatially_eligible":       90000,   // o denominador HONESTO do §27
+      "matches_with_events":      9800,
+      "matches_with_coordinates": 9700
+    }
   },
 
   "coverage": [                         // TODAS as sete famílias, sempre
+    // `EVENT` e `SPATIAL` são medidas sobre o que a versão PUBLICA, e não
+    // sobre o que a fonte declarou (PR-04.4.2 §29, §30):
+    //
+    //   EVENT    AVAILABILITY_ONLY — não há denominador honesto para «quantos
+    //            eventos esta partida DEVERIA ter», e inventar um produziria
+    //            porcentagem que parece medida
+    //   SPATIAL  MEASURED — `available_total` são os eventos com coordenada e
+    //            `expected_total` os que ACONTECEM num ponto do campo. O apito
+    //            final e o cartão não entram no denominador
+    //
+    // Sem evento publicado, as duas continuam vindo da avaliação de qualidade,
+    // inclusive como `NOT_DECLARED`.
     {
       "family":            "MATCH",
       "state":             "MEASURED",  // MEASURED | AVAILABILITY_ONLY | NOT_DECLARED
@@ -186,6 +221,24 @@ um milhão de problemas nele o transformaria no corpus.
 persistidas; o de cobertura, dos mesmos assessments; o de licença, das decisões
 que o build já emitiu. Recalcular criaria uma segunda opinião sobre perguntas
 já respondidas, e as duas divergiriam no primeiro ajuste de política.
+
+**As contagens de evento são CONTAGEM, e nunca analítica** (PR-04.4.2 §54).
+«Quantos eventos, de que tipos, em que estado, quantos com jogador e quantos
+com coordenada» descreve o CONTEÚDO — é o que alguém confere contra o arquivo.
+«Chutes por jogo» e «taxa de conversão» seriam interpretação, teriam versão de
+modelo e moram no PR-05.
+
+**`events.total` conta TODOS os registros de evento publicados**, inclusive
+predecessores `CORRECTED` e eventos `CANCELLED` (§53). Isso é deliberado, e por
+isso o número não se chama «eventos efetivos»: chamar assim um total que inclui
+o gol anulado seria descrever outra coisa. Quem quer só os vigentes filtra por
+`status`, e a coluna está no Parquet.
+
+**O schema NÃO subiu de versão no PR-04.4.2**, e a decisão é explícita (§102):
+o `1.0` já declarava `coverage` para as sete famílias — `EVENT` e `SPATIAL`
+inclusive — e as chaves novas são ADITIVAS e condicionais. Um manifesto sem
+eventos tem hoje exatamente os bytes que tinha antes, e os manifestos já
+publicados continuam válidos sem retrofit (§103).
 
 ---
 

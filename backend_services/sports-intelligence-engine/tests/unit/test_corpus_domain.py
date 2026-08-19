@@ -183,16 +183,34 @@ class TestAPertinencia:
                 quality_assessment_id="y",
             )
 
-    def test_familia_que_o_pr_nao_materializa_e_recusada(self) -> None:
+    def test_familia_que_o_motor_nao_materializa_e_recusada(self) -> None:
         """Publicar uma família sem saber escrevê-la faria o manifesto
-        prometer conteúdo que não existe no corpus."""
-        assert CoverageFamily.EVENT not in MATERIALIZABLE_FAMILIES
+        prometer conteúdo que não existe no corpus.
+
+        `EVENT` SAIU DESTA LISTA NO PR-04.4.2, e `TRACKING` continua nela: a
+        primeira ganhou pipeline, tabela e arquivo; a segunda não existe na V1.
+        """
+        assert CoverageFamily.TRACKING not in MATERIALIZABLE_FAMILIES
         with pytest.raises(ValidationError, match="não materializa"):
             MatchCorpusFacts(
                 match=fatos().match,
                 competition=fatos().competition,
                 season_label=fatos().season_label,
-                included_families=(CoverageFamily.EVENT,),
+                included_families=(CoverageFamily.TRACKING,),
+                build_run_id="x",
+                quality_assessment_id="y",
+            )
+
+    def test_familia_de_evento_declarada_sem_evento_e_recusada(self) -> None:
+        """PR-04.4.2 §52. A família é a PROMESSA de conteúdo; declarada sem
+        evento nenhum, ela ficaria vazia no arquivo e zerada no manifesto —
+        e a cobertura afirmaria uma presença que não existe."""
+        with pytest.raises(ValidationError, match="não traz evento nenhum"):
+            MatchCorpusFacts(
+                match=fatos().match,
+                competition=fatos().competition,
+                season_label=fatos().season_label,
+                included_families=(CoverageFamily.MATCH, CoverageFamily.EVENT),
                 build_run_id="x",
                 quality_assessment_id="y",
             )

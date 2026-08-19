@@ -95,6 +95,10 @@ class BuildVersionIn(BaseModel):
     build_output_fingerprints: list[str] = Field(default_factory=list, max_length=200)
     fusion_run_ids: list[str] = Field(default_factory=list, max_length=200)
     resolution_run_ids: list[str] = Field(default_factory=list, max_length=200)
+    #: AS EXECUÇÕES DE EVENTO que esta versão publica (PR-04.4.2 §5). Vazio é
+    #: uma declaração legítima — «esta versão não publica eventos» —, e não uma
+    #: omissão que o motor deva corrigir derivando eventos das partidas.
+    event_build_run_ids: list[str] = Field(default_factory=list, max_length=200)
 
 
 class PublishVersionIn(BaseModel):
@@ -129,6 +133,9 @@ class VersionOut(BaseModel):
 class BuildVersionOut(BaseModel):
     version: VersionOut
     members_written: int
+    #: Quantos EVENTOS a versão publica. Zero significa «esta versão não
+    #: publica eventos», que é declaração e não falha (PR-04.4.2 §52).
+    event_members_written: int = 0
     objects_written: int
     materialized: bool
     corpus_fingerprint: str
@@ -141,6 +148,23 @@ class ManifestOut(BaseModel):
     schema_version: str
     document: dict[str, Any]
     vector_active: bool = False
+
+
+class ProfileOut(BaseModel):
+    """O recorte do manifesto que descreve CONTEÚDO — e nada de interpretação.
+
+    `counts` carrega `events` quando a versão publica eventos, e não carrega
+    quando ela não publica: a ausência da chave é a declaração honesta, e é a
+    mesma forma que os manifestos anteriores ao PR-04.4.2 têm.
+    """
+
+    dataset_name: str
+    dataset_version: str
+    usage: str
+    corpus_fingerprint: str
+    counts: dict[str, Any]
+    coverage: list[dict[str, Any]]
+    license: dict[str, Any]
 
 
 # ---------------------------------------------------------------- rotas ----
@@ -219,6 +243,7 @@ async def build_version(
     )
     return BuildVersionOut(
         version=_version_out(saida.version),
+        event_members_written=saida.event_members_written,
         members_written=saida.members_written,
         objects_written=saida.objects_written,
         materialized=saida.materialized,
@@ -284,6 +309,31 @@ async def get_manifest(version_id: str, contêiner: ContainerDep, _: ActorDep) -
     return ManifestOut(schema_version=manifesto.schema_version, document=manifesto.as_canonical())
 
 
+@router.get("/versions/{version_id}/profile", response_model=ProfileOut)
+async def get_profile(version_id: str, contêiner: ContainerDep, _: ActorDep) -> ProfileOut:
+    """O perfil da versão: contagens e cobertura, sem o documento inteiro.
+
+    ELE LÊ O MANIFESTO E NÃO RECALCULA NADA (PR-04.4.2 §54, §55). O manifesto é
+    o que foi publicado; recontar a partir do banco produziria um segundo
+    número para a mesma pergunta.
+
+    O QUE ELE NÃO DEVOLVE: chutes por jogo, taxa de conversão, gols por liga.
+    Isso é analítica esportiva, tem versão de modelo e mora no PR-05.
+    """
+    manifesto = await contêiner.corpus.manifests.by_version(version_id)
+    if manifesto is None:
+        raise NotFoundError(f"versão {version_id} sem manifesto publicado")
+    return ProfileOut(
+        dataset_name=manifesto.dataset_name,
+        dataset_version=str(manifesto.dataset_version),
+        usage=manifesto.scope.usage.value,
+        corpus_fingerprint=manifesto.corpus_fingerprint.value,
+        counts=manifesto.counts.as_canonical(),
+        coverage=[c.as_canonical() for c in manifesto.coverage],
+        license=manifesto.license.as_canonical(),
+    )
+
+
 @router.get("/datasets/{dataset_id}/latest", response_model=VersionOut)
 async def latest_ready(
     dataset_id: str,
@@ -333,6 +383,7 @@ def _entradas(corpo: BuildVersionIn) -> VersionInputs:
         build_output_fingerprints=tuple(ContentHash(f) for f in corpo.build_output_fingerprints),
         fusion_run_ids=tuple(corpo.fusion_run_ids),
         resolution_run_ids=tuple(corpo.resolution_run_ids),
+        event_build_run_ids=tuple(corpo.event_build_run_ids),
     )
 
 

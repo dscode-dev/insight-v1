@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator, Sequence
 import pytest
 
 from sports_intelligence.application.use_cases.events import (
+    LINEAGE_SAMPLE_LIMIT,
     RunHistoricalEventCanonicalization,
 )
 from sports_intelligence.domain.events.build import EventBuildRecordStatus
@@ -262,6 +263,52 @@ class TestOLote:
         await ambiente.rodar(muitos, lote=2)
         sequencias = sorted(e.sequence for e in ambiente.events.events.values())
         assert sequencias == [0, 1, 2, 3, 4, 5]
+
+
+class TestAAmostraDeLinhagem:
+    """PR-04.4.2 §84, §85, §86. A saída devolve AMOSTRA, e diz que é amostra.
+
+    POR QUE ELA É LIMITADA. A linhagem completa de uma execução de cem mil
+    eventos são cem mil objetos; acumulá-los para devolvê-los a um chamador que
+    quase sempre só quer as contagens faria o pico de memória seguir o VOLUME
+    DO ARQUIVO. A linhagem completa mora no repositório — que é onde ela é
+    completa.
+    """
+
+    async def test_a_amostra_respeita_o_teto(self) -> None:
+        muitos = tuple(gol(n, minuto=n % 90, id_do_evento=f"ev-{n}") for n in range(1, 41))
+        ambiente = Ambiente()
+        saida = await ambiente.rodar(muitos, lote=10)
+        assert len(saida.records) <= LINEAGE_SAMPLE_LIMIT  # type: ignore[attr-defined]
+
+    async def test_sem_truncamento_a_amostra_e_a_linhagem_inteira(self) -> None:
+        """Quarenta linhas cabem folgadamente no teto — e aí `records_truncated`
+        precisa dizer `False`, senão quem lê descarta uma resposta completa."""
+        muitos = tuple(gol(n, minuto=n % 90, id_do_evento=f"ev-{n}") for n in range(1, 41))
+        ambiente = Ambiente()
+        saida = await ambiente.rodar(muitos, lote=10)
+        assert saida.records_truncated is False  # type: ignore[attr-defined]
+        assert len(saida.records) == len(ambiente.lineage.records)  # type: ignore[attr-defined]
+
+    async def test_a_amostra_e_deterministica_e_nao_a_ordem_do_banco(self) -> None:
+        """§85. Duas execuções do mesmo conjunto devolvem a MESMA amostra, na
+        mesma ordem: ela vem da ordem canônica de leitura, e não da ordem
+        natural em que o banco devolveria as linhas."""
+        muitos = tuple(gol(n, minuto=n % 90, id_do_evento=f"ev-{n}") for n in range(1, 21))
+        primeira = await Ambiente().rodar(muitos, lote=5)
+        segunda = await Ambiente().rodar(muitos, lote=5)
+        assert [r.source_key for r in primeira.records] == [  # type: ignore[attr-defined]
+            r.source_key for r in segunda.records  # type: ignore[attr-defined]
+        ]
+
+    async def test_o_repositorio_continua_sendo_a_autoridade(self) -> None:
+        """§86. A amostra não substitui a linhagem: ela é atalho de
+        diagnóstico, e o que responde «o que aconteceu com cada linha» é o
+        repositório."""
+        muitos = tuple(gol(n, minuto=n % 90, id_do_evento=f"ev-{n}") for n in range(1, 41))
+        ambiente = Ambiente()
+        await ambiente.rodar(muitos, lote=10)
+        assert len(ambiente.lineage.records) == 40
 
 
 class TestARevisaoNoRegistro:

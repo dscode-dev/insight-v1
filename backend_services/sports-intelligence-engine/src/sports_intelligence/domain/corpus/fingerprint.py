@@ -56,16 +56,39 @@ MANIFESTO, que é conteúdo + procedência.
 from __future__ import annotations
 
 import hashlib
-import json
-from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Final, final
-from uuid import UUID
 
 from sports_intelligence.domain.corpus.membership import CorpusMember, MembershipCounts
 from sports_intelligence.domain.corpus.scope import CorpusScope
 from sports_intelligence.domain.datasets.content import ContentHash
+
+# AS PRIMITIVAS MORAM EM `shared` E SÃO REEXPORTADAS DAQUI (PR-04.4.2 §11). O
+# registro canônico de eventos precisa da MESMA serialização para comparar dois
+# eventos de identidade igual, e um adapter de evento importando `domain.corpus`
+# inverteria as camadas. Reexportar mantém `from ...corpus.fingerprint import
+# canonical_json` funcionando onde ele já estava — duas formas de importar a
+# mesma função, e nunca duas funções.
+from sports_intelligence.domain.shared.canonical import (
+    canonical_json,
+    decimal_text,
+    frame,
+    instant_text,
+    uuid_text,
+)
 from sports_intelligence.domain.shared.errors import ValidationError
+
+__all__ = [
+    "FINGERPRINT_ALGORITHM",
+    "FINGERPRINT_SCHEMA_VERSION",
+    "CorpusFingerprintBuilder",
+    "canonical_json",
+    "decimal_text",
+    "fingerprint_of",
+    "frame",
+    "instant_text",
+    "member_payload",
+    "uuid_text",
+]
 
 #: O nome do algoritmo, gravado no manifesto (§20, §62). Ele existe para que
 #: uma impressão produzida por esta construção NUNCA seja confundida com a do
@@ -82,79 +105,11 @@ FINGERPRINT_SCHEMA_VERSION: Final[str] = "1.0"
 #: com a de um corpus. Custa 50 bytes e fecha uma classe inteira de confusão.
 _DOMAIN_SEPARATOR: Final[bytes] = b"INSIGHT:HISTORICAL_CANONICAL_CORPUS:FINGERPRINT:V1"
 
-#: Quantos bytes o prefixo de tamanho ocupa. Oito é folgado para sempre, e um
-#: tamanho FIXO é o que torna o enquadramento não ambíguo.
-_TAMANHO_DO_PREFIXO: Final[int] = 8
-
 #: Os rótulos de seção. Eles entram no hash junto do conteúdo, então um membro
 #: nunca pode ser lido como cabeçalho nem vice-versa.
 _TAG_HEADER: Final[bytes] = b"header"
 _TAG_MEMBER: Final[bytes] = b"member"
 _TAG_TRAILER: Final[bytes] = b"trailer"
-
-
-def frame(tag: bytes, payload: bytes) -> bytes:
-    """Enquadra um pedaço com rótulo e tamanho explícitos (§7).
-
-    SEM ISSO, A CONCATENAÇÃO É AMBÍGUA: `"AB" + "C"` e `"A" + "BC"` produzem a
-    mesma cadeia, e dois corpus diferentes produziriam a mesma impressão. O
-    prefixo de tamanho torna a fronteira entre pedaços impossível de mover.
-    """
-    return (
-        len(tag).to_bytes(2, "big")
-        + tag
-        + len(payload).to_bytes(_TAMANHO_DO_PREFIXO, "big")
-        + payload
-    )
-
-
-def canonical_json(payload: object) -> bytes:
-    """A serialização determinística de um pedaço.
-
-    Chaves ordenadas, separador fixo, UTF-8, `ensure_ascii=False`. O que ela
-    NÃO faz é resolver tipos — `uuid_text`, `instant_text` e `decimal_text`
-    existem para isso, e nenhum valor chega aqui como objeto.
-    """
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
-        "utf-8"
-    )
-
-
-def uuid_text(value: UUID | str) -> str:
-    """UUID em forma canônica: minúsculas, com hífens (§85).
-
-    UMA FORMA SÓ, DECIDIDA AQUI. `str(UUID)` já produz isto, mas o texto que
-    chega do banco pode vir de outro caminho — normalizar num lugar é o que
-    impede duas representações do mesmo id produzirem impressões diferentes.
-    """
-    return str(UUID(str(value)))
-
-
-def instant_text(value: datetime) -> str:
-    """Instante em UTC, ISO-8601, com precisão de MICROSSEGUNDO fixa (§86).
-
-    `datetime.isoformat()` OMITE os microssegundos quando eles são zero, então
-    `20:00:00` e `20:00:00.000000` — o mesmo instante — produziriam cadeias
-    diferentes conforme o caminho que trouxe o valor. A precisão fixa fecha
-    isso; o fuso normalizado fecha a outra metade.
-    """
-    return value.astimezone(UTC).isoformat(timespec="microseconds")
-
-
-def decimal_text(value: Decimal | None) -> str | None:
-    """Decimal como TEXTO normalizado, nunca float (§84).
-
-    `2.00` e `2.0` são a mesma odd escrita de dois jeitos, e
-    `float(Decimal("2.05"))` não é 2.05. A normalização escolhe uma forma; o
-    expoente positivo volta a inteiro porque `normalize()` transforma 100 em
-    `1E+2`.
-    """
-    if value is None:
-        return None
-    normalizado = value.normalize()
-    if normalizado == normalizado.to_integral_value():
-        normalizado = normalizado.quantize(Decimal(1))
-    return format(normalizado, "f")
 
 
 def member_payload(member: CorpusMember) -> bytes:

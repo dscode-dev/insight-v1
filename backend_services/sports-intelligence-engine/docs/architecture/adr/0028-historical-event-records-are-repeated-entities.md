@@ -1,6 +1,6 @@
 # ADR-0028 — Registro histórico de evento é entidade repetida, não campo escalar de partida
 
-**Status:** aceito · **Data:** 2026-08-18
+**Status:** aceito · **Data:** 2026-08-18 · **Estendido em:** 2026-08-19 (PR-04.4.2)
 
 ## Contexto
 
@@ -97,9 +97,32 @@ o resultado.
 
 **O que ainda não está decidido.** Como dois provedores descrevendo o mesmo
 gol terminam no mesmo evento canônico. Este ADR não resolve isso, e a
-canonicalização deste PR trata cada fonte isoladamente: `UncertainSameEvent`
-não vira `ForceMerge`, e a ausência de resolução cross-provider é declarada,
-não contornada.
+canonicalização trata cada fonte isoladamente: `UncertainSameEvent` não vira
+`ForceMerge`, e a ausência de resolução cross-provider é declarada, não
+contornada. **O PR-04.4.2 manteve essa fronteira na publicação**: publicar não
+reconcilia, e um teste de arquitetura recusa o import que abriria a porta.
+
+## Extensão — o registro repetido chega ao corpus (PR-04.4.2)
+
+O ADR original parava no registro canônico. A decisão de forma se estende à
+publicação, e ela é a mesma:
+
+**A pertinência de evento também é uma ENTIDADE REPETIDA.** Uma linha por
+`(versão, evento)` em `historical_canonical_event_members` — e não um array de
+ids dentro da linha da partida, nem um contador. Pelas mesmas razões: um array
+não tem índice para «este evento está em quais corpus?», e um contador não
+responde «QUAIS eventos».
+
+**Uma linha do `events.parquet` é um evento.** O arquivo tem a mesma
+granularidade da tabela; a partição continua sendo `competition=/season=`,
+porque é o predicado que a leitura analítica poda. Não há `event_1_type` no
+Parquet pelo mesmo motivo pelo qual não há no catálogo de papéis.
+
+**O que a extensão acrescentou como decisão nova:** a pertinência é DECLARADA
+pela versão (`VersionInputs.event_build_run_ids`), e nunca derivada de «a
+partida está no corpus». Derivar faria uma versão publicada mudar de conteúdo
+quando o registro global crescesse — que é exatamente o que versionar existe
+para impedir.
 
 ## Alternativas consideradas
 

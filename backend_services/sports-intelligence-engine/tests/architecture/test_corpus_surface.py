@@ -84,13 +84,27 @@ class TestAsDuasPortasExistem:
         assert "POST /v1/historical-corpus/datasets/{dataset_id}/versions" in caminhos
         assert "POST /v1/historical-corpus/versions/{version_id}/publish" in caminhos
         assert "GET /v1/historical-corpus/versions/{version_id}/manifest" in caminhos
+        # `profile` entrou no PR-04.4.2 (§55): o manifesto inteiro descreve
+        # tudo, e quem opera precisa das contagens e da cobertura sem baixar
+        # um documento de mil linhas.
+        assert "GET /v1/historical-corpus/versions/{version_id}/profile" in caminhos
         assert "GET /v1/historical-corpus/datasets/{dataset_id}/latest" in caminhos
 
     def test_a_cli_expoe_os_mesmos_comandos(self) -> None:
         from apps.cli import corpus as comandos
 
         nomes = {c.name for c in comandos.app.registered_commands}
-        assert {"create-dataset", "build", "publish", "versions", "manifest"} <= nomes
+        assert {
+            "create-dataset",
+            "build",
+            "publish",
+            "versions",
+            "manifest",
+            # `profile` entrou no PR-04.4.2 (§57): o manifesto inteiro é JSON,
+            # e quem opera precisa de «quantos eventos, de que tipos, com que
+            # cobertura» sem ler um documento de mil linhas.
+            "profile",
+        } <= nomes
 
     def test_a_cli_esta_registrada_na_aplicacao(self) -> None:
         """Um comando que existe e não é montado é um comando que ninguém

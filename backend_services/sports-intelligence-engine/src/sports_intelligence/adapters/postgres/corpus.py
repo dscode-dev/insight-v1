@@ -38,6 +38,9 @@ from decimal import Decimal
 from typing import Any, Final, final
 
 from sports_intelligence.adapters.postgres.database import Database
+from sports_intelligence.adapters.postgres.events import (
+    _para_evento as _para_evento_do_registro,
+)
 from sports_intelligence.domain.build.decisions import (
     BuildDecision,
     BuildOutcome,
@@ -52,6 +55,10 @@ from sports_intelligence.domain.competitions.models import (
     Stage,
     StageType,
 )
+from sports_intelligence.domain.corpus.composition import (
+    EventExclusionTally,
+    PublishedEvent,
+)
 from sports_intelligence.domain.corpus.facts import MatchCorpusFacts
 from sports_intelligence.domain.corpus.manifest import (
     CorpusObjectRef,
@@ -63,7 +70,9 @@ from sports_intelligence.domain.corpus.manifest import (
 )
 from sports_intelligence.domain.corpus.membership import (
     BuildContribution,
+    CorpusEventMember,
     CorpusMember,
+    EventCorpusCounts,
     MembershipCounts,
 )
 from sports_intelligence.domain.corpus.scope import CorpusScope, ScopeEntry
@@ -113,6 +122,12 @@ from sports_intelligence.domain.shared.versioning import DatasetVersion
 #: Quantos ids vão por rodada de `ANY(...)`. Mesma calibração dos demais
 #: repositórios: troca idas ao banco por tamanho de array, sem pico visível.
 _POR_RODADA: Final[int] = 500
+
+#: O tipo do objeto quando o documento não o declara. Ele é o padrão do
+#: `CorpusObjectRef`, repetido aqui porque a leitura precisa de um valor e
+#: adivinhar «application/octet-stream» faria um Parquet perfeitamente
+#: legível parecer binário opaco para quem consome o manifesto.
+_TIPO_PADRAO_DE_OBJETO: Final[str] = "application/vnd.apache.parquet"
 
 #: Os estados de linhagem que significam «este fato está no registro». Um
 #: `SKIPPED` não tem fato para publicar, e um `FAILED` menos ainda.
@@ -359,6 +374,34 @@ class PostgresHistoricalCorpusRepository:
             )
         return len(build_run_ids)
 
+    async def register_event_builds(
+        self, version_id: str, event_build_run_ids: Sequence[str]
+    ) -> int:
+        """Liga a versão às execuções de EVENTO que ela publica (§5)."""
+        if not event_build_run_ids:
+            return 0
+        async with self._db.acquire() as conexao:
+            await conexao.execute(
+                """
+                INSERT INTO historical_canonical_version_event_builds
+                    (version_id, build_run_id)
+                SELECT $1, unnest($2::uuid[])
+                ON CONFLICT DO NOTHING
+                """,
+                uuid.UUID(version_id),
+                [uuid.UUID(b) for b in event_build_run_ids],
+            )
+        return len(event_build_run_ids)
+
+    async def event_build_run_ids_of(self, version_id: str) -> Sequence[str]:
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                "SELECT build_run_id FROM historical_canonical_version_event_builds "
+                "WHERE version_id = $1 ORDER BY build_run_id",
+                uuid.UUID(version_id),
+            )
+        return [str(linha["build_run_id"]) for linha in linhas]
+
     async def build_run_ids_of(self, version_id: str) -> Sequence[str]:
         async with self._db.acquire() as conexao:
             linhas = await conexao.fetch(
@@ -541,6 +584,104 @@ class PostgresCorpusMembershipRepository:
             linhas = await conexao.fetch(
                 "SELECT version_id FROM historical_canonical_members WHERE match_id = $1 LIMIT $2",
                 match_id.value,
+                limit,
+            )
+        return [str(linha["version_id"]) for linha in linhas]
+
+    # ------------------------------------------------ pertinência de evento --
+
+    async def append_event_members(
+        self, version_id: str, members: Sequence[CorpusEventMember]
+    ) -> int:
+        """Grava a pertinência de eventos e a linhagem plural de cada um.
+
+        AS DUAS ESCRITAS ESTÃO NA MESMA TRANSAÇÃO, como no membro de partida:
+        um evento no corpus sem contribuição gravada é um evento sem resposta
+        para «de onde ele veio», e separá-las deixaria essa janela aberta a
+        cada lote.
+        """
+        if not members:
+            return 0
+        gravados = 0
+        async with self._db.acquire() as conexao, conexao.transaction():
+            for inicio in range(0, len(members), _POR_RODADA):
+                bloco = members[inicio : inicio + _POR_RODADA]
+                await conexao.executemany(
+                    """
+                    INSERT INTO historical_canonical_event_members (
+                        version_id, event_id, match_id, competition_code,
+                        season_label, content_digest
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (version_id, event_id) DO NOTHING
+                    """,
+                    [
+                        (
+                            uuid.UUID(version_id),
+                            m.event_id,
+                            m.match_id.value,
+                            m.competition.value,
+                            m.season_label,
+                            m.content_digest.value,
+                        )
+                        for m in bloco
+                    ],
+                )
+                await conexao.executemany(
+                    """
+                    INSERT INTO historical_canonical_event_member_builds
+                        (version_id, event_id, build_run_id)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    [
+                        (uuid.UUID(version_id), m.event_id, uuid.UUID(execucao))
+                        for m in bloco
+                        for execucao in m.event_build_run_ids
+                    ],
+                )
+                gravados += len(bloco)
+        return gravados
+
+    async def count_event_members(self, version_id: str) -> int:
+        async with self._db.acquire() as conexao:
+            total = await conexao.fetchval(
+                "SELECT count(*) FROM historical_canonical_event_members WHERE version_id = $1",
+                uuid.UUID(version_id),
+            )
+        return int(total or 0)
+
+    async def event_members_of_match(
+        self, version_id: str, match_id: MatchId
+    ) -> Sequence[CorpusEventMember]:
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                """
+                SELECT e.event_id, e.match_id, e.competition_code, e.season_label,
+                       e.content_digest,
+                       coalesce(b.runs, ARRAY[]::uuid[]) AS runs
+                FROM historical_canonical_event_members e
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(c.build_run_id ORDER BY c.build_run_id) AS runs
+                    FROM historical_canonical_event_member_builds c
+                    WHERE c.version_id = e.version_id AND c.event_id = e.event_id
+                ) b ON true
+                WHERE e.version_id = $1 AND e.match_id = $2
+                ORDER BY e.event_id
+                """,
+                uuid.UUID(version_id),
+                match_id.value,
+            )
+        return [_para_membro_de_evento(linha) for linha in linhas]
+
+    async def versions_containing_event(
+        self, event_id: uuid.UUID, *, limit: int = 20
+    ) -> Sequence[str]:
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                "SELECT version_id FROM historical_canonical_event_members "
+                "WHERE event_id = $1 LIMIT $2",
+                event_id,
                 limit,
             )
         return [str(linha["version_id"]) for linha in linhas]
@@ -1145,6 +1286,11 @@ def _para_manifesto(bruto: Any) -> HistoricalCanonicalManifest:
             matches=documento["counts"]["matches"],
             by_family=dict(documento["counts"].get("by_family", {})),
             by_partition=dict(documento["counts"].get("by_partition", {})),
+            # A CHAVE `events` SÓ EXISTE QUANDO A VERSÃO PUBLICA EVENTOS
+            # (PR-04.4.2 §31). A ausência dela é a forma dos manifestos
+            # anteriores a este PR, e relê-los precisa continuar funcionando —
+            # sem retrofit e sem inventar zero onde não havia nada (§103).
+            events=_para_contagem_de_eventos(documento["counts"].get("events")),
         ),
         coverage=tuple(
             FamilyCoverageSummary(
@@ -1180,6 +1326,24 @@ def _para_manifesto(bruto: Any) -> HistoricalCanonicalManifest:
         created_at=instant(_parse(documento["created_at"])),
         fingerprint_algorithm=documento["fingerprint_algorithm"],
         fingerprint_schema_version=documento["fingerprint_schema_version"],
+        # OS OBJETOS VOLTAM COM O DOCUMENTO (PR-04.4.2 §49). Sem eles, o
+        # manifesto relido descreve um corpus sem arquivo nenhum — e a
+        # reconciliação do gate compararia contagens contra uma lista vazia,
+        # concluindo que nada foi escrito quando tudo foi.
+        objects=tuple(
+            CorpusObjectRef(
+                object_key=o["object_key"],
+                family=o["family"],
+                competition=o["competition"],
+                season=o["season"],
+                sha256=ContentHash(o["sha256"]),
+                size_bytes=int(o["size_bytes"]),
+                row_count=int(o["row_count"]),
+                content_type=o.get("content_type", _TIPO_PADRAO_DE_OBJETO),
+            )
+            for o in documento.get("objects", ())
+        ),
+        coverage_by_partition=dict(documento.get("coverage_by_partition", {})),
     )
 
 
@@ -1205,3 +1369,209 @@ def _json(bruto: Any) -> dict[str, Any]:
         carregado: Any = json.loads(bruto)
         return dict(carregado)
     return dict(bruto or {})
+
+
+@final
+class PostgresCorpusEventReader:
+    """Os eventos canônicos que uma versão publica (PR-04.4.2 §42).
+
+    A SELEÇÃO É `evento ∈ execução declarada` E `evento ∈ partida do lote`. O
+    cruzamento acontece no BANCO, contra `canonical_event_build_records`: o
+    registro canônico é global, e trazer os eventos de todas as partidas para
+    filtrar em Python carregaria o corpus inteiro para descartar a maior parte.
+
+    A LINHAGEM VOLTA AGREGADA, e é o que torna a leitura uma consulta só: um
+    `array_agg` das execuções que produziram cada evento, em vez de uma segunda
+    ida por evento.
+    """
+
+    def __init__(self, database: Database) -> None:
+        self._db = database
+
+    async def usage_scopes_of(
+        self, event_build_run_ids: Sequence[str]
+    ) -> Mapping[str, UsageScope]:
+        if not event_build_run_ids:
+            return {}
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                "SELECT id, scope FROM canonical_event_build_runs WHERE id = ANY($1::uuid[])",
+                [uuid.UUID(b) for b in event_build_run_ids],
+            )
+        # AS AUSENTES NÃO VOLTAM, como no leitor de partida: uma execução que
+        # não existe é um erro diferente de uma com escopo divergente.
+        return {str(linha["id"]): UsageScope(linha["scope"]) for linha in linhas}
+
+    async def policy_versions_of(
+        self, event_build_run_ids: Sequence[str]
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        if not event_build_run_ids:
+            return (), ()
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                "SELECT policy_version, type_mapping_version FROM canonical_event_build_runs "
+                "WHERE id = ANY($1::uuid[])",
+                [uuid.UUID(b) for b in event_build_run_ids],
+            )
+        return (
+            tuple(sorted({int(linha["policy_version"]) for linha in linhas})),
+            tuple(sorted({int(linha["type_mapping_version"]) for linha in linhas})),
+        )
+
+    async def count_events(
+        self, event_build_run_ids: Sequence[str], match_ids: Sequence[MatchId]
+    ) -> Mapping[MatchId, int]:
+        """Um agregado, e nunca os eventos (§46, §90).
+
+        É ELE QUE PERMITE FATIAR A PÁGINA. Uma página de composição são
+        centenas de partidas; um jogo com dado de evento completo tem milhares
+        de eventos. Ler a página inteira de uma vez colocaria milhões de
+        eventos na memória, e o pico deixaria de acompanhar o lote.
+        """
+        if not event_build_run_ids or not match_ids:
+            return {}
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                """
+                SELECT e.match_id, count(DISTINCT e.id) AS quantos
+                FROM canonical_match_events e
+                JOIN canonical_event_build_records r ON r.event_id = e.id
+                WHERE r.build_run_id = ANY($1::uuid[])
+                  AND e.match_id = ANY($2::uuid[])
+                  AND r.status = ANY($3::text[])
+                GROUP BY e.match_id
+                """,
+                [uuid.UUID(b) for b in event_build_run_ids],
+                [m.value for m in match_ids],
+                list(_EVENTOS_MATERIALIZADOS),
+            )
+        return {MatchId(linha["match_id"]): int(linha["quantos"]) for linha in linhas}
+
+    async def events_of(
+        self, event_build_run_ids: Sequence[str], match_ids: Sequence[MatchId]
+    ) -> Mapping[MatchId, tuple[PublishedEvent, ...]]:
+        if not event_build_run_ids or not match_ids:
+            return {}
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                f"""
+                SELECT {_COLUNAS_DE_EVENTO},
+                       array_agg(DISTINCT r.build_run_id) AS build_runs
+                FROM canonical_match_events e
+                JOIN canonical_event_build_records r ON r.event_id = e.id
+                WHERE r.build_run_id = ANY($1::uuid[])
+                  AND e.match_id = ANY($2::uuid[])
+                  AND r.status = ANY($3::text[])
+                GROUP BY e.id
+                -- A ORDEM É A CANÔNICA DO EVENTO, imposta aqui em vez de
+                -- deixada à ordem natural: a impressão do corpus é calculada
+                -- sobre esta lista, e uma ordem herdada mudaria no dia em que
+                -- o plano de consulta mudasse (§17).
+                ORDER BY e.match_id, e.period, e.minute, e.stoppage, e.sequence, e.id
+                """,
+                [uuid.UUID(b) for b in event_build_run_ids],
+                [m.value for m in match_ids],
+                list(_EVENTOS_MATERIALIZADOS),
+            )
+        por_partida: dict[MatchId, list[PublishedEvent]] = {}
+        for linha in linhas:
+            partida = MatchId(linha["match_id"])
+            por_partida.setdefault(partida, []).append(
+                PublishedEvent(
+                    event=_para_evento_do_registro(linha),
+                    build_run_ids=tuple(sorted(str(b) for b in linha["build_runs"])),
+                )
+            )
+        return {partida: tuple(eventos) for partida, eventos in por_partida.items()}
+
+    async def exclusions_of(self, event_build_run_ids: Sequence[str]) -> EventExclusionTally:
+        """O que aquelas execuções recusaram, por motivo — uma consulta (§37)."""
+        if not event_build_run_ids:
+            return EventExclusionTally()
+        async with self._db.acquire() as conexao:
+            linhas = await conexao.fetch(
+                """
+                SELECT r.reason, count(*) AS quantos
+                FROM canonical_event_build_records r
+                WHERE r.build_run_id = ANY($1::uuid[])
+                  AND NOT (r.status = ANY($2::text[]))
+                  AND r.reason IS NOT NULL
+                GROUP BY r.reason
+                """,
+                [uuid.UUID(b) for b in event_build_run_ids],
+                list(_EVENTOS_MATERIALIZADOS),
+            )
+            # A LICENÇA DO QUE FICOU DE FORA VEM DA FONTE, e não da linhagem.
+            # A linha de linhagem de um evento recusado não tem licença porque
+            # ela descreve a RECUSA, não o fato — o fato não chegou a existir.
+            # Quem sabe sob que licença aquele arquivo entrou é o registro do
+            # dataset, e é dele que a resposta sai (§37).
+            licencas = await conexao.fetch(
+                """
+                SELECT DISTINCT s.license_class
+                FROM canonical_event_build_runs run
+                JOIN dataset_sources s ON s.dataset_id = run.dataset_id
+                WHERE run.id = ANY($1::uuid[])
+                  AND EXISTS (
+                      SELECT 1 FROM canonical_event_build_records r
+                      WHERE r.build_run_id = run.id
+                        AND NOT (r.status = ANY($2::text[]))
+                  )
+                """,
+                [uuid.UUID(b) for b in event_build_run_ids],
+                list(_EVENTOS_MATERIALIZADOS),
+            )
+        return EventExclusionTally(
+            by_reason={str(linha["reason"]): int(linha["quantos"]) for linha in linhas},
+            licenses=tuple(sorted(str(linha["license_class"]) for linha in licencas)),
+        )
+
+
+#: Os desfechos de linhagem de evento que significam «este evento existe no
+#: registro». `SKIPPED`, `REVIEW_REQUIRED` e `FAILED` NÃO produziram evento —
+#: procurá-los faria o corpus buscar linhas que não existem.
+_EVENTOS_MATERIALIZADOS: Final[tuple[str, ...]] = ("BUILT", "REUSED")
+
+#: As colunas do evento, com o prefixo da junção. Elas são as mesmas que o
+#: adapter de evento lê — é o mesmo mapeador que as transforma de volta.
+_COLUNAS_DE_EVENTO: Final[str] = (
+    "e.id, e.match_id, e.event_type, e.period, e.minute, e.stoppage, "
+    "e.sequence, e.team_id, e.player_id, e.start_x, e.start_y, e.end_x, "
+    "e.end_y, e.coordinate_frame, e.detail, e.revision, e.supersedes_event_id, "
+    "e.status, e.provider_id, e.source_event_key, e.record_ref, "
+    "e.license_class, e.raw_event_type"
+)
+
+
+def _para_contagem_de_eventos(bruto: Any) -> EventCorpusCounts:
+    """As contagens de evento do documento, ou as vazias quando não há.
+
+    ELAS SÃO RELIDAS E NÃO RECALCULADAS. O manifesto é o que foi PUBLICADO;
+    recontar a partir do banco na leitura produziria um segundo número para a
+    mesma pergunta — e os dois divergiriam no dia em que alguém apagasse uma
+    linha que não devia.
+    """
+    if not bruto:
+        return EventCorpusCounts()
+    return EventCorpusCounts(
+        total=int(bruto.get("total", 0)),
+        with_player=int(bruto.get("with_player", 0)),
+        with_team=int(bruto.get("with_team", 0)),
+        with_coordinates=int(bruto.get("with_coordinates", 0)),
+        spatially_eligible=int(bruto.get("spatially_eligible", 0)),
+        matches_with_events=int(bruto.get("matches_with_events", 0)),
+        matches_with_coordinates=int(bruto.get("matches_with_coordinates", 0)),
+        by_type=dict(bruto.get("by_type", {})),
+        by_status=dict(bruto.get("by_status", {})),
+    )
+
+
+def _para_membro_de_evento(linha: Any) -> CorpusEventMember:
+    return CorpusEventMember(
+        event_id=linha["event_id"],
+        match_id=MatchId(linha["match_id"]),
+        competition=CompetitionCode(linha["competition_code"]),
+        season_label=linha["season_label"],
+        event_build_run_ids=tuple(sorted(str(b) for b in linha["runs"])),
+        content_digest=ContentHash(linha["content_digest"]),
+    )

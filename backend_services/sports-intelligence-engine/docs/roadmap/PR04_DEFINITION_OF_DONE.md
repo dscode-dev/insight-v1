@@ -1,8 +1,8 @@
 # PR-04 — Data Quality & Historical Canonical Build · checklist de fechamento
 
 Conferência do **DoD ORIGINAL do PR-04**, item a item. Escrita ao fim do
-PR-04.3 e **atualizada no PR-04.4.1**, que avançou o blocker de eventos sem
-fechá-lo.
+PR-04.3, atualizada no PR-04.4.1 — que avançou o blocker de eventos sem
+fechá-lo — e **encerrada no PR-04.4.2**, que o fechou.
 
 > **Qualquer requisito original não entregue aparece aqui como BLOCKER, e não é
 > reclassificado como dívida.** Um item rebaixado silenciosamente para «dívida»
@@ -18,6 +18,7 @@ PR-04.2.1 Final Closure & Repository Integrity Hardening
 PR-04.3   Historical Corpus Materialization, Manifest, Interfaces & Production Proof
 PR-04.3.1 Corpus Integrity & Final Closure
 PR-04.4.1 Historical Event Contract & Canonicalization Pipeline
+PR-04.4.2 Event Corpus Integration & Final PR-04 Closure
 ```
 
 **Três categorias, e nenhuma quarta vaga** (§52):
@@ -151,17 +152,61 @@ fecha.
 | 7.14 | Três tamanhos de lote medidos, default justificado | 250 / 1.000 / 5.000 | ✅ PR-04.4.1 |
 | 7.15 | Documento de baseline | `docs/performance/PR0441_EVENT_CANONICALIZATION_BASELINE.md` | ✅ PR-04.4.1 |
 | 7.16 | ADR da decisão de forma | ADR-0028 | ✅ PR-04.4.1 |
-| 7.17 | Pertinência de evento no corpus, Parquet, manifesto | — | ❌ PR-04.4.2 |
-| 7.18 | Resolução de evento entre provedores | — | ❌ fora de escopo declarado |
+| 7.17 | Pertinência de evento no corpus, Parquet, manifesto | ver seção 8 | ✅ PR-04.4.2 |
+| 7.18 | Resolução de evento entre provedores | — | ⭕ fora de escopo declarado |
 
-## Itens do escopo ORIGINAL que NÃO foram entregues
+---
 
-### BLOCKED — eventos canônicos NO CORPUS
+## 8. Eventos no corpus publicado (PR-04.4.2)
 
-**O estado mudou no PR-04.4.1, e mudou pela metade.** A escolha registrada
-como «Opção A» na análise de capacidade foi executada: existe hoje um pipeline
-completo de canonicalização de eventos, do contrato de fonte ao PostgreSQL. O
-que **não** existe é a integração desses eventos ao corpus publicado.
+| # | requisito | onde | estado |
+|---|-----------|------|--------|
+| 8.1 | Pertinência de evento PERSISTIDA e explícita por versão | `historical_canonical_event_members`, migration `0011` | ✅ |
+| 8.2 | A versão DECLARA quais execuções de evento publica | `VersionInputs.event_build_run_ids` | ✅ |
+| 8.3 | Versão `READY` imutável; versões antigas intactas | teste E2E de imutabilidade | ✅ |
+| 8.4 | Eventos contribuem para a impressão do corpus | `MatchCorpusFacts.content_form` | ✅ |
+| 8.5 | Adicionar/remover evento e revisão MUDAM a impressão | 4 testes de impressão | ✅ |
+| 8.6 | Lote e ordem de leitura NÃO mudam a impressão | testes de determinismo (unidade, E2E, benchmark) | ✅ |
+| 8.7 | `events.parquet` com schema DECLARADO | `materializer.py`, família `EVENT` | ✅ |
+| 8.8 | Detalhe tipado como JSON canônico versionado | `detail`, `detail_kind`, `detail_schema_version` | ✅ |
+| 8.9 | `missing ≠ zero` no Parquet | coordenada nula, jogador nulo | ✅ |
+| 8.10 | `xg = 0.0` ≠ `xg` indisponível | colunas `xg` e `xg_unavailable_reason` | ✅ |
+| 8.11 | Coordenadas normalizadas e referencial declarado | ADR-0012, constraint no banco e no schema | ✅ |
+| 8.12 | Semântica de revisão preservada no corpus | `CORRECTED` publicado ao lado do sucessor | ✅ |
+| 8.13 | Cobertura `EVENT` no manifesto | `AVAILABILITY_ONLY`, sem denominador inventado | ✅ |
+| 8.14 | Cobertura `SPATIAL` no manifesto | `MEASURED` sobre eventos espacialmente elegíveis | ✅ |
+| 8.15 | Denominadores honestos | `EventType.supports_location` | ✅ |
+| 8.16 | Contagens de evento reais no manifesto | `counts.events` | ✅ |
+| 8.17 | `EVENT` no resumo de licença | `licenses_present`, `families_included` | ✅ |
+| 8.18 | Pesquisa inclui os eventos permitidos | E2E: 7 eventos | ✅ |
+| 8.19 | Comercial exclui os restritos | E2E: 5 eventos, mesmos `MatchId` | ✅ |
+| 8.20 | Match Core independente da exclusão de EVENT | E2E | ✅ |
+| 8.21 | Exclusão auditável com motivo e licença | `exclusion_reasons["EVENT"]`, `exclusion_licenses` | ✅ |
+| 8.22 | Linhagem `versão → evento → build → fonte → bruto` | E2E com SHA-256 real | ✅ |
+| 8.23 | Linhagem multi-build preservada | `historical_canonical_event_member_builds` | ✅ |
+| 8.24 | Evento duplicado NÃO vira pertinência duplicada | PK `(version_id, event_id)` | ✅ |
+| 8.25 | Conteúdo conflitante BLOQUEIA | `content_digest` + `compose_events` | ✅ |
+| 8.26 | Metadado dos objetos de evento persistido | `historical_canonical_objects` | ✅ |
+| 8.27 | Reconciliação manifesto ↔ objetos | E2E, nos dois sentidos | ✅ |
+| 8.28 | SHA-256 real do objeto no MinIO confere | E2E | ✅ |
+| 8.29 | `pertinência == linhas do Parquet == manifesto` | gate de publicação | ✅ |
+| 8.30 | API e CLI refletem eventos | `event_build_run_ids`, `event_members_written` | ✅ |
+| 8.31 | Falha de publicação nunca vira `READY` | 3 testes de recusa | ✅ |
+| 8.32 | Identidade canônica de evento estável | id derivado, provado por reprocessamento | ✅ |
+| 8.33 | `PredecessorRef` continua suficiente | testes de cadeia de revisão | ✅ |
+| 8.34 | Amostra de linhagem limitada e determinística | `LINEAGE_SAMPLE_LIMIT`, `records_truncated` | ✅ |
+| 8.35 | Benchmark de 100k eventos no corpus | `docs/performance/PR04_EVENT_CORPUS_BASELINE.md` | ✅ |
+| 8.36 | Sem N+1, memória controlada | consultas por lote medidas | ✅ |
+
+## O último item do escopo ORIGINAL — e como ele fechou
+
+### FECHADO — eventos canônicos NO CORPUS
+
+**Este item foi o último blocker do PR-04, e ele está fechado.** A «Opção A» da
+análise de capacidade foi executada em dois PRs: o PR-04.4.1 construiu o
+pipeline de canonicalização até o PostgreSQL, e o PR-04.4.2 integrou esses
+eventos ao corpus publicado — pertinência por versão, `events.parquet`,
+contagens e cobertura no manifesto, com reconciliação no gate.
 
 | estágio | estado |
 |---------|--------|
@@ -171,33 +216,29 @@ que **não** existe é a integração desses eventos ao corpus publicado.
 | elegibilidade por evento (5 guardas ordenadas) | ✅ PR-04.4.1 |
 | `CanonicalEventBuilder`, identidade derivada | ✅ PR-04.4.1 |
 | `canonical_match_events` + linhagem por evento | ✅ PR-04.4.1 |
-| **pertinência de evento no corpus** | ❌ **BLOCKED** |
-| **`events.parquet`** | ❌ **BLOCKED** |
-| **contagem de eventos no manifesto** | ❌ **BLOCKED** |
-| **resolução de evento entre provedores** | ❌ fora de escopo declarado |
+| pertinência de evento no corpus | ✅ PR-04.4.2 |
+| `events.parquet` | ✅ PR-04.4.2 |
+| contagem de eventos no manifesto | ✅ PR-04.4.2 |
+| cobertura `EVENT` e `SPATIAL` | ✅ PR-04.4.2 |
+| **resolução de evento entre provedores** | ⭕ fora de escopo, DECLARADO |
 
 A análise estágio a estágio, com o histórico da classificação anterior, está em
 [`docs/data/EVENT_CAPABILITY_ANALYSIS.md`](../data/EVENT_CAPABILITY_ANALYSIS.md).
 
-**Por que isto não fecha o PR-04.** O DoD original fala de eventos **no build
+**Por que isto agora fecha.** O DoD original fala de eventos **no build
 canônico histórico**, e um build histórico é uma versão publicada do corpus.
-Eventos que existem no PostgreSQL e não aparecem em nenhuma versão não
-satisfazem esse requisito: quem lê o corpus continua sem eles, e o manifesto
-continua reportando `NOT_DECLARED` — corretamente.
+Hoje uma versão declara quais execuções de evento publica, grava a pertinência
+evento a evento, escreve o arquivo e o manifesto conta o que existe — com o
+gate recusando publicar se os três números discordarem.
 
-**Por que isto também não é `NOT_APPLICABLE`:** eventos são dado de futebol
-real e o motor vai precisar deles.
-
-**Consequência, atualizada:** features que leem eventos **do PostgreSQL** por
-partida deixaram de estar bloqueadas. Features que dependem de eventos
-**publicados numa versão** — leitura analítica pelo Parquet, contagem no
-manifesto, reprodutibilidade por versão — continuam bloqueadas até o
-PR-04.4.2.
+**O que continua fora é declaração, não lacuna:** resolução de evento entre
+provedores. Dois provedores descrevendo o mesmo gol terminam em dois eventos
+canônicos distintos, e o motor não adivinha que são o mesmo. Isso não bloqueia
+o PR-04 porque nunca esteve no DoD dele — e porque a alternativa (fundir por
+heurística) atribuiria fatos a quem não os praticou.
 
 ```
-PR-04 STILL BLOCKED
-blocker único: canonical EVENT corpus integration (PR-04.4.2)
-                pipeline de canonicalização: ENTREGUE no PR-04.4.1
+PR-04 FULLY CLOSED
 ```
 
 ---
@@ -214,16 +255,35 @@ histórico misturaria dimensão com fato.
 ### `SPATIAL` como família independente
 
 Coordenadas são atributo de evento (`PitchCoordinate` vive em
-`domain/events/`). O registro canônico de eventos **já as guarda** desde o
-PR-04.4.1 — par completo, intervalo `[0,1]`, referencial declarado. O que
-continua ausente é a família `SPATIAL` **no corpus publicado**. **Bloqueada
-junto com a integração de eventos, e não separadamente.**
+`domain/events/`), e desde o PR-04.4.2 elas viajam nas linhas de
+`events.parquet` — par completo, intervalo `[0,1]`, referencial declarado. A
+cobertura `SPATIAL` do manifesto é MEDIDA sobre elas.
+
+**O que continua não existindo é uma FAMÍLIA `SPATIAL` independente**, com
+arquivo próprio: ela seria uma tabela de pontos sem o que eles descrevem. O
+ponto pertence ao evento. **Classificação final: suportado como DIMENSÃO DE
+COBERTURA de evento, e não como família.**
 
 ### `TRACKING` na V1
 
 Fora do escopo por decisão do PR-04.1 §20. O catálogo a NOMEIA para que a
 ausência seja declarada em vez de esquecida, e o manifesto a reporta como
 `NOT_DECLARED` — que é distinguível de «0% de cobertura».
+
+### Resolução de evento entre PROVEDORES
+
+Dois provedores descrevendo o mesmo gol terminam em dois eventos canônicos
+distintos, e o motor não tenta adivinhar que são o mesmo.
+
+**Isto nunca esteve no DoD do PR-04**, e é por isso que aparece aqui e não como
+blocker: o PR-04 constrói e publica fatos canônicos; unificar dois relatos do
+MESMO fato é resolução de identidade, e resolução de identidade é o assunto do
+PR-03 — que a fez com evidência, decisão versionada e fila de revisão humana.
+Fazer o equivalente para evento por heurística de proximidade atribuiria fatos
+a quem não os praticou.
+
+**Quando for necessária, é um PR próprio.** A fronteira está fixada por teste:
+`Publication ↛ EventReconciliation`.
 
 ---
 
@@ -239,6 +299,25 @@ só o que já foi resolvido chega à fusão (ADR-0022). O desfecho normal do bui
 é `REUSED_EQUIVALENT`. **O caminho de `INSERTED` existe e é testado**; ele
 passa a ser o normal quando a resolução puder criar partida nova, que é uma
 decisão de outra fase.
+
+### F4 — A entrada autorizada do PR-05 é a VERSÃO PUBLICADA
+
+```
+FeatureBuilderInput = HistoricalCanonicalDatasetVersion
+```
+
+Depois deste PR, o PR-05 **não precisa** voltar a `FusionRun`, `ResolutionRun`,
+`SourceRecord` ou aos datasets brutos para reconstruir fato esportivo nenhum:
+partida, resultado, escalação, odds e evento estão publicados numa versão
+imutável, com impressão própria e manifesto que descreve o que ela contém.
+
+E não é só «não precisa»: **não deve**. Ler o bruto contornaria as decisões de
+qualidade, licença e pertinência que a versão carrega — e um resultado
+calculado assim não seria explicável pela versão que ele diz ter usado.
+
+A seta é de mão única, e há teste de arquitetura para os dois lados: o corpus
+não importa código de feature, e uma versão só é legível como corpus quando
+está `READY` ou `SUPERSEDED`.
 
 ### F3 — Publicação síncrona
 
@@ -272,11 +351,17 @@ Os 4 arquivos com mudança real de conteúdo (`adapters/postgres/resolution.py`,
 ## Gate
 
 ```
-PR-04 STILL BLOCKED
+PR-04 FULLY CLOSED
 ```
 
-O único blocker é a **integração de eventos ao corpus publicado**
-(`PR-04.4.2`). O pipeline de canonicalização que ele pressupõe foi entregue e
-verificado no PR-04.4.1 — 100.000 registros contra PostgreSQL real. Tudo o
-mais — os 45 itens do DoD original mais os 14 do PR-04.3.1 — está `DONE` e
-verificado.
+Nenhum item do DoD original está `BLOCKED`. Os 45 itens originais, os 14 do
+PR-04.3.1, os 18 do PR-04.4.1 e os 36 do PR-04.4.2 estão `DONE` e verificados
+contra PostgreSQL 17 e MinIO reais.
+
+As três classificações `NOT_APPLICABLE_WITH_JUSTIFICATION` — `PLAYER` como
+família independente, `TRACKING` na V1, e resolução de evento entre provedores
+— continuam com a justificativa escrita, e nenhuma delas é um blocker
+rebaixado: as duas primeiras nunca estiveram no escopo, e a terceira nunca
+esteve no DoD.
+
+**Ready for PR-05 — Feature Foundation & Historical State Builder.**

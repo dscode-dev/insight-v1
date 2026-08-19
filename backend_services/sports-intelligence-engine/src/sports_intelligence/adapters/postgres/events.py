@@ -38,6 +38,7 @@ from sports_intelligence.domain.events.build import (
     EventExclusionReason,
 )
 from sports_intelligence.domain.events.canonical import CanonicalMatchEvent, EventStatus
+from sports_intelligence.domain.events.canonical_form import event_fact_digest
 from sports_intelligence.domain.events.coordinates import (
     CoordinateFrame,
     PitchCoordinate,
@@ -56,6 +57,7 @@ from sports_intelligence.domain.events.taxonomy import EventType
 from sports_intelligence.domain.quality.licensing import UsageScope
 from sports_intelligence.domain.resolution.runs import RunStatus
 from sports_intelligence.domain.shared.actor import Actor, ActorKind
+from sports_intelligence.domain.shared.errors import ConflictError
 from sports_intelligence.domain.shared.feature_value import FeatureValue, Unavailability
 from sports_intelligence.domain.shared.identity import (
     DatasetId,
@@ -93,7 +95,7 @@ _COLUNAS: Final[str] = (
     "id, match_id, event_type, period, minute, stoppage, sequence, team_id, "
     "player_id, start_x, start_y, end_x, end_y, coordinate_frame, detail, "
     "revision, supersedes_event_id, status, provider_id, source_event_key, "
-    "record_ref, license_class, raw_event_type"
+    "record_ref, license_class, raw_event_type, content_digest"
 )
 
 
@@ -120,19 +122,31 @@ class PostgresCanonicalEventWriter:
                 # QUAIS JÁ EXISTIAM, ANTES DE ESCREVER. É o que distingue
                 # `BUILT` de `REUSED` sem heurística — `ON CONFLICT` não
                 # devolve `RETURNING` para o que ele ignorou.
-                ja_existiam = {
-                    linha["id"]
+                gravados = {
+                    linha["id"]: linha["content_digest"]
                     for linha in await conexao.fetch(
-                        "SELECT id FROM canonical_match_events WHERE id = ANY($1::uuid[])",
+                        "SELECT id, content_digest FROM canonical_match_events "
+                        "WHERE id = ANY($1::uuid[])",
                         [e.id for e in bloco],
                     )
                 }
+                ja_existiam = set(gravados)
+                # O CONFLITO É RECUSADO, E NUNCA IGNORADO (PR-04.4.2 §69). O
+                # `ON CONFLICT DO NOTHING` abaixo fica com o que já está lá; se
+                # o conteúdo que chega for OUTRO sob a mesma identidade
+                # derivada, ficar com o primeiro é escolher qual versão da
+                # história é verdade — em silêncio, que é o pior jeito.
+                #
+                # `content_digest` NULO é «não sei»: eventos gravados antes da
+                # migration 0011 não têm digest, e comparar contra nada
+                # inventaria um veredito.
+                _recusar_conflito(bloco, gravados)
                 await conexao.executemany(
                     f"""
                     INSERT INTO canonical_match_events ({_COLUNAS}, created_by_build_run)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                             $13, $14, $15::jsonb, $16, $17, $18, $19, $20, $21,
-                            $22, $23, $24)
+                            $22, $23, $24, $25)
                     ON CONFLICT (id) DO NOTHING
                     """,
                     [
@@ -449,8 +463,44 @@ def _para_linha(
         evento.provenance.source_record_id or "",
         evento.provenance.license_class.value,
         evento.type.value,
+        # O DIGEST DO CONTEÚDO. É ele que distingue «este evento já está aqui»
+        # de «outro fato chegou sob a mesma identidade» (§69).
+        event_fact_digest(evento),
         build_run_id,
     )
+
+
+def _recusar_conflito(
+    events: Sequence[CanonicalMatchEvent], gravados: Mapping[uuid.UUID, str | None]
+) -> None:
+    """Recusa o lote quando um evento gravado afirma outro fato (§69).
+
+    NADA É ESCRITO QUANDO ISTO LEVANTA. A transação envolve o lote inteiro, e
+    é o comportamento certo: um conflito não é um evento ruim no meio de
+    bons — é a suspeita de que a chave de origem passou a descrever outra
+    coisa, e nesse caso os vizinhos merecem a mesma dúvida.
+    """
+    for evento in events:
+        anterior = gravados.get(evento.id)
+        if anterior is None:
+            continue
+        atual = event_fact_digest(evento)
+        if anterior == atual:
+            continue
+        raise ConflictError(
+            f"o evento {evento.id} já está gravado com outro conteúdo "
+            f"({anterior[:12]} contra {atual[:12]}). A identidade canônica é "
+            "derivada de (partida, chave da fonte, revisão), então dois fatos "
+            "diferentes sob o mesmo id significam que a fonte reescreveu o "
+            "passado sob a mesma chave — e sobrescrever escolheria qual das "
+            "duas versões é verdade (PR-04.4.2 §69)",
+            context={
+                "event_id": str(evento.id),
+                "match_id": str(evento.match_id),
+                "stored": anterior,
+                "incoming": atual,
+            },
+        )
 
 
 def _detalhe_para_json(detail: EventDetail | None) -> str | None:
