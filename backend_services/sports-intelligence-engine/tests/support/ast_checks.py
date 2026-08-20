@@ -97,6 +97,40 @@ def internal_violations(arquivos: list[Path], prefixos: tuple[str, ...]) -> list
     ]
 
 
+def code_only(caminho: Path) -> str:
+    """O arquivo SEM comentários e SEM docstrings, em minúsculas.
+
+    POR QUE ISTO EXISTE (PR-05.4). As guardas textuais procuram construções
+    proibidas — `epsilon`, `winsor`, `overround`, `1 / odds`. O problema é que
+    esta base EXPLICA por extenso o que não faz: as docstrings citam cada uma
+    dessas coisas pelo nome, justamente para registrar a decisão de não
+    tê-las. Uma varredura ingênua marca a explicação como violação, e a saída
+    natural — reescrever a prosa para escapar do grep — deixaria o código pior
+    e a guarda igualmente cega.
+
+    O que sobra depois desta função é CÓDIGO. Uma menção numa docstring passa;
+    uma chamada de função, não.
+    """
+    fonte = caminho.read_text(encoding="utf-8")
+    arvore = ast.parse(fonte, filename=str(caminho))
+    linhas = fonte.splitlines()
+    apagar: set[int] = set()
+    for no in ast.walk(arvore):
+        # Docstrings são `Expr(Constant(str))` — em módulo, classe ou função.
+        if (
+            isinstance(no, ast.Expr)
+            and isinstance(no.value, ast.Constant)
+            and isinstance(no.value.value, str)
+            and no.end_lineno is not None
+        ):
+            apagar.update(range(no.lineno - 1, no.end_lineno))
+    mantidas = [
+        "" if n in apagar else linha.split("#", 1)[0]
+        for n, linha in enumerate(linhas)
+    ]
+    return "\n".join(mantidas).lower()
+
+
 def defined_functions(arquivos: list[Path]) -> list[tuple[Path, int, str]]:
     """(arquivo, linha, nome) de cada função definida.
 

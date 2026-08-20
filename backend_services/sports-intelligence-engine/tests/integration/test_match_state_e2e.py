@@ -330,7 +330,20 @@ async def _registros(pipeline: Pipeline, dataset: Any) -> tuple[HistoricalEventR
 
 @pytest.fixture
 async def publicado(database: Database, object_store: Any) -> dict[str, Any]:
-    """Um corpus READY, construído pelo caminho inteiro do PR-04."""
+    return await montar_corpus_publicado(database, object_store)
+
+
+async def montar_corpus_publicado(
+    database: Database, object_store: Any
+) -> dict[str, Any]:
+    """Um corpus READY, construído pelo caminho inteiro do PR-04.
+
+    ELA É FUNÇÃO, E NÃO SÓ FIXTURE. O E2E do PR-05.3 precisa do MESMO corpus, e
+    importar uma fixture de outro módulo de teste faria o parâmetro de cada
+    teste sombrear o símbolo importado — vinte e quatro avisos de linter sobre
+    uma redefinição que é legítima. Uma função comum não tem esse problema, e o
+    encaixe entre as fases continua sendo provado sobre o mesmo corpus.
+    """
     async with database.acquire() as conexao:
         await conexao.execute(f"TRUNCATE {', '.join(TABELAS)} RESTART IDENTITY CASCADE")
     await limpar_execucoes(database)

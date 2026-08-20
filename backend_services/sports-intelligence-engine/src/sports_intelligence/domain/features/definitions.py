@@ -150,6 +150,17 @@ class FeatureDefinition:
     #: Features das quais esta depende (§104). Vazio na V1 — o motor de
     #: composição não existe, e o registro recusa ciclo mesmo assim (§105).
     depends_on_features: tuple[str, ...] = ()
+    #: A impressão, MEMORIZADA. Ela é `init=False` de propósito: `replace()`
+    #: não a copia, então uma definição derivada de outra recalcula a sua em
+    #: vez de herdar a do original — que seria o pior defeito possível aqui.
+    #:
+    #: POR QUE MEMORIZAR (PR-05.3 §108). A impressão é invariante de um objeto
+    #: congelado, e o extrator a consulta cento e cinquenta vezes por snapshot:
+    #: setenta e cinco ao construir os valores e setenta e cinco quando o
+    #: snapshot confere cada um contra o espaço. Num lote de dez mil, são um
+    #: milhão e meio de SHA-256 sobre setenta e cinco objetos que não mudam —
+    #: metade do tempo de extração, medida em profile.
+    _fingerprint: str = field(default="", compare=False, repr=False, init=False)
 
     def __post_init__(self) -> None:
         if not _FORMA_DA_CHAVE.match(self.key):
@@ -215,8 +226,21 @@ class FeatureDefinition:
 
     @property
     def fingerprint(self) -> str:
-        """SHA-256 da forma canônica — 64 hex (§34)."""
-        return hashlib.sha256(canonical_json(self.as_canonical())).hexdigest()
+        """SHA-256 da forma canônica — 64 hex (§34).
+
+        CALCULADA UMA VEZ POR OBJETO. O `dataclass` é congelado: a forma
+        canônica não muda, e portanto a impressão também não. `object.__setattr__`
+        é o caminho normal para preencher um campo de um congelado, e o campo é
+        `compare=False` — dois objetos continuam iguais pelo CONTEÚDO, e não
+        por terem sido impressos.
+        """
+        if not self._fingerprint:
+            object.__setattr__(
+                self,
+                "_fingerprint",
+                hashlib.sha256(canonical_json(self.as_canonical())).hexdigest(),
+            )
+        return self._fingerprint
 
     def requires(self, family: CoverageFamily) -> bool:
         return family in self.required_families

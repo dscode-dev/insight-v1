@@ -140,6 +140,15 @@ class MatchStateBuildResult:
 
     state: HistoricalMatchState
     issues: tuple[StateIssue, ...] = ()
+    #: A PROJEÇÃO QUE PRODUZIU ESTE ESTADO (PR-05.3 §5, §91). Ela sai daqui
+    #: para que a extração de features use EXATAMENTE os mesmos fatos
+    #: efetivos — e não uma segunda projeção sobre a mesma entrada.
+    #:
+    #: DUAS PROJEÇÕES SERIAM DUAS VERDADES. Elas concordariam em todo caso
+    #: fácil e divergiriam no difícil — a correção cujo carimbo está na
+    #: fronteira do corte —, e a divergência apareceria como um estado que diz
+    #: 1-1 ao lado de uma feature que contou dois gols.
+    projection: ProjectionOutcome = field(default_factory=ProjectionOutcome)
 
     @property
     def is_partial(self) -> bool:
@@ -220,7 +229,11 @@ class HistoricalMatchStateBuilder:
             provenance=_procedencia(entrada, efetivos, odds),
             issues=tuple(problemas),
         )
-        return MatchStateBuildResult(state=estado, issues=tuple(sorted(set(problemas))))
+        return MatchStateBuildResult(
+            state=estado,
+            issues=tuple(sorted(set(problemas))),
+            projection=projecao,
+        )
 
     # ------------------------------------------------- estado inicial --
 

@@ -55,21 +55,63 @@ class CorpusRequirement:
     """
 
     families: tuple[CoverageFamily, ...] = ()
+    #: As famílias que o espaço USA quando existem e que NÃO o inviabilizam
+    #: (PR-05.4 §80, §82). O mercado é o caso: um corpus sem `ODDS` continua
+    #: produzindo snapshot — com as dimensões de mercado indisponíveis na
+    #: máscara. Torná-las obrigatórias faria o corpus inteiro ser recusado por
+    #: causa de uma família acessória, e a ausência é da MÁSCARA, não do espaço.
+    optional_families: tuple[CoverageFamily, ...] = ()
 
     def __post_init__(self) -> None:
         if len(set(self.families)) != len(self.families):
             raise ValidationError("requisito de corpus com família repetida")
+        if len(set(self.optional_families)) != len(self.optional_families):
+            raise ValidationError("requisito de corpus com família opcional repetida")
+        ambas = set(self.families) & set(self.optional_families)
+        if ambas:
+            nomes = sorted(f.value for f in ambas)
+            raise ValidationError(
+                f"família declarada como obrigatória E opcional: {nomes}. As duas "
+                "afirmações não podem valer ao mesmo tempo"
+            )
 
     @classmethod
-    def of(cls, *families: CoverageFamily) -> Self:
-        return cls(families=tuple(sorted(set(families), key=lambda f: f.value)))
+    def of(
+        cls,
+        *families: CoverageFamily,
+        optional: tuple[CoverageFamily, ...] = (),
+    ) -> Self:
+        return cls(
+            families=tuple(sorted(set(families), key=lambda f: f.value)),
+            optional_families=tuple(sorted(set(optional), key=lambda f: f.value)),
+        )
+
+    @property
+    def declared(self) -> frozenset[CoverageFamily]:
+        """Tudo que o espaço declara conhecer — obrigatório ou não."""
+        return frozenset(self.families) | frozenset(self.optional_families)
 
     def missing_from(self, published: frozenset[CoverageFamily]) -> tuple[CoverageFamily, ...]:
         """As famílias exigidas que aquele corpus NÃO publica."""
         return tuple(f for f in self.families if f not in published)
 
     def as_canonical(self) -> dict[str, object]:
-        return {"families": sorted(f.value for f in self.families)}
+        """A forma canônica.
+
+        `optional_families` SÓ APARECE QUANDO EXISTE. Um espaço sem famílias
+        opcionais produz exatamente o documento que produzia antes deste campo
+        existir — e é isso que mantém a impressão dourada da V1 intacta
+        (PR-05.4 §3, §90). Emitir `[]` mudaria o hash de todo espaço já
+        publicado por causa de um campo que ninguém usou.
+        """
+        documento: dict[str, object] = {
+            "families": sorted(f.value for f in self.families)
+        }
+        if self.optional_families:
+            documento["optional_families"] = sorted(
+                f.value for f in self.optional_families
+            )
+        return documento
 
 
 @final
@@ -155,7 +197,7 @@ class FeatureSpaceDefinition:
                 context={"cycle": " → ".join(ciclo)},
             )
         exigidas = {f for d in self.features for f in d.required_families}
-        nao_declaradas = exigidas - set(self.requirement.families)
+        nao_declaradas = exigidas - self.requirement.declared
         if nao_declaradas:
             nomes = sorted(f.value for f in nao_declaradas)
             raise ValidationError(

@@ -133,6 +133,15 @@ class FeatureAvailability(StrEnum):
     BLOCKED_BY_POLICY = "BLOCKED_BY_POLICY"
     #: A cobertura declarada é insuficiente para o que a feature exige (§100).
     INSUFFICIENT_COVERAGE = "INSUFFICIENT_COVERAGE"
+    #: PARTE dos fatos que a feature exige está incompleta (PR-05.3 §44, §45).
+    #:
+    #: ELE NÃO É `SOURCE_UNAVAILABLE`, e a diferença é o que ele existe para
+    #: dizer: a fonte VEIO, e veio incompleta. Há quatro finalizações na
+    #: janela e uma delas não traz xG; somar as três conhecidas e chamar o
+    #: resultado de «xG da janela» produziria um número menor que o real, com
+    #: cara de completo. `SOURCE_UNAVAILABLE` mandaria procurar o dado que não
+    #: veio; este manda olhar QUAIS fatos vieram pela metade.
+    PARTIAL_INPUT = "PARTIAL_INPUT"
 
     @property
     def is_available(self) -> bool:

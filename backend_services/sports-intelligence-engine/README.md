@@ -209,7 +209,19 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
   versionados, e a ordem do espaço é parte da identidade dele;
 - **ADR-0031** — o estado histórico da partida é reconstruído sob demanda e
   nunca armazenado: ele é função do corpus e da política, e uma linha gravada
-  não carrega essas dependências.
+  não carrega essas dependências;
+- **ADR-0032** — janelas móveis medem tempo EFETIVO e são locais ao período:
+  `(t-w, t]` dentro de uma fase, sem fabricar um relógio contínuo que o corpus
+  não publica;
+- **ADR-0033** — o contexto pré-jogo V1 é local à competição e mede CALENDÁRIO:
+  nada de forma, força de time ou confronto direto, e o nome da feature admite
+  o escopo;
+- **ADR-0034** — features de mercado usam especificações canônicas FIXAS e
+  consenso robusto de peso igual: a casa de aposta nunca vira dimensão, e o
+  método de quantil é declarado e versionado;
+- **ADR-0035** — a normalização V1 é mediana/IQR por competição, ajustada de
+  forma exata, com artefato imutável — sem epsilon escondido e sem troca
+  silenciosa de método.
 
 Contratos de dados:
 
@@ -245,6 +257,19 @@ Estado histórico da partida (PR-05.2 — estado, sem feature):
 - [`docs/features/HISTORICAL_MATCH_STATE_V1.md`](docs/features/HISTORICAL_MATCH_STATE_V1.md)
 - [`docs/features/MATCH_STATE_RECONSTRUCTION.md`](docs/features/MATCH_STATE_RECONSTRUCTION.md)
 - [`docs/features/STATE_COMPONENT_AVAILABILITY.md`](docs/features/STATE_COMPONENT_AVAILABILITY.md)
+
+Features cruas de produção (PR-05.3 — 75 definições, sem normalização):
+
+- [`docs/features/RAW_FEATURE_CATALOG_V1.md`](docs/features/RAW_FEATURE_CATALOG_V1.md)
+- [`docs/features/ROLLING_WINDOW_SEMANTICS_V1.md`](docs/features/ROLLING_WINDOW_SEMANTICS_V1.md)
+- [`docs/features/MATCH_FEATURE_EXTRACTION.md`](docs/features/MATCH_FEATURE_EXTRACTION.md)
+
+Contexto, mercado e normalização (PR-05.4 — o espaço estendido V2):
+
+- [`docs/features/RAW_FEATURE_CATALOG_V2.md`](docs/features/RAW_FEATURE_CATALOG_V2.md)
+- [`docs/features/PRE_MATCH_CONTEXT_V1.md`](docs/features/PRE_MATCH_CONTEXT_V1.md)
+- [`docs/features/CANONICAL_MARKET_FEATURES_V1.md`](docs/features/CANONICAL_MARKET_FEATURES_V1.md)
+- [`docs/features/ROBUST_NORMALIZATION_V1.md`](docs/features/ROBUST_NORMALIZATION_V1.md)
 
 ---
 
