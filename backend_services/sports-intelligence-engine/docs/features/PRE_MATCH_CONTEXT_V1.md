@@ -30,7 +30,7 @@ rest_days_home                        ❌  promete o que não entrega
 
 | chave | unidade | significado |
 |---|---|---|
-| `ctx_same_comp_prev_gap_hours_home` | `hours` | horas entre este apito e o da partida anterior do mandante na mesma competição |
+| `ctx_same_comp_prev_gap_hours_home` | `hours` | horas de PONTAPÉ A PONTAPÉ: `kickoff(atual) - kickoff(anterior)` do mandante na mesma competição |
 | `ctx_same_comp_prev_gap_hours_away` | `hours` | idem, visitante |
 | `ctx_same_comp_prev_gap_hours_diff` | `hours` | mandante menos visitante |
 | `ctx_same_comp_matches_14d_home` | `count` | partidas do mandante em `[T-14d, T)` |
@@ -41,7 +41,14 @@ rest_days_home                        ❌  promete o que não entrega
 | `ctx_same_comp_matches_30d_diff` | `count` | mandante menos visitante |
 
 `T` é o **apito inicial programado** da partida atual. O intervalo é medido de
-apito a apito — o corpus não publica quando a partida anterior terminou.
+**pontapé a pontapé** — `kickoff(atual) - kickoff(anterior)` —, e nunca do fim
+da anterior ao início da atual: o corpus não publica quando a partida anterior
+terminou.
+
+> **Correção de terminologia (PR-05.5.1 §132).** Este parágrafo dizia «de apito
+> a apito», que se lê com igual naturalidade como «do apito FINAL da anterior»
+> — a medida que o ADR-0033 rejeita explicitamente. A conta implementada sempre
+> foi pontapé a pontapé; o que mudou aqui é só a palavra.
 
 ---
 

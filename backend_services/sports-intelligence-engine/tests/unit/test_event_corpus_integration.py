@@ -157,9 +157,7 @@ class TestAImpressaoComEventos:
     def test_evento_a_menos_muda_a_impressao(self) -> None:
         """§13. E é a mesma propriedade vista do outro lado."""
         completo = fatos_com_eventos(0, quantos=4)
-        podado = ComposedMatchCorpusFacts.of(fatos(0)).with_events(
-            eventos_de(0, quantos=4)[:3]
-        )
+        podado = ComposedMatchCorpusFacts.of(fatos(0)).with_events(eventos_de(0, quantos=4)[:3])
         assert completo.content_fingerprint() != podado.content_fingerprint()
 
     def test_fato_do_evento_diferente_muda_a_impressao(self) -> None:
@@ -176,9 +174,7 @@ class TestAImpressaoComEventos:
         que a publica não é o corpus que não a tinha."""
         base = evento_canonico(n=1, source_key="k")
         corrigido = replace(base, status=EventStatus.CORRECTED)
-        sucessor = evento_canonico(
-            n=1, source_key="k", revision=2, supersedes=base.id, minuto=24
-        )
+        sucessor = evento_canonico(n=1, source_key="k", revision=2, supersedes=base.id, minuto=24)
         antes = ComposedMatchCorpusFacts.of(fatos(0)).with_events((publicado(base),))
         depois = ComposedMatchCorpusFacts.of(fatos(0)).with_events(
             (publicado(corrigido), publicado(sucessor))

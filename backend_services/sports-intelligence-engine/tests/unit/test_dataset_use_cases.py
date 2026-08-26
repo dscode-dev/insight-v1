@@ -221,9 +221,7 @@ class TestUploadEIdempotencia:
         assert atual.lifecycle is DatasetLifecycle.UPLOADED
         assert ambiente.publisher.of_type(DATASET_FILE_STORED)
 
-    async def test_reenviar_os_mesmos_bytes_nao_grava_de_novo(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_reenviar_os_mesmos_bytes_nao_grava_de_novo(self, ambiente: Ambiente) -> None:
         """Retry de rede é operação normal, não conflito."""
         dataset, _ = await ambiente.registrar()
         argumentos: dict[str, Any] = {
@@ -280,9 +278,7 @@ class TestUploadEIdempotencia:
         assert a.file.id != b.file.id
         assert len(await ambiente.files.by_dataset(dataset.id)) == 2
 
-    async def test_arquivo_vazio_e_recusado_antes_de_gravar(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_arquivo_vazio_e_recusado_antes_de_gravar(self, ambiente: Ambiente) -> None:
         """Gravá-lo gastaria uma chave do arquivo bruto para guardar nada."""
         dataset, _ = await ambiente.registrar()
         with pytest.raises(ValidationError, match="zero bytes"):
@@ -295,9 +291,7 @@ class TestUploadEIdempotencia:
             )
         assert not await ambiente.files.by_dataset(dataset.id)
 
-    async def test_arquivo_compactado_e_recusado_antes_de_gravar(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_arquivo_compactado_e_recusado_antes_de_gravar(self, ambiente: Ambiente) -> None:
         """Um zip que entra no arquivo bruto é uma bomba esperando a validação."""
         dataset, _ = await ambiente.registrar()
         with pytest.raises(ValidationError, match="compactado"):
@@ -344,9 +338,7 @@ class TestUploadEIdempotencia:
 
 
 class TestValidacaoNoCaminhoReal:
-    async def test_dataset_valido_chega_a_validated_com_manifesto(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_dataset_valido_chega_a_validated_com_manifesto(self, ambiente: Ambiente) -> None:
         dataset = await ambiente.fluxo_completo()
         atual = await ambiente.datasets.by_id(dataset.id)
         assert atual is not None
@@ -356,9 +348,7 @@ class TestValidacaoNoCaminhoReal:
         assert manifesto is not None
         assert manifesto.files[0].row_count == 1
 
-    async def test_arquivo_com_defeito_grave_leva_a_invalid(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_arquivo_com_defeito_grave_leva_a_invalid(self, ambiente: Ambiente) -> None:
         dataset = await ambiente.fluxo_completo(CSV_RUIM)
         atual = await ambiente.datasets.by_id(dataset.id)
         assert atual is not None
@@ -370,16 +360,12 @@ class TestValidacaoNoCaminhoReal:
         # um conjunto estruturalmente apto, e ele não é.
         assert await ambiente.manifests.latest_for(dataset.id) is None
 
-    async def test_validacao_sem_arquivo_confirmado_e_recusada(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_validacao_sem_arquivo_confirmado_e_recusada(self, ambiente: Ambiente) -> None:
         dataset, _ = await ambiente.registrar()
         with pytest.raises(ConflictError, match="não há arquivo"):
             await ambiente.validate.execute(actor=ATOR, dataset_id=dataset.id)
 
-    async def test_duas_validacoes_simultaneas_disputam_o_estado(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_duas_validacoes_simultaneas_disputam_o_estado(self, ambiente: Ambiente) -> None:
         """A transição para `VALIDATING` É o lock.
 
         Em Python as duas leriam `UPLOADED` e as duas seguiriam; aqui a
@@ -397,9 +383,7 @@ class TestValidacaoNoCaminhoReal:
         with pytest.raises(ConflictError, match="já está em"):
             await ambiente.validate.execute(actor=ATOR, dataset_id=dataset.id)
 
-    async def test_licenca_desconhecida_gera_aviso_e_nao_bloqueia(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_licenca_desconhecida_gera_aviso_e_nao_bloqueia(self, tmp_path: Path) -> None:
         ambiente = Ambiente(tmp_path)
         fonte = DatasetSource(
             source_name="planilha-interna",
@@ -416,9 +400,7 @@ class TestValidacaoNoCaminhoReal:
             stream=stream(CSV_BOM),
         )
         relatorio = await ambiente.validate.execute(actor=ATOR, dataset_id=dataset.id)
-        assert any(
-            i.code.value == "LICENSE_REVIEW_REQUIRED" for i in relatorio.issues
-        )
+        assert any(i.code.value == "LICENSE_REVIEW_REQUIRED" for i in relatorio.issues)
         assert not relatorio.has_blocking_issues
 
 
@@ -469,9 +451,7 @@ class TestStaging:
 
 
 class TestReconciliacao:
-    async def test_pendente_com_bytes_presentes_e_confirmado(
-        self, ambiente: Ambiente
-    ) -> None:
+    async def test_pendente_com_bytes_presentes_e_confirmado(self, ambiente: Ambiente) -> None:
         """A falha entre as fases 2 e 3: os bytes chegaram, a confirmação não.
 
         A reconciliação encontra o objeto e converge — sem reenvio.

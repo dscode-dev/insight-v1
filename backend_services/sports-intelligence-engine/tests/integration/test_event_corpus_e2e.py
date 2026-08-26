@@ -294,9 +294,7 @@ async def _semear_traducoes(database: Database, corpus: Corpus) -> None:
         )
 
 
-async def _registros(
-    pipeline: Pipeline, dataset: Any
-) -> tuple[HistoricalEventRecord, ...]:
+async def _registros(pipeline: Pipeline, dataset: Any) -> tuple[HistoricalEventRecord, ...]:
     """Lê o arquivo pelo caminho REAL — `SourceReader` + `EventRowReader`."""
     from apps.resolution_composition import read_batches
 
@@ -599,9 +597,7 @@ async def _linhas_do_parquet(publicado: dict[str, Any], version_id: str) -> list
 
 
 class TestOsEventosEntramNoCorpus:
-    async def test_a_versao_de_pesquisa_publica_os_eventos(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_versao_de_pesquisa_publica_os_eventos(self, publicado: dict[str, Any]) -> None:
         """§79. O caminho inteiro: arquivo → evento canônico → corpus."""
         _dataset, saida = await _compor(publicado)
         # Cinco linhas no arquivo público: quatro eventos mais a correção (que
@@ -692,11 +688,14 @@ class TestOEventsParquet:
         ]
         assert len(objetos) == 1
         assert objetos[0].row_count == 7
-        assert "family=EVENT/competition=PREMIER_LEAGUE/season=2024%2F25" in objetos[
-            0
-        ].object_key.replace("/", "%2F").replace("corpus%2F", "corpus/").replace(
-            "%2Ffamily=", "/family="
-        ) or "family=EVENT" in objetos[0].object_key
+        assert (
+            "family=EVENT/competition=PREMIER_LEAGUE/season=2024%2F25"
+            in objetos[0]
+            .object_key.replace("/", "%2F")
+            .replace("corpus%2F", "corpus/")
+            .replace("%2Ffamily=", "/family=")
+            or "family=EVENT" in objetos[0].object_key
+        )
 
     async def test_o_sha256_gravado_bate_com_os_bytes_reais(
         self, publicado: dict[str, Any]
@@ -710,15 +709,11 @@ class TestOEventsParquet:
             if o.family == CoverageFamily.EVENT.value
         ]
         for objeto in objetos:
-            bruto = b"".join(
-                [p async for p in publicado["store"].open_stream(objeto.object_key)]
-            )
+            bruto = b"".join([p async for p in publicado["store"].open_stream(objeto.object_key)])
             assert hashlib.sha256(bruto).hexdigest() == objeto.sha256.value
             assert len(bruto) == objeto.size_bytes
 
-    async def test_coordenada_ausente_e_null_no_arquivo(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_coordenada_ausente_e_null_no_arquivo(self, publicado: dict[str, Any]) -> None:
         """§23, §25. O cartão não tem coordenada, e `0.0` seria o canto do
         campo — uma posição perfeitamente válida."""
         _dataset, saida = await _compor(publicado)
@@ -809,9 +804,7 @@ class TestOManifestoPublicado:
         assert por_familia["SPATIAL"].expected_total == 6
         assert por_familia["SPATIAL"].available_total == 6
 
-    async def test_a_familia_event_aparece_na_licenca(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_familia_event_aparece_na_licenca(self, publicado: dict[str, Any]) -> None:
         """§33. Um corpus que publica eventos `RESEARCH_ONLY` declara isso."""
         _dataset, saida = await _compor(publicado)
         assert "EVENT" in saida.manifest.license.families_included
@@ -839,9 +832,7 @@ class TestPesquisaContraComercio:
         )
         assert comercial.manifest.counts.events.total == 5
 
-    async def test_o_matchid_e_o_mesmo_e_a_impressao_nao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_matchid_e_o_mesmo_e_a_impressao_nao(self, publicado: dict[str, Any]) -> None:
         """§74, §75."""
         _d1, pesquisa = await _compor(publicado, dataset_name="pesquisa")
         _d2, comercial = await _compor(
@@ -852,9 +843,7 @@ class TestPesquisaContraComercio:
         de_comercio = await publicado["corpus"].membership.page_members(comercial.version.id)
         assert [m.match_id for m in de_pesquisa] == [m.match_id for m in de_comercio]
 
-    async def test_a_exclusao_por_licenca_e_explicavel(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_exclusao_por_licenca_e_explicavel(self, publicado: dict[str, Any]) -> None:
         """§37. `events=0` não explica; «excluído por LICENSE_POLICY, sob
         RESEARCH_ONLY, num build COMMERCIAL» explica."""
         _dataset, comercial = await _compor(
@@ -920,22 +909,17 @@ class TestOGateComEventos:
                 actor=PUBLICADOR, version_id=saida.version.id, reason="deveria falhar"
             )
 
-    async def test_manifesto_e_objetos_se_reconciliam(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_manifesto_e_objetos_se_reconciliam(self, publicado: dict[str, Any]) -> None:
         """§49. Nos dois sentidos: todo objeto do manifesto está no banco, e
         todo objeto do banco está no manifesto."""
         _dataset, saida = await _compor(publicado)
         do_banco = {
-            o.object_key
-            for o in await publicado["corpus"].manifests.objects_of(saida.version.id)
+            o.object_key for o in await publicado["corpus"].manifests.objects_of(saida.version.id)
         }
         do_manifesto = {o.object_key for o in saida.manifest.objects}
         assert do_banco == do_manifesto
 
-    async def test_a_soma_das_linhas_bate_com_o_manifesto(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_soma_das_linhas_bate_com_o_manifesto(self, publicado: dict[str, Any]) -> None:
         """§51. `manifest.events == Σ row_count == pertinência gravada`."""
         _dataset, saida = await _compor(publicado)
         objetos = [
@@ -952,9 +936,7 @@ class TestOGateComEventos:
 
 
 class TestODeterminismo:
-    async def test_o_lote_de_evento_nao_muda_a_impressao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_lote_de_evento_nao_muda_a_impressao(self, publicado: dict[str, Any]) -> None:
         """§16. Publicar os mesmos eventos com tetos diferentes de fatiamento
         produz o MESMO corpus."""
         _d1, estreito = await _compor(publicado, event_rows_batch=2, dataset_name="estreito")
@@ -962,9 +944,7 @@ class TestODeterminismo:
         assert estreito.manifest.corpus_fingerprint == largo.manifest.corpus_fingerprint
         assert estreito.manifest.counts.events.total == largo.manifest.counts.events.total
 
-    async def test_o_lote_da_composicao_tambem_nao_muda(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_lote_da_composicao_tambem_nao_muda(self, publicado: dict[str, Any]) -> None:
         _d1, pequeno = await _compor(publicado, batch_size=1, dataset_name="pequeno")
         _d2, grande = await _compor(publicado, batch_size=500, dataset_name="grande")
         assert pequeno.manifest.corpus_fingerprint == grande.manifest.corpus_fingerprint

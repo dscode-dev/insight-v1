@@ -107,9 +107,7 @@ class HistoricalQualityPolicy:
     def as_canonical(self) -> dict[str, object]:
         """A forma determinística — ela entra na impressão do manifesto."""
         return {
-            "commercially_droppable": sorted(
-                f.value for f in self.commercially_droppable
-            ),
+            "commercially_droppable": sorted(f.value for f in self.commercially_droppable),
             "critical_dimensions": sorted(d.value for d in self.critical_dimensions),
             "identity_minimums": {
                 s.value: round(v, 6)

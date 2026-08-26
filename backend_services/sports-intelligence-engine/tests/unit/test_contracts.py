@@ -158,17 +158,13 @@ class TestQualidade:
     def test_o_elo_mais_fraco_governa(self) -> None:
         """Média deixa um eixo em 0,1 ser mascarado por três em 0,9, e um
         dado de identidade duvidosa não fica bom por estar completo."""
-        q = DataQuality(
-            completeness=0.9, consistency=0.9, freshness=0.9, identity_confidence=0.1
-        )
+        q = DataQuality(completeness=0.9, consistency=0.9, freshness=0.9, identity_confidence=0.1)
         assert q.overall == 0.1
         assert not q.is_usable
 
     def test_fora_da_faixa_e_recusado(self) -> None:
         with pytest.raises(ValueError, match=r"\[0,1\]"):
-            DataQuality(
-                completeness=1.5, consistency=1.0, freshness=1.0, identity_confidence=1.0
-            )
+            DataQuality(completeness=1.5, consistency=1.0, freshness=1.0, identity_confidence=1.0)
 
     def test_problema_bloqueante_reprova_com_score_alto(self) -> None:
         """Identidade não resolvida não é 'qualidade baixa' — é não saber de

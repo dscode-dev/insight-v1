@@ -366,7 +366,6 @@ def stricter_for_reprocessing(base: ResolutionPolicy, version: PolicyVersion) ->
     )
 
 
-
 @final
 @dataclass(frozen=True, slots=True)
 class ResolutionThresholds:

@@ -143,12 +143,8 @@ def contexto_de_partida(
         match_id=PARTIDA,
         competition_id=COMPETICAO,
         kickoff=kickoff,
-        home=team_prior_matches(
-            CASA, [PriorMatchRef(kickoff=k, match_id=m) for k, m in casa]
-        ),
-        away=team_prior_matches(
-            FORA, [PriorMatchRef(kickoff=k, match_id=m) for k, m in fora]
-        ),
+        home=team_prior_matches(CASA, [PriorMatchRef(kickoff=k, match_id=m) for k, m in casa]),
+        away=team_prior_matches(FORA, [PriorMatchRef(kickoff=k, match_id=m) for k, m in fora]),
         coverage=coverage or cobertura(),
     )
 
@@ -210,8 +206,7 @@ def odds_do_cenario(
     O BTTS COM UMA CASA É O CASO DO §69: mediana afirmável, dispersão não.
     """
     cotacoes = [
-        cotacao(f"CASA{n}", valor, minuto=minuto)
-        for n, valor in enumerate(casas_1x2, start=1)
+        cotacao(f"CASA{n}", valor, minuto=minuto) for n, valor in enumerate(casas_1x2, start=1)
     ]
     if com_btts:
         cotacoes.append(
@@ -250,9 +245,7 @@ def quote_state(
 
 
 #: As famílias do cenário V2 — as da V1 mais `ODDS`, que é o que dá mercado.
-FAMILIAS_V2: Final[frozenset[CoverageFamily]] = TODAS_AS_FAMILIAS | {
-    CoverageFamily.ODDS
-}
+FAMILIAS_V2: Final[frozenset[CoverageFamily]] = TODAS_AS_FAMILIAS | {CoverageFamily.ODDS}
 
 
 def catalogo_v2() -> ExtendedFeatureCatalog:
@@ -316,9 +309,7 @@ def extrair_v2(
 # ------------------------------------------------------------ população --
 
 
-def observacao(
-    n: int, valor: str | None, *, corpus: str = "a" * 64
-) -> FeatureObservation:
+def observacao(n: int, valor: str | None, *, corpus: str = "a" * 64) -> FeatureObservation:
     """Uma observação da população de ajuste, derivada de `n`."""
     return FeatureObservation(
         match_id=MatchId.derive("pr054-pop", str(n)),

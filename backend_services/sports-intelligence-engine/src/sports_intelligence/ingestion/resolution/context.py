@@ -201,9 +201,7 @@ class ResolutionContext:
 
         return team_at(self.tenures_by_player.get(player, ()), moment)
 
-    def fixtures(
-        self, season: SeasonId, home: TeamId, away: TeamId
-    ) -> tuple[Match, ...]:
+    def fixtures(self, season: SeasonId, home: TeamId, away: TeamId) -> tuple[Match, ...]:
         ids = self.matches_by_fixture.get((season, home, away), ())
         return tuple(m for i in ids if (m := self.matches.get(i)) is not None)
 
@@ -290,9 +288,7 @@ class ContextBuilder:
             self._contexto.seasons_by_label[chave] = temporada.id
         return self
 
-    def with_team_candidates(
-        self, candidates: tuple[tuple[str, Team], ...]
-    ) -> ContextBuilder:
+    def with_team_candidates(self, candidates: tuple[tuple[str, Team], ...]) -> ContextBuilder:
         """Registra (nome consultado, time candidato) e indexa por nome.
 
         ORDENADO PELO ID ao final: a ordem do índice não pode vir da ordem em
@@ -310,9 +306,7 @@ class ContextBuilder:
             )
         return self
 
-    def with_player_candidates(
-        self, candidates: tuple[tuple[str, Player], ...]
-    ) -> ContextBuilder:
+    def with_player_candidates(self, candidates: tuple[tuple[str, Player], ...]) -> ContextBuilder:
         agrupado: dict[str, list[PlayerId]] = {}
         for consulta, jogador in candidates:
             self._contexto.players[jogador.id] = jogador

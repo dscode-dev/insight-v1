@@ -96,9 +96,7 @@ class Inspection:
         return self.observation.row_count if self.observation else 0
 
 
-def inspect(
-    path: Path, *, file_id: str, file_format: DatasetFormat, max_rows: int
-) -> Inspection:
+def inspect(path: Path, *, file_id: str, file_format: DatasetFormat, max_rows: int) -> Inspection:
     """Despacha para o inspetor do formato."""
     if file_format is DatasetFormat.PARQUET:
         return inspect_parquet(path, file_id=file_id, max_rows=max_rows)
@@ -258,8 +256,7 @@ def _varrer_csv(path: Path, *, file_id: str, max_rows: int) -> _Varredura:
                         issues.append(
                             DatasetValidationIssue.of(
                                 IssueCode.INCONSISTENT_FIELD_COUNT,
-                                f"a linha tem {len(linha)} campos e o cabeçalho tem "
-                                f"{esperado}",
+                                f"a linha tem {len(linha)} campos e o cabeçalho tem {esperado}",
                                 file_id=file_id,
                                 location=f"linha {numero}",
                             )
@@ -289,9 +286,7 @@ def _varrer_csv(path: Path, *, file_id: str, max_rows: int) -> _Varredura:
             motivo_impeditivo="provavelmente o delimitador não é vírgula",
         )
     )
-    return _Varredura(
-        header=cabecalho, rows=linhas, defective=irregulares, issues=tuple(issues)
-    )
+    return _Varredura(header=cabecalho, rows=linhas, defective=irregulares, issues=tuple(issues))
 
 
 def _tipos_de_csv(path: Path, cabecalho: list[str]) -> tuple[ColumnObservation, ...]:
@@ -320,9 +315,7 @@ def _tipos_de_csv(path: Path, cabecalho: list[str]) -> tuple[ColumnObservation, 
     for nome, dtype in list(amostra.schema.items())[:MAX_COLUMNS_DESCRIBED]:
         serie = amostra.get_column(nome)
         nulos = int(serie.null_count())
-        valores = [
-            str(v) for v in serie.drop_nulls().head(MAX_SAMPLES_PER_COLUMN).to_list()
-        ]
+        valores = [str(v) for v in serie.drop_nulls().head(MAX_SAMPLES_PER_COLUMN).to_list()]
         colunas.append(
             ColumnObservation(
                 name=nome,
@@ -456,9 +449,7 @@ def _tipos_de_jsonl(path: Path, chaves: tuple[str, ...]) -> tuple[ColumnObservat
     for nome, dtype in list(amostra.schema.items())[:MAX_COLUMNS_DESCRIBED]:
         serie = amostra.get_column(nome)
         nulos = int(serie.null_count())
-        valores = [
-            str(v)[:64] for v in serie.drop_nulls().head(MAX_SAMPLES_PER_COLUMN).to_list()
-        ]
+        valores = [str(v)[:64] for v in serie.drop_nulls().head(MAX_SAMPLES_PER_COLUMN).to_list()]
         colunas.append(
             ColumnObservation(
                 name=nome,
@@ -536,9 +527,7 @@ def _issues_agregadas(
     return issues
 
 
-def _issues_de_cabecalho_cru(
-    cabecalho: list[str], file_id: str
-) -> list[DatasetValidationIssue]:
+def _issues_de_cabecalho_cru(cabecalho: list[str], file_id: str) -> list[DatasetValidationIssue]:
     """Defeitos do cabeçalho como ele veio no arquivo, antes de qualquer
     parser ter a chance de consertá-lo por conta própria."""
     contagem: dict[str, int] = {}
@@ -612,9 +601,7 @@ def _falha(code: IssueCode, file_id: str, prefixo: str, erro: BaseException) -> 
     return Inspection(
         observation=None,
         issues=(
-            DatasetValidationIssue.of(
-                code, f"{prefixo}: {_resumo_do_erro(erro)}", file_id=file_id
-            ),
+            DatasetValidationIssue.of(code, f"{prefixo}: {_resumo_do_erro(erro)}", file_id=file_id),
         ),
     )
 
@@ -700,4 +687,3 @@ def _resumo_do_erro(erro: BaseException) -> str:
     partes = [p for p in texto.split() if not p.startswith("/") and ":/" not in p]
     resumo = " ".join(partes)[:200]
     return resumo or type(erro).__name__
-

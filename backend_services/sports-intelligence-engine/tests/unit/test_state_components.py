@@ -206,9 +206,7 @@ class TestOddsState:
             OddsState.of((self._cotacao("1.80"), self._cotacao("1.85")))
 
     def test_selecoes_diferentes_sao_fluxos_diferentes(self) -> None:
-        estado = OddsState.of(
-            (self._cotacao("1.80"), self._cotacao("4.20", selecao="AWAY"))
-        )
+        estado = OddsState.of((self._cotacao("1.80"), self._cotacao("4.20", selecao="AWAY")))
         assert estado.count == 2
         assert estado.bookmakers == ("BET365",)
 

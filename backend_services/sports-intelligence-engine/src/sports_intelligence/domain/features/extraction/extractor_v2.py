@@ -169,9 +169,7 @@ class ExtendedMatchStateFeatureExtractor:
             elif isinstance(spec, MarketFeatureSpec):
                 computada = _do_mercado(spec, context, consensos)
             else:  # pragma: no cover - o construtor já garante o prefixo
-                raise ValidationError(
-                    f"especificação inesperada depois do prefixo da V1: {spec}"
-                )
+                raise ValidationError(f"especificação inesperada depois do prefixo da V1: {spec}")
             por_chave[spec.definition.key] = computada
             valores.append(computada)
 
@@ -230,9 +228,7 @@ def _do_contexto(
                 "o corpus alcança o passado e não publica partida anterior deste time "
                 "nesta competição",
             )
-        segundos = Decimal(
-            (entrada.kickoff - anterior.kickoff).total_seconds()
-        ).quantize(_QUANTUM)
+        segundos = Decimal((entrada.kickoff - anterior.kickoff).total_seconds()).quantize(_QUANTUM)
         horas = (segundos / Decimal(SECONDS_PER_HOUR)).quantize(_QUANTUM).normalize()
         return _disponivel(
             spec.definition,
@@ -259,9 +255,7 @@ def _do_contexto(
         spec.definition,
         context,
         len(dentro),
-        tuple(
-            FeatureContribution(kind="MATCH", reference=str(m.match_id)) for m in dentro
-        ),
+        tuple(FeatureContribution(kind="MATCH", reference=str(m.match_id)) for m in dentro),
     )
 
 
@@ -280,9 +274,7 @@ def _consensos(
     if not odds.is_available:
         return {}
     return {
-        spec.market.key_fragment: compute_consensus(
-            odds, spec.market, policy=context.market_policy
-        )
+        spec.market.key_fragment: compute_consensus(odds, spec.market, policy=context.market_policy)
         for spec in context.catalog.specs[context.catalog.inherited :]
         if isinstance(spec, MarketFeatureSpec)
     }
@@ -330,9 +322,7 @@ def _do_mercado(
     )
     if spec.kind is MarketFeatureKind.SUPPORT:
         # §65 — o suporte existe sempre que o mercado existe.
-        return _disponivel(
-            spec.definition, context, consenso.support, procedencia
-        )
+        return _disponivel(spec.definition, context, consenso.support, procedencia)
     if spec.kind is MarketFeatureKind.MEDIAN:
         if consenso.median is None:
             return _indisponivel(
@@ -342,9 +332,7 @@ def _do_mercado(
                 f"{consenso.support} casa(s), abaixo do mínimo declarado de "
                 f"{context.market_policy.median_minimum_support}",
             )
-        return _disponivel(
-            spec.definition, context, float(consenso.median), procedencia
-        )
+        return _disponivel(spec.definition, context, float(consenso.median), procedencia)
 
     # ---- IQR (§69, §70) ------------------------------------------------
     if consenso.iqr is None:
@@ -406,9 +394,7 @@ def _diferenca(
         diferenca: float = round(valor_casa - valor_fora)
     else:
         diferenca = float(
-            (Decimal(str(valor_casa)) - Decimal(str(valor_fora)))
-            .quantize(_QUANTUM)
-            .normalize()
+            (Decimal(str(valor_casa)) - Decimal(str(valor_fora))).quantize(_QUANTUM).normalize()
         )
     return _disponivel(
         definition,

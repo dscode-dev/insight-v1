@@ -338,6 +338,6 @@ def construir(
     policy: TemporalAvailabilityPolicy | None = None,
 ) -> MatchStateBuildResult:
     """Reconstrói com os padrões do cenário — corte de 63' e política padrão."""
-    return HistoricalMatchStateBuilder(
-        policy=policy or TemporalAvailabilityPolicy.default()
-    ).build(entrada_ or entrada(), as_of=as_of or corte(), source=origem_completa())
+    return HistoricalMatchStateBuilder(policy=policy or TemporalAvailabilityPolicy.default()).build(
+        entrada_ or entrada(), as_of=as_of or corte(), source=origem_completa()
+    )

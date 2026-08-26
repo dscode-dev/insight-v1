@@ -157,9 +157,7 @@ class TestOFeatureSpace:
     def test_espaco_retrospectivo_e_legitimo_quando_declarado(self) -> None:
         """A auditoria é um uso legítimo — o que não pode é ela se dizer
         comparável ao vivo."""
-        espaco = espaco_de_teste(
-            live_comparable=False, mode=TemporalMode.CANONICAL_FINAL
-        )
+        espaco = espaco_de_teste(live_comparable=False, mode=TemporalMode.CANONICAL_FINAL)
         assert espaco.temporal_mode is TemporalMode.CANONICAL_FINAL
 
     def test_feature_pos_jogo_num_espaco_ao_vivo_e_recusada(self) -> None:
@@ -344,12 +342,8 @@ class TestAProcedencia:
     def test_o_digest_nao_depende_da_ordem_de_leitura(self) -> None:
         """§50. Duas execuções que leram os mesmos fatos em ordens diferentes
         precisam produzir a mesma procedência."""
-        contribuicoes = [
-            FeatureContribution(kind="EVENT", reference=f"ev-{n}") for n in range(5)
-        ]
-        direta = FeatureProvenance.of(
-            FeatureProvenanceClass.DERIVED_FROM_CANONICAL, contribuicoes
-        )
+        contribuicoes = [FeatureContribution(kind="EVENT", reference=f"ev-{n}") for n in range(5)]
+        direta = FeatureProvenance.of(FeatureProvenanceClass.DERIVED_FROM_CANONICAL, contribuicoes)
         invertida = FeatureProvenance.of(
             FeatureProvenanceClass.DERIVED_FROM_CANONICAL, reversed(contribuicoes)
         )
@@ -483,9 +477,7 @@ class TestONormalizador:
 
     def test_corte_que_nao_usa_instante_recusa_um(self) -> None:
         with pytest.raises(ValidationError, match="não seria usado"):
-            NormalizerFitCutoff(
-                kind=FitCutoffKind.FULL_POPULATION, instant=instant(KICKOFF)
-            )
+            NormalizerFitCutoff(kind=FitCutoffKind.FULL_POPULATION, instant=instant(KICKOFF))
 
 
 class TestOSnapshot:

@@ -188,9 +188,7 @@ class TestGol:
         estado = reducer.apply(
             estado_inicial(), evento("x", tipo=EventType.GOAL, minuto=12, time=intruso)
         )
-        estado = reducer.apply(
-            estado, evento("y", tipo=EventType.GOAL, minuto=20, time=CASA)
-        )
+        estado = reducer.apply(estado, evento("y", tipo=EventType.GOAL, minuto=20, time=CASA))
         assert not estado.score.is_available
         assert estado.score.regular.total == 0
 

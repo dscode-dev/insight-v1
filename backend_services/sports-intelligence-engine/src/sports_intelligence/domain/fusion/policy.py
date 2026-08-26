@@ -128,9 +128,7 @@ class FusionPolicy:
     def __post_init__(self) -> None:
         for papel, politica in self.fields.items():
             if politica.role is not papel:
-                raise ValidationError(
-                    f"política indexada como {papel} descreve {politica.role}"
-                )
+                raise ValidationError(f"política indexada como {papel} descreve {politica.role}")
         sobrepostos = set(self.fields) & self.observation_roles
         if sobrepostos:
             raise ValidationError(

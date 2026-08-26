@@ -168,13 +168,10 @@ class DatasetSchemaContract:
                 f"colunas obrigatórias fora do conjunto esperado: {faltando} — "
                 "o contrato se contradiz"
             )
-        desconhecidas = set(self.declared_types) - (
-            self.expected_columns | self.required_columns
-        )
+        desconhecidas = set(self.declared_types) - (self.expected_columns | self.required_columns)
         if self.expected_columns and desconhecidas:
             raise ValidationError(
-                f"tipo declarado para coluna que o contrato não espera: "
-                f"{sorted(desconhecidas)}"
+                f"tipo declarado para coluna que o contrato não espera: {sorted(desconhecidas)}"
             )
 
     @property
@@ -195,9 +192,7 @@ class DatasetSchemaContract:
         if not self.expected_columns:
             return ()
         esperadas = {c.strip().lower() for c in self.expected_columns}
-        return tuple(
-            sorted(n for n in observed.column_names if n.strip().lower() not in esperadas)
-        )
+        return tuple(sorted(n for n in observed.column_names if n.strip().lower() not in esperadas))
 
     def type_mismatches(
         self, observed: DatasetSchemaObservation

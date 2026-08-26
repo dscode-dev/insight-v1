@@ -100,11 +100,7 @@ class TestVinculoTemporal:
         """`None` é a resposta honesta. Devolver o clube atual como
         aproximação é exatamente o defeito."""
         jogador = Player.register(canonical_name="Jogador")
-        vinculos = (
-            PlayerTeamTenure(
-                player_id=jogador.id, team_id=TeamId.new(), valid_from=T2022
-            ),
-        )
+        vinculos = (PlayerTeamTenure(player_id=jogador.id, team_id=TeamId.new(), valid_from=T2022),)
         assert team_at(vinculos, T2019) is None
 
     def test_vinculo_nao_termina_antes_de_comecar(self) -> None:

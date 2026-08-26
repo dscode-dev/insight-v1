@@ -64,9 +64,7 @@ FONTES_PROIBIDAS = (
 #: aparecesse ali — inclusive os que consomem o corpus, que é o sentido
 #: permitido da seta.
 MODULOS_DE_CORPUS = [
-    caminho
-    for caminho in (FONTE / "application" / "use_cases" / "corpus.py",)
-    if caminho.exists()
+    caminho for caminho in (FONTE / "application" / "use_cases" / "corpus.py",) if caminho.exists()
 ]
 
 #: O QUE AINDA NÃO EXISTE, e que este PR não pode antecipar (§113, §114).

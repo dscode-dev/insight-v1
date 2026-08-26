@@ -250,9 +250,7 @@ class TemporalAvailabilityPolicy:
     def as_canonical(self) -> dict[str, object]:
         """O que entra na impressão — conteúdo, e nunca carimbo de execução."""
         return {
-            "allow_unknown_when_effective_precedes": (
-                self.allow_unknown_when_effective_precedes
-            ),
+            "allow_unknown_when_effective_precedes": (self.allow_unknown_when_effective_precedes),
             "classification": {
                 k.value: self.classification[k].value for k in sorted(FactKind, key=str)
             },

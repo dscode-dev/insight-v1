@@ -155,9 +155,7 @@ def build_build_container(
             policy=quality_policy,
         ),
         get_quality_run=GetQualityRun(quality_runs=quality_runs),
-        list_assessments=ListQualityAssessments(
-            quality_runs=quality_runs, assessments=assessments
-        ),
+        list_assessments=ListQualityAssessments(quality_runs=quality_runs, assessments=assessments),
         run_research_build=montar_build(DEFAULT_RESEARCH_BUILD_POLICY),
         run_commercial_build=montar_build(DEFAULT_COMMERCIAL_BUILD_POLICY),
         get_build_run=GetCanonicalBuildRun(build_runs=build_runs),
@@ -268,18 +266,10 @@ async def evidence_batches(
     for inicio in range(0, len(ordenados), batch_size):
         bloco = ordenados[inicio : inicio + batch_size]
         grupos_do_bloco = [
-            grupo
-            for candidato in bloco
-            if (grupo := por_grupo.get(candidato.group_id)) is not None
+            grupo for candidato in bloco if (grupo := por_grupo.get(candidato.group_id)) is not None
         ]
-        refs = [
-            str(registro.record_ref)
-            for grupo in grupos_do_bloco
-            for registro in grupo.records
-        ]
-        confiancas = await resolution.decisions.confidences_for_records(
-            resolution_run_ids, refs
-        )
+        refs = [str(registro.record_ref) for grupo in grupos_do_bloco for registro in grupo.records]
+        confiancas = await resolution.decisions.confidences_for_records(resolution_run_ids, refs)
         yield [
             CandidateEvidence(
                 candidate=candidato,
@@ -304,9 +294,7 @@ async def candidate_batches(
     """
     ordenados = sorted(candidates, key=lambda c: str(c.canonical_match_id))
     for inicio in range(0, len(ordenados), batch_size):
-        yield BuildCandidateBatch(
-            candidates=tuple(ordenados[inicio : inicio + batch_size])
-        )
+        yield BuildCandidateBatch(candidates=tuple(ordenados[inicio : inicio + batch_size]))
 
 
 def _confianca_do_grupo(

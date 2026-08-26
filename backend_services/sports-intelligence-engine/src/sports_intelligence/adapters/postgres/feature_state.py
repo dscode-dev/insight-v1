@@ -118,9 +118,7 @@ class PostgresHistoricalMatchStateSource:
                 match=match_from_row(linha),
                 competition_code=linha["competition_code"],
                 season_label=linha["season_label"],
-                published_families=frozenset(
-                    CoverageFamily(f) for f in linha["included_families"]
-                ),
+                published_families=frozenset(CoverageFamily(f) for f in linha["included_families"]),
                 candidate_events=eventos.get(linha["match_id"], ()),
                 lineups=escalacoes.get(linha["match_id"], ()),
                 odds=cotacoes.get(linha["match_id"], ()),
@@ -159,9 +157,7 @@ class PostgresHistoricalMatchStateSource:
         return {partida: tuple(v) for partida, v in por_partida.items()}
 
     @staticmethod
-    async def _resultados(
-        conexao: Any, match_ids: Sequence[Any]
-    ) -> dict[Any, MatchResult]:
+    async def _resultados(conexao: Any, match_ids: Sequence[Any]) -> dict[Any, MatchResult]:
         """Os resultados finais — para a CONFERÊNCIA pós-jogo, e só (§100).
 
         ELES SÃO LIDOS SEMPRE E USADOS QUASE NUNCA. O construtor só os consulta
@@ -189,9 +185,7 @@ class PostgresHistoricalMatchStateSource:
             resultados[linha["match_id"]] = MatchResult(
                 regular_time=normal,
                 extra_time=_para_placar(linha["extra_home"], linha["extra_away"]),
-                penalties=_para_placar(
-                    linha["penalties_home"], linha["penalties_away"]
-                ),
+                penalties=_para_placar(linha["penalties_home"], linha["penalties_away"]),
             )
         return resultados
 

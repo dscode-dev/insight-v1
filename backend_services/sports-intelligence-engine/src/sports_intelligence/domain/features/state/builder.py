@@ -373,9 +373,7 @@ class HistoricalMatchStateBuilder:
             # vira problema tipado e campo indisponível — e o PLACAR sobrevive,
             # que é o §106.
             problemas.append(
-                StateIssue.degraded(
-                    StateIssueCode.PLAYER_IN_BOTH_TEAMS, "on_field", str(erro)
-                )
+                StateIssue.degraded(StateIssueCode.PLAYER_IN_BOTH_TEAMS, "on_field", str(erro))
             )
             return _campo_indisponivel(
                 entrada, FeatureAvailability.SOURCE_UNAVAILABLE, "jogador nos dois times"
@@ -559,8 +557,7 @@ def _procedencia(
     de_campo = [
         e.id
         for e in efetivos
-        if e.type is EventType.SUBSTITUTION
-        or (e.type is EventType.CARD and _expulsa(e))
+        if e.type is EventType.SUBSTITUTION or (e.type is EventType.CARD and _expulsa(e))
     ]
     cartoes = [e.id for e in efetivos if e.type is EventType.CARD]
     return MatchStateProvenance.of(
@@ -621,8 +618,7 @@ def _recusar_fora_da_partida(
     for evento in eventos:
         if evento.match_id != match_id:
             raise ValidationError(
-                f"evento {evento.id} é da partida {evento.match_id}, e a entrada é de "
-                f"{match_id}"
+                f"evento {evento.id} é da partida {evento.match_id}, e a entrada é de {match_id}"
             )
     for escalacao in escalacoes:
         if escalacao.match_id != match_id:

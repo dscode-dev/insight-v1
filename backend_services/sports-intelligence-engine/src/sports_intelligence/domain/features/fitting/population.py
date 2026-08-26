@@ -23,12 +23,51 @@ import hashlib
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Self, final
+from typing import Protocol, Self, final, runtime_checkable
 
 from sports_intelligence.domain.features.temporal import FeatureAsOf
 from sports_intelligence.domain.shared.canonical import canonical_json, decimal_text
 from sports_intelligence.domain.shared.errors import ValidationError
 from sports_intelligence.domain.shared.identity import CompetitionId, MatchId
+
+
+@runtime_checkable
+class FitPopulation(Protocol):
+    """O que o ajustador PRECISA de uma população — e nada além disso.
+
+    ELE EXISTE PORQUE HÁ DUAS ESCALAS DE POPULAÇÃO, e as duas são legítimas:
+
+        FeaturePopulation           dezenas a milhares de observações, cada uma
+                                    um objeto com identidade própria
+        DatasetFeaturePopulation    centenas de milhares, acumuladas em fluxo
+                                    (PR-05.5.2)
+
+    A SEGUNDA NÃO PODE GUARDAR OBJETOS. Vinte e nove eixos por competição por
+    noventa e uma mil linhas são dois milhões e meio de observações, e
+    materializá-las como `FeatureObservation` custaria centenas de megabytes
+    para responder às mesmas cinco perguntas que estão aqui.
+
+    O AJUSTADOR NÃO PRECISA SABER QUAL DAS DUAS RECEBEU. Ele lê o tamanho, o
+    tamanho disponível, a impressão e os valores; a forma de guardá-los é
+    decisão de quem acumula.
+    """
+
+    @property
+    def competition_id(self) -> CompetitionId: ...
+
+    @property
+    def feature_key(self) -> str: ...
+
+    @property
+    def size(self) -> int: ...
+
+    @property
+    def available_size(self) -> int: ...
+
+    @property
+    def digest(self) -> str: ...
+
+    def values(self) -> list[Decimal]: ...
 
 
 @final

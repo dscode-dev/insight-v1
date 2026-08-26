@@ -68,9 +68,7 @@ def _identidades(**valores: float) -> IdentityConfidences:
 
 def _licenca_livre() -> UsageVerdict:
     return UsageVerdict.of(
-        LicenseFootprint(
-            by_family={CoverageFamily.MATCH: frozenset({LicenseClass.PUBLIC_DOMAIN})}
-        )
+        LicenseFootprint(by_family={CoverageFamily.MATCH: frozenset({LicenseClass.PUBLIC_DOMAIN})})
     )
 
 
@@ -199,9 +197,7 @@ class TestCoverage:
         medido = CoverageReport.of(
             FamilyCoverage.measured(CoverageFamily.ODDS, available=5, expected=10)
         )
-        solto = CoverageReport.of(
-            FamilyCoverage.availability(CoverageFamily.ODDS, available=7)
-        )
+        solto = CoverageReport.of(FamilyCoverage.availability(CoverageFamily.ODDS, available=7))
         junto = medido.merged_with(solto)
         cobertura = junto.of_family(CoverageFamily.ODDS)
         assert cobertura is not None
@@ -211,9 +207,7 @@ class TestCoverage:
 
     def test_tracking_existe_como_nao_declarada(self) -> None:
         """Nomear a ausência distingue «não temos» de «ninguém pensou» (§20)."""
-        relatorio = CoverageReport.of(
-            FamilyCoverage.not_declared(CoverageFamily.TRACKING)
-        )
+        relatorio = CoverageReport.of(FamilyCoverage.not_declared(CoverageFamily.TRACKING))
         assert CoverageFamily.TRACKING not in relatorio.declared_families
 
 
@@ -366,9 +360,7 @@ class TestLicenca:
             }
         )
         com_odds = UsageVerdict.of(pegada)
-        sem_odds = UsageVerdict.of(
-            pegada, commercial_exclusions=POLITICA.commercially_droppable
-        )
+        sem_odds = UsageVerdict.of(pegada, commercial_exclusions=POLITICA.commercially_droppable)
         assert com_odds.commercial is UsageEligibility.INELIGIBLE
         assert sem_odds.commercial is UsageEligibility.ELIGIBLE
         assert not com_odds.allows(UsageScope.COMMERCIAL)
@@ -388,9 +380,7 @@ class TestLicenca:
         avaliacao = _avaliar(
             usage=UsageVerdict.of(
                 LicenseFootprint(
-                    by_family={
-                        CoverageFamily.MATCH: frozenset({LicenseClass.RESEARCH_ONLY})
-                    }
+                    by_family={CoverageFamily.MATCH: frozenset({LicenseClass.RESEARCH_ONLY})}
                 )
             ),
             issues=(problema,),
@@ -480,28 +470,20 @@ class TestAvaliacao:
 
     def test_linhagem_quebrada_bloqueia(self) -> None:
         """O corpus se justifica por ser rastreável (§11, §115)."""
-        avaliacao = _avaliar(
-            issues=(QualityIssue.of(IssueCode.BROKEN_LINEAGE, subject="campo"),)
-        )
+        avaliacao = _avaliar(issues=(QualityIssue.of(IssueCode.BROKEN_LINEAGE, subject="campo"),))
         assert avaliacao.eligibility is BuildEligibility.INELIGIBLE
 
     def test_conflito_de_fusao_no_nucleo_bloqueia(self) -> None:
         """§132: o conflito preservado pelo PR-03 vira blocker aqui."""
         avaliacao = _avaliar(
-            issues=(
-                QualityIssue.of(
-                    IssueCode.UNRESOLVED_FUSION_CONFLICT, subject="HOME_SCORE"
-                ),
-            )
+            issues=(QualityIssue.of(IssueCode.UNRESOLVED_FUSION_CONFLICT, subject="HOME_SCORE"),)
         )
         assert avaliacao.eligibility is BuildEligibility.INELIGIBLE
 
     def test_erro_grave_vai_para_revisao_e_nao_entra_sozinho(self) -> None:
         """§27, §38: `REVIEW_REQUIRED` é o meio-termo que um booleano perde."""
         avaliacao = _avaliar(
-            issues=(
-                QualityIssue.of(IssueCode.TEMPORAL_INCONSISTENCY, subject=str(PARTIDA)),
-            )
+            issues=(QualityIssue.of(IssueCode.TEMPORAL_INCONSISTENCY, subject=str(PARTIDA)),)
         )
         assert avaliacao.eligibility is BuildEligibility.REVIEW_REQUIRED
         assert not avaliacao.eligibility.enters_build
@@ -561,9 +543,7 @@ class TestAvaliacao:
         contagem = summarize(
             (
                 _avaliar(),
-                _avaliar(
-                    issues=(QualityIssue.of(IssueCode.BROKEN_LINEAGE, subject="x"),)
-                ),
+                _avaliar(issues=(QualityIssue.of(IssueCode.BROKEN_LINEAGE, subject="x"),)),
             )
         )
         assert contagem[BuildEligibility.ELIGIBLE] == 1

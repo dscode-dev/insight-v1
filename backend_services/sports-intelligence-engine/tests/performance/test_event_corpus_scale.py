@@ -161,9 +161,7 @@ def _registro(
         player_reference=f"perf-corpus-player-{n % 22}",
         # O CARTÃO NÃO TEM COORDENADA — é o que faz o denominador espacial do
         # §27 valer alguma coisa neste benchmark.
-        start_point=(
-            None if tipo == "card" else RawEventPoint(x=_fracao(n), y=_fracao(n * 7 + 3))
-        ),
+        start_point=(None if tipo == "card" else RawEventPoint(x=_fracao(n), y=_fracao(n * 7 + 3))),
         details=(
             {"EVENT_OUTCOME": "GOAL" if tipo == "goal" else "SAVED", "EVENT_XG": "0.07"}
             if tipo in ("goal", "shot")
@@ -174,9 +172,7 @@ def _registro(
     )
 
 
-async def _semear_traducoes(
-    banco: Database, partidas: Sequence[MatchId], corpus: Corpus
-) -> None:
+async def _semear_traducoes(banco: Database, partidas: Sequence[MatchId], corpus: Corpus) -> None:
     """As traduções do provedor de eventos para as partidas do build."""
     repositorio = PostgresProviderMappingRepository(banco)
     agora = instant(datetime(2026, 1, 1, tzinfo=UTC))
@@ -531,9 +527,7 @@ class TestOCorpusComEventosEmVolume:
             "varrendo os eventos em vez de conferi-los por agregação (§51)"
         )
 
-    async def test_a_memoria_segue_o_lote_e_nao_o_corpus(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_a_memoria_segue_o_lote_e_nao_o_corpus(self, cenario: dict[str, Any]) -> None:
         """§90. Dez vezes mais eventos não pode multiplicar o pico por dez.
 
         O QUE ISTO PEGA: um `list(events_of(...))` sobre a versão inteira, ou
@@ -549,10 +543,8 @@ class TestOCorpusComEventosEmVolume:
         _relatar(
             "PR-04.4.2 · memória por volume de evento",
             [
-                f"{cenario['registros_pequenos']:_} eventos → "
-                f"pico {medida_pequena.pico_mb:.1f} MB",
-                f"{cenario['registros_grandes']:_} eventos → "
-                f"pico {medida_grande.pico_mb:.1f} MB",
+                f"{cenario['registros_pequenos']:_} eventos → pico {medida_pequena.pico_mb:.1f} MB",
+                f"{cenario['registros_grandes']:_} eventos → pico {medida_grande.pico_mb:.1f} MB",
             ],
         )
         assert medida_grande.pico_mb < medida_pequena.pico_mb * 3, (
@@ -587,9 +579,7 @@ class TestOCorpusComEventosEmVolume:
             "consultas estão crescendo com os EVENTOS, e não com os lotes (§91)"
         )
 
-    async def test_o_teto_de_evento_nao_muda_a_impressao(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_teto_de_evento_nao_muda_a_impressao(self, cenario: dict[str, Any]) -> None:
         """§16, §92. O tamanho do pedaço é detalhe de execução — e por isso ele
         pode ser escolhido por memória, sem mudar o que é publicado."""
         estreito, _m1, _c1 = await _compor(

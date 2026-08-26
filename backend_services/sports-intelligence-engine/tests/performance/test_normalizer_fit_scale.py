@@ -119,8 +119,7 @@ class TestOAjusteEmVolume:
                 f"values/sec         {ajuste.por_segundo(populacao.available_size):.0f}",
                 f"peak memory        {ajuste.pico_mb:.0f} MB",
                 "",
-                f"população          {construcao.segundos:.2f}s · "
-                f"{construcao.pico_mb:.0f} MB",
+                f"população          {construcao.segundos:.2f}s · {construcao.pico_mb:.0f} MB",
                 f"digest             {impressao.segundos:.3f}s",
                 f"transform (1k)     {transformacao.segundos:.3f}s · "
                 f"{transformacao.por_segundo(1000):.0f} valores/s",

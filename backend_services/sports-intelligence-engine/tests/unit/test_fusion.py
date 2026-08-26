@@ -135,9 +135,7 @@ class TestAgrupamento:
                 PARTIDA,
                 (
                     _registro(A, {SemanticRole.HOME_SCORE: "2"}),
-                    _registro(
-                        B, {SemanticRole.HOME_SCORE: "1"}, partida=MatchId.new(), linha=2
-                    ),
+                    _registro(B, {SemanticRole.HOME_SCORE: "1"}, partida=MatchId.new(), linha=2),
                 ),
             )
 
@@ -184,9 +182,7 @@ class TestFusaoEscalar:
         assert campo.confidence > 0.9
 
     def test_fonte_unica_e_cobertura_e_nao_conflito(self) -> None:
-        candidato = self._motor().fuse(
-            _grupo(_registro(A, {SemanticRole.ATTENDANCE: "54000"}))
-        )
+        candidato = self._motor().fuse(_grupo(_registro(A, {SemanticRole.ATTENDANCE: "54000"})))
         campo = candidato.field("ATTENDANCE")
         assert campo is not None
         assert campo.rule is FusionRule.MOST_COMPLETE
@@ -272,9 +268,7 @@ class TestFusaoEscalar:
 
     def test_politica_sem_lista_de_preferencia_e_recusada(self) -> None:
         with pytest.raises(ValidationError, match="sem lista de preferência"):
-            FieldPolicy(
-                role=SemanticRole.HOME_SHOTS, on_conflict=ConflictResolution.PREFER_SOURCE
-            )
+            FieldPolicy(role=SemanticRole.HOME_SHOTS, on_conflict=ConflictResolution.PREFER_SOURCE)
 
 
 class TestObservacoes:
@@ -306,9 +300,7 @@ class TestObservacoes:
         assert len(candidato.observation_sets) == 1
         conjunto = candidato.observation_sets[0]
         assert len(conjunto) == 2
-        valores = {
-            o.values[SemanticRole.ODDS_HOME.value] for o in conjunto.observations
-        }
+        valores = {o.values[SemanticRole.ODDS_HOME.value] for o in conjunto.observations}
         assert valores == {"2.00", "2.05"}
         # E NENHUM CAMPO ESCALAR DE ODDS. Odds não entram em fusão escalar.
         assert candidato.field("ODDS_HOME") is None
@@ -441,10 +433,7 @@ class TestReprodutibilidade:
         motor = FusionEngine(DEFAULT_FUSION_POLICY)
         a = _registro(A, {SemanticRole.HOME_SHOTS: "14"})
         b = _registro(B, {SemanticRole.HOME_SHOTS: "14"}, linha=2)
-        assert (
-            motor.fuse(_grupo(a, b)).as_canonical()
-            == motor.fuse(_grupo(b, a)).as_canonical()
-        )
+        assert motor.fuse(_grupo(a, b)).as_canonical() == motor.fuse(_grupo(b, a)).as_canonical()
 
 
 class TestExecucaoDeFusao:
@@ -528,9 +517,7 @@ class TestSaidaCanonica:
                 _registro(B, {SemanticRole.HOME_SCORE: "3"}, linha=2),
             )
         )
-        campo = next(
-            f for f in candidato.as_canonical()["fields"] if f["name"] == "HOME_SCORE"
-        )
+        campo = next(f for f in candidato.as_canonical()["fields"] if f["name"] == "HOME_SCORE")
         assert campo["selected_value"] is None
         assert campo["rule"] == "CONFLICT_UNRESOLVED"
         # AS DUAS FONTES APARECEM, com valor e referência de registro.

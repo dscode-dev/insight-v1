@@ -135,8 +135,7 @@ class NormalizerFitArtifact:
             Decimal(0),
         ):
             raise ValidationError(
-                f"artefato DEGENERATE_SCALE com IQR {self.iqr}: o estado afirma "
-                "dispersão nula"
+                f"artefato DEGENERATE_SCALE com IQR {self.iqr}: o estado afirma dispersão nula"
             )
 
     @property
@@ -181,9 +180,7 @@ class NormalizerFitArtifact:
             f"/{self.normalizer_key}#{self.fingerprint[:16]}"
         )
 
-    def assert_applies_to(
-        self, *, feature_fingerprint: str, competition_id: CompetitionId
-    ) -> None:
+    def assert_applies_to(self, *, feature_fingerprint: str, competition_id: CompetitionId) -> None:
         """Recusa o artefato errado — as duas confusões que importam.
 
         §131: um artefato de `shots_home_5m` não normaliza `xg_home_5m`. A

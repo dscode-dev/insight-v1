@@ -68,17 +68,13 @@ class QualityRunInput:
 
     def __post_init__(self) -> None:
         if not self.fusion_run_id.strip():
-            raise ValidationError(
-                "entrada de avaliação sem execução de fusão: ela avalia o quê?"
-            )
+            raise ValidationError("entrada de avaliação sem execução de fusão: ela avalia o quê?")
 
     def as_canonical(self) -> dict[str, str | None]:
         return {
             "fusion_run_id": self.fusion_run_id,
             "fusion_output_fingerprint": (
-                self.fusion_output_fingerprint.value
-                if self.fusion_output_fingerprint
-                else None
+                self.fusion_output_fingerprint.value if self.fusion_output_fingerprint else None
             ),
         }
 
@@ -216,9 +212,7 @@ class MatchQualityRecord:
             quality_run_id=quality_run_id,
             fusion_group_id=fusion_group_id,
             assessment=assessment,
-            families_in_conflict=tuple(
-                sorted(set(families_in_conflict), key=lambda f: f.value)
-            ),
+            families_in_conflict=tuple(sorted(set(families_in_conflict), key=lambda f: f.value)),
             families_unresolved_identity=tuple(
                 sorted(set(families_unresolved_identity), key=lambda f: f.value)
             ),
@@ -239,9 +233,7 @@ class MatchQualityRecord:
         return {
             "assessment": self.assessment.as_canonical(),
             "families_in_conflict": [f.value for f in self.families_in_conflict],
-            "families_unresolved_identity": [
-                f.value for f in self.families_unresolved_identity
-            ],
+            "families_unresolved_identity": [f.value for f in self.families_unresolved_identity],
             "fusion_group_id": self.fusion_group_id,
         }
 
@@ -329,9 +321,7 @@ class QualityRun:
         self._assert_can_finish()
         counts.assert_consistent()
         destino = (
-            RunStatus.COMPLETED_WITH_REVIEW
-            if counts.review_required > 0
-            else RunStatus.COMPLETED
+            RunStatus.COMPLETED_WITH_REVIEW if counts.review_required > 0 else RunStatus.COMPLETED
         )
         return replace(
             self,
@@ -343,9 +333,7 @@ class QualityRun:
 
     def fail(self, *, reason: str, at: Instant) -> Self:
         self._assert_can_finish()
-        return replace(
-            self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500]
-        )
+        return replace(self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500])
 
     def _assert_can_finish(self) -> None:
         if self.status.is_terminal:

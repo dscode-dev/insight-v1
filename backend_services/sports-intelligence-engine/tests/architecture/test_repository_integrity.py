@@ -133,10 +133,7 @@ class TestNadaEssencialEstaIgnorado:
         pacote que o import precisa encontrar. Um deles ignorado é um
         `ModuleNotFoundError` no clone de outra pessoa.
         """
-        pacotes = sorted(
-            p.parent.relative_to(RAIZ).as_posix()
-            for p in FONTE.rglob("__init__.py")
-        )
+        pacotes = sorted(p.parent.relative_to(RAIZ).as_posix() for p in FONTE.rglob("__init__.py"))
         assert pacotes, "nenhum pacote encontrado: o teste está olhando o lugar errado"
 
         ignorados = [p for p in pacotes if _regra_que_ignora(p) is not None]
@@ -168,25 +165,18 @@ class TestTudoEssencialEstaVersionado:
         """O `__init__.py` é o que faz o diretório ser um pacote. Um pacote
         cujos módulos foram versionados e cujo `__init__.py` não seria um
         import quebrado de um jeito especialmente confuso."""
-        no_disco = {
-            p.relative_to(RAIZ).as_posix() for p in FONTE.rglob("__init__.py")
-        }
-        versionados = set(
-            _git("ls-files", "--", "src/sports_intelligence").stdout.splitlines()
-        )
+        no_disco = {p.relative_to(RAIZ).as_posix() for p in FONTE.rglob("__init__.py")}
+        versionados = set(_git("ls-files", "--", "src/sports_intelligence").stdout.splitlines())
         faltando = sorted(no_disco - versionados)
         assert not faltando, (
-            "`__init__.py` presente no disco e ausente do repositório:\n  "
-            + "\n  ".join(faltando)
+            "`__init__.py` presente no disco e ausente do repositório:\n  " + "\n  ".join(faltando)
         )
 
     def test_as_migrations_estao_todas_versionadas(self) -> None:
         """Uma migration não versionada é um schema que só existe na máquina
         de quem a escreveu — e o `checksum` do aplicador não a pega, porque
         ela simplesmente não chega ao outro lado."""
-        no_disco = {
-            p.relative_to(RAIZ).as_posix() for p in (RAIZ / "migrations").glob("*.sql")
-        }
+        no_disco = {p.relative_to(RAIZ).as_posix() for p in (RAIZ / "migrations").glob("*.sql")}
         versionadas = set(_git("ls-files", "--", "migrations").stdout.splitlines())
         assert no_disco <= versionadas, sorted(no_disco - versionadas)
 
@@ -206,9 +196,7 @@ class TestArvoreVersionadaImporta:
     def _exportar(self, destino: Path) -> int:
         rastreados = [
             linha
-            for linha in _git(
-                "ls-files", "--", "src", "apps", "pyproject.toml"
-            ).stdout.splitlines()
+            for linha in _git("ls-files", "--", "src", "apps", "pyproject.toml").stdout.splitlines()
             if linha.strip()
         ]
         for caminho in rastreados:
@@ -252,9 +240,7 @@ class TestArvoreVersionadaImporta:
             errors="replace",
         )
 
-    def test_a_arvore_versionada_importa_sem_os_arquivos_locais(
-        self, tmp_path: Path
-    ) -> None:
+    def test_a_arvore_versionada_importa_sem_os_arquivos_locais(self, tmp_path: Path) -> None:
         quantos = self._exportar(tmp_path)
         assert quantos > 0, "nada versionado em `src`/`apps`: não há artefato"
 
@@ -278,9 +264,7 @@ class TestArvoreVersionadaImporta:
             "repositório"
         )
 
-    def test_o_dominio_inteiro_importa_da_arvore_versionada(
-        self, tmp_path: Path
-    ) -> None:
+    def test_o_dominio_inteiro_importa_da_arvore_versionada(self, tmp_path: Path) -> None:
         """Um import só poderia passar por acaso. Este percorre TODOS os
         módulos do pacote — domínio, ports, adapters, ingestão e execução
         histórica —, que é onde os pacotes ignorados moravam."""
@@ -323,9 +307,7 @@ class TestOLinterEnxergaTudo:
         ficaram escondidos em `domain/build` e `historical/build`."""
         import tomllib
 
-        configuracao = tomllib.loads(
-            (RAIZ / "pyproject.toml").read_text(encoding="utf-8")
-        )
+        configuracao = tomllib.loads((RAIZ / "pyproject.toml").read_text(encoding="utf-8"))
         assert configuracao["tool"]["ruff"]["respect-gitignore"] is False, (
             "`respect-gitignore` voltou a ser verdadeiro: um diretório ignorado "
             "pelo Git deixaria de ser lintado sem que nada avisasse"
@@ -378,9 +360,7 @@ class TestDocumentacaoObrigatoria:
     def test_os_adrs_do_pr_04_estao_versionados(self) -> None:
         versionados = {
             Path(linha).name
-            for linha in _git(
-                "ls-files", "--", "docs/architecture/adr"
-            ).stdout.splitlines()
+            for linha in _git("ls-files", "--", "docs/architecture/adr").stdout.splitlines()
             if linha.strip()
         }
         do_pr = [nome for nome in versionados if nome.startswith(("0023", "0024", "0025"))]

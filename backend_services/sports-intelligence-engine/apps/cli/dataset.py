@@ -271,9 +271,7 @@ def enviar(
     formato = resolve_declared_format(declarado)
     tamanho = path.stat().st_size
     console.print(
-        f"enviando [bold]{path.name}[/bold] · {tamanho:,} bytes · {formato}".replace(
-            ",", "."
-        )
+        f"enviando [bold]{path.name}[/bold] · {tamanho:,} bytes · {formato}".replace(",", ".")
     )
 
     async def _acao(contêiner: Any) -> Any:
@@ -310,9 +308,7 @@ def validar(
     """Roda a validação estrutural e imprime o relatório."""
     from sports_intelligence.domain.datasets.schema import DatasetSchemaContract
 
-    contrato = (
-        DatasetSchemaContract(required_columns=frozenset(required)) if required else None
-    )
+    contrato = DatasetSchemaContract(required_columns=frozenset(required)) if required else None
 
     async def _acao(contêiner: Any) -> Any:
         return await contêiner.validate.execute(
@@ -332,9 +328,7 @@ def relatorio(
     """Mostra o relatório de validação mais recente, ou um específico."""
 
     async def _acao(contêiner: Any) -> Any:
-        return await contêiner.validation.execute(
-            DatasetId.parse(dataset_id), report_id=report_id
-        )
+        return await contêiner.validation.execute(DatasetId.parse(dataset_id), report_id=report_id)
 
     _imprimir_relatorio(_executar(_acao))
 

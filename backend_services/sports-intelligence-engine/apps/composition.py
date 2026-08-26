@@ -33,6 +33,14 @@ from apps.build_composition import (
     rebuild_fusion_output,
 )
 from apps.corpus_composition import CorpusContainer, build_corpus_container
+from apps.feature_dataset_composition import (
+    FeatureDatasetContainer,
+    build_feature_dataset_container,
+)
+from apps.normalized_dataset_composition import (
+    NormalizedDatasetContainer,
+    build_normalized_dataset_container,
+)
 from apps.resolution_composition import (
     ResolutionContainer,
     build_resolution_container,
@@ -49,6 +57,9 @@ from sports_intelligence.adapters.postgres.dataset_registry import (
     PostgresDatasetManifestRepository,
     PostgresDatasetRepository,
     PostgresDatasetValidationRepository,
+)
+from sports_intelligence.adapters.postgres.normalized_dataset import (
+    PostgresNormalizedFeatureDatasetRepository,
 )
 from sports_intelligence.adapters.s3.filesystem import FilesystemObjectStore
 from sports_intelligence.adapters.s3.object_store import S3ObjectStore
@@ -81,6 +92,7 @@ from sports_intelligence.domain.fusion.models import ResolvedSourceRecord
 from sports_intelligence.domain.shared.actor import Actor
 from sports_intelligence.domain.shared.errors import ConflictError
 from sports_intelligence.domain.shared.identity import DatasetId
+from sports_intelligence.domain.shared.temporal import Instant
 from sports_intelligence.ingestion.historical.raw_archive import RawDatasetArchive
 from sports_intelligence.ingestion.validation.structural import (
     StructuralValidator,
@@ -133,8 +145,40 @@ class Container:
     #: tem rota e comando: o §71 e o §75 exigem que criar, compor e publicar
     #: sejam alcançáveis pelos dois caminhos, e pelos MESMOS casos de uso.
     corpus: CorpusContainer
+    #: O grafo do PR-05.5.1 — materialização do dataset de features. Ele exige
+    #: object store por construção (ADR-0037): aqui as LINHAS moram no arquivo,
+    #: e um processo sem store não teria onde escrever o dataset.
+    feature_dataset: FeatureDatasetContainer
     archive: RawDatasetArchivePort
     clock: SystemClock
+    #: A TRILHA, EXPOSTA. Ela era interna até o PR-05.5.2, e passou a ser campo
+    #: porque o grafo do normalizado NÃO PODE ser montado no início do
+    #: processo: o plano dele depende da fronteira da divisão, que é da versão
+    #: crua que se pretende normalizar. Montá-lo sob demanda exige as mesmas
+    #: dependências que o contêiner já tem — e a trilha era a única que ficava
+    #: escondida no corpo da fábrica.
+    audit: PostgresAuditLog
+    #: O REGISTRO do normalizado, sem o grafo. Ler uma versão para descobrir de
+    #: qual versão crua ela veio não pode exigir um plano — e o plano exige a
+    #: fronteira, que é justamente o que se está tentando descobrir.
+    normalized_versions: PostgresNormalizedFeatureDatasetRepository
+
+    def normalized_dataset(self, *, reference_end_exclusive: Instant) -> NormalizedDatasetContainer:
+        """O grafo do PR-05.5.2, montado sob a fronteira daquela versão crua.
+
+        ELE NÃO É UM CAMPO, e a diferença é o §89 do PR-05.1: o corte do ajuste
+        é parte da IDENTIDADE do plano. Um contêiner montado no início do
+        processo teria de escolher uma fronteira antes de saber qual versão vai
+        normalizar — e o plano que ele guardasse não seria o plano daquela
+        versão.
+        """
+        return build_normalized_dataset_container(
+            database=self.database,
+            clock=self.clock,
+            audit=self.audit,
+            store=self.object_store,
+            reference_end_exclusive=reference_end_exclusive,
+        )
 
     async def run_resolution_for_dataset(
         self, *, actor: Actor, dataset_id: DatasetId, correlation_id: str | None = None
@@ -371,8 +415,13 @@ def build_container(settings: AppSettings | None = None) -> Container:
             database=database, resolution=resolucao, clock=clock, audit=audit
         ),
         corpus=build_corpus_container(database=database, clock=clock, audit=audit, store=store),
+        feature_dataset=build_feature_dataset_container(
+            database=database, clock=clock, audit=audit, store=store
+        ),
         archive=archive,
         clock=clock,
+        audit=audit,
+        normalized_versions=PostgresNormalizedFeatureDatasetRepository(database),
     )
 
 

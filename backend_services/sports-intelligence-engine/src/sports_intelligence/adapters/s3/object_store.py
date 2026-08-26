@@ -185,9 +185,7 @@ class S3ObjectStore:
         """
         async with self._cliente() as s3:
             paginador = s3.get_paginator("list_objects_v2")
-            async for pagina in paginador.paginate(
-                Bucket=self._settings.bucket, Prefix=prefix
-            ):
+            async for pagina in paginador.paginate(Bucket=self._settings.bucket, Prefix=prefix):
                 for objeto in pagina.get("Contents", []):
                     yield str(objeto["Key"])
 

@@ -58,9 +58,7 @@ class Player:
             raise ValueError("jogador sem canonical_name")
         if self.nationality is not None:
             if len(self.nationality) != 2 or not self.nationality.isalpha():
-                raise ValueError(
-                    f"nationality {self.nationality!r} inválida: ISO-3166 alpha-2"
-                )
+                raise ValueError(f"nationality {self.nationality!r} inválida: ISO-3166 alpha-2")
             if self.nationality != self.nationality.upper():
                 raise ValueError(f"nationality {self.nationality!r} deve ser maiúscula")
 

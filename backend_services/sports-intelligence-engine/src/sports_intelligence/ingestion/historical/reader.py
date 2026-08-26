@@ -87,9 +87,7 @@ class SourceReader:
         if acumulado:
             yield SourceBatch(records=tuple(acumulado), batch_index=indice)
 
-    def _registro(
-        self, bruta: dict[str, Any], numero: int, context: ReadContext
-    ) -> SourceRecord:
+    def _registro(self, bruta: dict[str, Any], numero: int, context: ReadContext) -> SourceRecord:
         """Aplica o mapeamento: coluna → papel semântico → valor tipado.
 
         COLUNAS NÃO MAPEADAS SÃO IGNORADAS, e é deliberado: um arquivo com

@@ -38,9 +38,7 @@ from sports_intelligence.adapters.postgres.database import Database
 #: — porque é uma: ele faz um round trip com o statement preparado e N
 #: conjuntos de argumentos, que é exatamente a diferença que o benchmark
 #: existe para provar.
-_VERBOS: frozenset[str] = frozenset(
-    {"fetch", "fetchrow", "fetchval", "execute", "executemany"}
-)
+_VERBOS: frozenset[str] = frozenset({"fetch", "fetchrow", "fetchval", "execute", "executemany"})
 
 
 @final

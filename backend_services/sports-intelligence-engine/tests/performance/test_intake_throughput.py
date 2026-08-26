@@ -137,8 +137,7 @@ class TestPicoDeMemoria:
         # RELATIVO E NÃO ABSOLUTO: a propriedade é "não cresce com o arquivo",
         # e um teto em MB seria um número que muda com a versão do Python.
         assert pico < len(dados) / 4, (
-            f"pico de {pico} bytes para um arquivo de {len(dados)}: "
-            "algo materializou o stream"
+            f"pico de {pico} bytes para um arquivo de {len(dados)}: algo materializou o stream"
         )
 
     async def test_hash_confere_com_o_calculado_de_uma_vez(self, tmp_path: Path) -> None:
@@ -194,9 +193,7 @@ class TestThroughput:
 
     async def test_csv_100k(self, tmp_path: Path) -> None:
         dados = _csv(LINHAS)
-        duracao, pico, linhas = await self._medir(
-            tmp_path, dados, "bench.csv", DatasetFormat.CSV
-        )
+        duracao, pico, linhas = await self._medir(tmp_path, dados, "bench.csv", DatasetFormat.CSV)
         _relatar("validação CSV 100k", len(dados), duracao, pico)
         assert linhas == LINHAS
 
@@ -220,9 +217,7 @@ class TestThroughput:
         _relatar("validação Parquet 100k", len(dados), duracao, pico)
         assert linhas == LINHAS
 
-    async def test_pico_do_parquet_nao_cresce_com_o_numero_de_linhas(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_pico_do_parquet_nao_cresce_com_o_numero_de_linhas(self, tmp_path: Path) -> None:
         """A afirmação "lê o rodapé" medida da única forma que a prova.
 
         A TENTATIVA ÓBVIA NÃO FUNCIONA. "O pico é menor que o arquivo" parece

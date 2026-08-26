@@ -178,9 +178,7 @@ _TRANSICOES: Final[dict[MatchLifecycle, frozenset[MatchLifecycle]]] = {
         }
     ),
     MatchLifecycle.HISTORICAL_ACTIVE: frozenset(),
-    MatchLifecycle.POSTPONED: frozenset(
-        {MatchLifecycle.SCHEDULED, MatchLifecycle.CANCELLED}
-    ),
+    MatchLifecycle.POSTPONED: frozenset({MatchLifecycle.SCHEDULED, MatchLifecycle.CANCELLED}),
     MatchLifecycle.CANCELLED: frozenset(),
     MatchLifecycle.ABANDONED: frozenset(
         {
@@ -255,9 +253,7 @@ def transition_to(
                 "allowed": permitidos or ["(nenhum: estado terminal)"],
             },
         )
-    return LifecycleTransition(
-        from_state=current, to_state=target, at=at, reason=reason.strip()
-    )
+    return LifecycleTransition(from_state=current, to_state=target, at=at, reason=reason.strip())
 
 
 def assert_can_feed_historical_index(state: MatchLifecycle) -> None:

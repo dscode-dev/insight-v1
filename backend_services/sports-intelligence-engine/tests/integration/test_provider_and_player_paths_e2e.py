@@ -185,16 +185,12 @@ CAMPOS: tuple[SourceFieldMapping, ...] = (
     SourceFieldMapping(column="HomeId", role=SemanticRole.HOME_TEAM_PROVIDER_ID),
     SourceFieldMapping(column="AwayId", role=SemanticRole.AWAY_TEAM_PROVIDER_ID),
     SourceFieldMapping(column="Player", role=SemanticRole.PLAYER_NAME),
-    SourceFieldMapping(
-        column="PlayerDOB", role=SemanticRole.PLAYER_DOB, date_format="%Y-%m-%d"
-    ),
+    SourceFieldMapping(column="PlayerDOB", role=SemanticRole.PLAYER_DOB, date_format="%Y-%m-%d"),
     SourceFieldMapping(column="PlayerId", role=SemanticRole.PLAYER_PROVIDER_ID),
     SourceFieldMapping(column="Club", role=SemanticRole.TEAM_NAME),
 )
 
-_CABECALHO = (
-    b"Competition,Season,Kickoff,Home,Away,HomeId,AwayId,Player,PlayerDOB,PlayerId,Club\n"
-)
+_CABECALHO = b"Competition,Season,Kickoff,Home,Away,HomeId,AwayId,Player,PlayerDOB,PlayerId,Club\n"
 _PREFIXO = b"Premier League,2024/25,2024-09-14T15:00:00+00:00,"
 
 #: Linha 2 — TIME POR ID. Os dois nomes de clube são impronunciáveis; se o
@@ -210,10 +206,7 @@ LINHA_MAPEADA = (
 
 #: Linha 3 — JOGADOR SEM EVIDÊNCIA. Nome só, sem nascimento e sem clube, com
 #: dois homônimos reais no registro. Não pode resolver (§18).
-LINHA_AMBIGUA = (
-    b"Northtown City,Eastport Rovers,,,"
-    + b"Adriano Moretti,,,\n"
-)
+LINHA_AMBIGUA = b"Northtown City,Eastport Rovers,,," + b"Adriano Moretti,,,\n"
 
 #: Linha 4 — JOGADOR POR ID, com nome ruim pelo mesmo motivo da linha 2.
 LINHA_JOGADOR_MAPEADO = (
@@ -222,8 +215,14 @@ LINHA_JOGADOR_MAPEADO = (
     + f",,{REF_JOGADOR},\n".encode()
 )
 
-ARQUIVO = _CABECALHO + _PREFIXO + LINHA_MAPEADA + _PREFIXO + LINHA_AMBIGUA + _PREFIXO + (
-    LINHA_JOGADOR_MAPEADO
+ARQUIVO = (
+    _CABECALHO
+    + _PREFIXO
+    + LINHA_MAPEADA
+    + _PREFIXO
+    + LINHA_AMBIGUA
+    + _PREFIXO
+    + (LINHA_JOGADOR_MAPEADO)
 )
 
 
@@ -278,9 +277,7 @@ async def _gravar_mapeamentos(database: Database, entidades: dict[str, Any]) -> 
 
 
 @pytest.fixture
-async def executado(
-    database: Database, object_store: Any
-) -> tuple[Pipeline, dict[str, Any], str]:
+async def executado(database: Database, object_store: Any) -> tuple[Pipeline, dict[str, Any], str]:
     corpus, entidades = _cenario()
     await limpar_execucoes(database)
     await seed_corpus(database, corpus)
@@ -289,9 +286,7 @@ async def executado(
         await object_store.ensure_bucket()
 
     pipeline = Pipeline(database, object_store, batch_size=500)
-    dataset = await pipeline.stage(
-        name="e2e-ids", content=ARQUIVO, provider=FONTE
-    )
+    dataset = await pipeline.stage(name="e2e-ids", content=ARQUIVO, provider=FONTE)
     await pipeline.map_source(
         dataset,
         provider=FONTE,
@@ -302,9 +297,7 @@ async def executado(
     return pipeline, entidades, saida.run.id
 
 
-async def _decisoes(
-    database: Database, run_id: str, subject: SubjectType
-) -> list[dict[str, Any]]:
+async def _decisoes(database: Database, run_id: str, subject: SubjectType) -> list[dict[str, Any]]:
     async with database.acquire() as conexao:
         linhas = await conexao.fetch(
             """
@@ -332,9 +325,7 @@ class TestMapeamentoDeProvedor:
         _, entidades, run_id = executado
         decisoes = await _decisoes(database, run_id, SubjectType.TEAM)
         por_mapeamento = [
-            d
-            for d in decisoes
-            if d["method"] == ResolutionMethod.EXACT_PROVIDER_MAPPING.value
+            d for d in decisoes if d["method"] == ResolutionMethod.EXACT_PROVIDER_MAPPING.value
         ]
         assert por_mapeamento, (
             "nenhuma decisão de time veio de mapeamento de provedor — o caminho "
@@ -359,9 +350,7 @@ class TestMapeamentoDeProvedor:
         _, entidades, run_id = executado
         decisoes = await _decisoes(database, run_id, SubjectType.PLAYER)
         por_mapeamento = [
-            d
-            for d in decisoes
-            if d["method"] == ResolutionMethod.EXACT_PROVIDER_MAPPING.value
+            d for d in decisoes if d["method"] == ResolutionMethod.EXACT_PROVIDER_MAPPING.value
         ]
         assert len(por_mapeamento) == 1, decisoes
         assert por_mapeamento[0]["canonical_entity_id"] == entidades["mapeado"].id.value

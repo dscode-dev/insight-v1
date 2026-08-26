@@ -221,7 +221,21 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
   método de quantil é declarado e versionado;
 - **ADR-0035** — a normalização V1 é mediana/IQR por competição, ajustada de
   forma exata, com artefato imutável — sem epsilon escondido e sem troca
-  silenciosa de método.
+  silenciosa de método;
+- **ADR-0036** — a grade de snapshots é COMPARÁVEL AO VIVO e não exaustiva, e a
+  divisão do dataset é temporal e ATÔMICA por partida: nenhum corte que a
+  produção não saiba reproduzir, e nenhum sorteio de linha;
+- **ADR-0037** — as linhas de feature moram no OBJECT STORE, e o PostgreSQL
+  guarda identidade, políticas, contagens e ponteiros — o contrário do corpus
+  canônico, e pelo motivo declarado;
+- **ADR-0038** — o plano de normalização é EXPLÍCITO e SEMÂNTICO, com uma
+  entrada por dimensão e uma razão nomeada: nada é inferido do tipo do dado, e
+  `market_1x2_home_median` é reescalado enquanto `market_1x2_home_support` não;
+- **ADR-0039** — o ajuste do normalizador é só sobre REFERÊNCIA e é CEGO para a
+  avaliação: nada que a avaliação toca entra na identidade de artefato nenhum, e
+  nada de outra competição entra na identidade do pacote de uma competição;
+- **ADR-0040** — a representação normalizada é uma PROJEÇÃO INDEPENDENTE e
+  imutável, com identidade própria e contrato 1:1 com o dataset cru.
 
 Contratos de dados:
 
@@ -270,6 +284,20 @@ Contexto, mercado e normalização (PR-05.4 — o espaço estendido V2):
 - [`docs/features/PRE_MATCH_CONTEXT_V1.md`](docs/features/PRE_MATCH_CONTEXT_V1.md)
 - [`docs/features/CANONICAL_MARKET_FEATURES_V1.md`](docs/features/CANONICAL_MARKET_FEATURES_V1.md)
 - [`docs/features/ROBUST_NORMALIZATION_V1.md`](docs/features/ROBUST_NORMALIZATION_V1.md)
+
+Dataset histórico de features (PR-05.5.1 — materialização, sem normalização):
+
+- [`docs/features/HISTORICAL_FEATURE_DATASET_V1.md`](docs/features/HISTORICAL_FEATURE_DATASET_V1.md)
+- [`docs/features/SNAPSHOT_GRID_V1.md`](docs/features/SNAPSHOT_GRID_V1.md)
+- [`docs/features/FEATURE_DATASET_SPLIT_V1.md`](docs/features/FEATURE_DATASET_SPLIT_V1.md)
+- [`docs/performance/PR05_FEATURE_DATASET_BASELINE.md`](docs/performance/PR05_FEATURE_DATASET_BASELINE.md)
+
+Ajuste causal e dataset normalizado (PR-05.5.2 — o fecho da linha PR-05):
+
+- [`docs/features/NORMALIZATION_PLAN_V1.md`](docs/features/NORMALIZATION_PLAN_V1.md)
+- [`docs/features/CAUSAL_NORMALIZER_FIT_V1.md`](docs/features/CAUSAL_NORMALIZER_FIT_V1.md)
+- [`docs/features/NORMALIZED_FEATURE_DATASET_V1.md`](docs/features/NORMALIZED_FEATURE_DATASET_V1.md)
+- [`docs/performance/PR05_NORMALIZED_DATASET_BASELINE.md`](docs/performance/PR05_NORMALIZED_DATASET_BASELINE.md)
 
 ---
 

@@ -363,9 +363,7 @@ class TestEventosEmVolume:
             "consultas estão crescendo com os REGISTROS, não com os lotes"
         )
 
-    async def test_o_custo_marginal_por_registro_e_do_indice(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_custo_marginal_por_registro_e_do_indice(self, cenario: dict[str, Any]) -> None:
         """§109. O que cresce com o VOLUME é o índice de revisão — e só ele.
 
         O PICO NÃO É CONSTANTE NO VOLUME, e afirmar que seria é que estaria

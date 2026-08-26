@@ -54,8 +54,7 @@ class CanonicalMarketSpec:
     def __post_init__(self) -> None:
         if self.selection not in self.market.selections:
             raise ValidationError(
-                f"o mercado {self.market.value} não admite a seleção "
-                f"{self.selection.value}"
+                f"o mercado {self.market.value} não admite a seleção {self.selection.value}"
             )
         if self.market.requires_line and self.line is None:
             raise ValidationError(

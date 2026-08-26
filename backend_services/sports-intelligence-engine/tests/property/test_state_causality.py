@@ -198,9 +198,7 @@ class TestFuturoNaoVaza:
         """§195 vale para QUALQUER `t`, e não só para o corte de referência."""
         alvo = FeatureAsOf.at(PARTIDA, periodo, minuto)
         so_historia = construir(entrada(eventos=historia()), as_of=alvo).state
-        com_ruido = construir(
-            entrada(eventos=(*historia(), *futuro_absurdo())), as_of=alvo
-        ).state
+        com_ruido = construir(entrada(eventos=(*historia(), *futuro_absurdo())), as_of=alvo).state
         # O ruído só é FUTURO a partir dos 70; nos cortes anteriores a ele, os
         # dois estados precisam coincidir. Nos posteriores, o ruído é passado
         # legítimo — e aí a diferença é esperada, e não vazamento.
@@ -241,9 +239,11 @@ class TestReprodutibilidade:
         from tests.support.feature_fixtures import origem
 
         outro = origem(families=TODAS_AS_FAMILIAS, fingerprint="c" * 64)
-        estado = HistoricalMatchStateBuilder(
-            policy=TemporalAvailabilityPolicy.default()
-        ).build(entrada(), as_of=corte(), source=outro).state
+        estado = (
+            HistoricalMatchStateBuilder(policy=TemporalAvailabilityPolicy.default())
+            .build(entrada(), as_of=corte(), source=outro)
+            .state
+        )
         assert estado.fingerprint != construir().state.fingerprint
 
     def test_a_impressao_muda_quando_a_politica_muda(self) -> None:
@@ -325,9 +325,7 @@ class TestAusenciaNaoEZero:
         assert observado.fingerprint != nao_declarado.fingerprint
 
     def test_zero_cartoes_observado_nao_e_disciplina_ausente(self) -> None:
-        observado = construir(
-            entrada(eventos=()), as_of=FeatureAsOf.pre_match(PARTIDA)
-        ).state
+        observado = construir(entrada(eventos=()), as_of=FeatureAsOf.pre_match(PARTIDA)).state
         ausente = construir(
             entrada(families=frozenset({CoverageFamily.MATCH, CoverageFamily.LINEUP})),
             as_of=FeatureAsOf.pre_match(PARTIDA),

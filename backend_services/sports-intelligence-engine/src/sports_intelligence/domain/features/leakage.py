@@ -279,8 +279,7 @@ class TemporalLeakageGuard:
         if sabido is False:
             return LeakageDecision.denied(
                 LeakageReason.KNOWLEDGE_TIME_AFTER_CUTOFF,
-                f"conhecido em {timing.knowledge} e o corte admite até "
-                f"{as_of.knowledge_cutoff}",
+                f"conhecido em {timing.knowledge} e o corte admite até {as_of.knowledge_cutoff}",
             )
 
         # `None`: não deu para comparar. A classe decide se isso é fatal.
@@ -292,8 +291,7 @@ class TemporalLeakageGuard:
         if timing.knowledge is None:
             return LeakageDecision.unknown(
                 LeakageReason.MISSING_OBSERVATION_TIMESTAMP,
-                "esta família só é elegível com carimbo de observação, e o fato "
-                "não o carrega",
+                "esta família só é elegível com carimbo de observação, e o fato não o carrega",
             )
         return LeakageDecision.unknown(
             LeakageReason.MISSING_KNOWLEDGE_CUTOFF,

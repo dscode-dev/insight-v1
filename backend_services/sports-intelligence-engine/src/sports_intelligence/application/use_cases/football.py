@@ -116,9 +116,7 @@ class RegisterTeam:
     async def execute(
         self, *, canonical_name: str, country: str, short_name: str | None = None
     ) -> Team:
-        time = Team.register(
-            canonical_name=canonical_name, country=country, short_name=short_name
-        )
+        time = Team.register(canonical_name=canonical_name, country=country, short_name=short_name)
         await self.repository.upsert(time)
         return time
 
@@ -243,17 +241,13 @@ class ChangeMatchLifecycle:
     clock: ClockPort
     publisher: EventPublisherPort
 
-    async def execute(
-        self, *, match_id: MatchId, target: MatchLifecycle, reason: str
-    ) -> Match:
+    async def execute(self, *, match_id: MatchId, target: MatchLifecycle, reason: str) -> Match:
         partida = await self.matches.by_id(match_id)
         if partida is None:
             raise NotFoundError(f"partida {match_id} não registrada")
 
         agora = self.clock.now()
-        transicao = transition_to(
-            partida.lifecycle, target, at=agora, reason=reason
-        )
+        transicao = transition_to(partida.lifecycle, target, at=agora, reason=reason)
         atualizada = partida.with_lifecycle(target)
         await self.matches.upsert(atualizada)
         await self.publisher.publish(
@@ -294,9 +288,7 @@ class ConfirmLineup:
         if partida is None:
             raise NotFoundError(f"partida {lineup.match_id} não registrada")
         if not partida.involves(lineup.team_id):
-            raise ConflictError(
-                f"o time {lineup.team_id} não joga a partida {lineup.match_id}"
-            )
+            raise ConflictError(f"o time {lineup.team_id} não joga a partida {lineup.match_id}")
 
         for existente in await self.lineups.for_match(lineup.match_id):
             if existente.team_id == lineup.team_id:

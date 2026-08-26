@@ -272,9 +272,7 @@ class TestPesquisaContraComercio:
         de_comercio = await comercio.compor(
             usage=UsageScope.COMMERCIAL, event_runs=(OUTRA_EVENT_RUN,)
         )
-        assert (
-            de_pesquisa.manifest.corpus_fingerprint != de_comercio.manifest.corpus_fingerprint
-        )
+        assert de_pesquisa.manifest.corpus_fingerprint != de_comercio.manifest.corpus_fingerprint
         de_um = set(pesquisa.membership.members[de_pesquisa.version.id])
         de_outro = set(comercio.membership.members[de_comercio.version.id])
         assert de_um == de_outro

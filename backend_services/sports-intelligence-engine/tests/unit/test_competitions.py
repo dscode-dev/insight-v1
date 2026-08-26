@@ -74,9 +74,7 @@ class TestCatalogoFechado:
             is CompetitionType.DOMESTIC_LEAGUE
         )
         assert (
-            Competition.from_code(
-                CompetitionCode.UEFA_CHAMPIONS_LEAGUE
-            ).competition_type
+            Competition.from_code(CompetitionCode.UEFA_CHAMPIONS_LEAGUE).competition_type
             is CompetitionType.CONTINENTAL_CLUB
         )
 

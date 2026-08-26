@@ -127,6 +127,16 @@ class TestAppsNaoContornamAsCamadas:
             `apps/corpus_composition.py`     a do PR-04.3 — repositórios do
                                              corpus e o materializador Parquet,
                                              montados uma vez por processo
+            `apps/feature_dataset_composition.py`
+                                             a do PR-05.5.1 — repositórios do
+                                             dataset de features e o
+                                             materializador, que aqui NÃO é
+                                             opcional (ADR-0037)
+            `apps/normalized_dataset_composition.py`
+                                             a do PR-05.5.2 — repositórios do
+                                             ajuste e do dataset normalizado,
+                                             mais o LEITOR do cru e o
+                                             materializador do normalizado
 
         Todo o resto pede pelo port e recebe o objeto já montado. Um nome novo
         nesta lista é sinal de que a composição vazou, e o sintoma prático de
@@ -139,6 +149,8 @@ class TestAppsNaoContornamAsCamadas:
             "resolution_composition.py",
             "build_composition.py",
             "corpus_composition.py",
+            "feature_dataset_composition.py",
+            "normalized_dataset_composition.py",
         }
         arquivos = [p for p in sorted(APPS.rglob("*.py")) if p.name not in excecoes]
         violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))

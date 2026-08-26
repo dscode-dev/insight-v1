@@ -179,15 +179,9 @@ def escalacao() -> tuple[Lineup, ...]:
             match_id=PARTIDA,
             team_id=CASA,
             entries=(
-                LineupEntry(
-                    player_id=ARTILHEIRO, status=LineupStatus.STARTER, shirt_number=9
-                ),
-                LineupEntry(
-                    player_id=RESERVA, status=LineupStatus.BENCH, shirt_number=19
-                ),
-                LineupEntry(
-                    player_id=OUTRO_RESERVA, status=LineupStatus.BENCH, shirt_number=23
-                ),
+                LineupEntry(player_id=ARTILHEIRO, status=LineupStatus.STARTER, shirt_number=9),
+                LineupEntry(player_id=RESERVA, status=LineupStatus.BENCH, shirt_number=19),
+                LineupEntry(player_id=OUTRO_RESERVA, status=LineupStatus.BENCH, shirt_number=23),
             ),
         ),
     )
@@ -251,7 +245,8 @@ def evento(
         team_id=time,
         player_id=jogador,
         start_location=(
-            None if tipo not in (EventType.SHOT, EventType.GOAL, EventType.PASS)
+            None
+            if tipo not in (EventType.SHOT, EventType.GOAL, EventType.PASS)
             else PitchCoordinate(x=0.7, y=0.5)
         ),
         detail=detalhe,
@@ -373,9 +368,7 @@ def historia_com_sentinela() -> tuple[CanonicalMatchEvent, ...]:
 def historia_ate_o_corte() -> tuple[CanonicalMatchEvent, ...]:
     """Só o passado do corte de 63' — o conjunto `F≤t` do §126."""
     return tuple(
-        e
-        for e in historia()
-        if e.clock.period is Period.FIRST_HALF and e.clock.minute <= 63
+        e for e in historia() if e.clock.period is Period.FIRST_HALF and e.clock.minute <= 63
     )
 
 

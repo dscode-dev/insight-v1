@@ -164,8 +164,12 @@ class TestRollingEventWindowSelector:
     def test_eventos_do_primeiro_tempo_nao_entram_numa_janela_do_segundo(self) -> None:
         historia = projetados(
             evento(
-                "w-ht", tipo=EventType.SHOT, minuto=45, stoppage=2,
-                periodo=Period.FIRST_HALF, sequencia=1,
+                "w-ht",
+                tipo=EventType.SHOT,
+                minuto=45,
+                stoppage=2,
+                periodo=Period.FIRST_HALF,
+                sequencia=1,
             ),
             evento("w-46", tipo=EventType.SHOT, minuto=46, sequencia=2),
         )

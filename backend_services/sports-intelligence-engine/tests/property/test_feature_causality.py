@@ -78,9 +78,7 @@ class ContagemDeEventos:
 
     definition: FeatureDefinition
 
-    def compute(
-        self, context: CanonicalFeatureContext, as_of: FeatureAsOf
-    ) -> ComputedFeature:
+    def compute(self, context: CanonicalFeatureContext, as_of: FeatureAsOf) -> ComputedFeature:
         if not context.publishes(CoverageFamily.EVENT):
             return ComputedFeature.unavailable(
                 definition_key=self.definition.key,
@@ -296,9 +294,7 @@ class TestOQuartoGate:
     def test_o_modo_temporal_muda_o_estado(self) -> None:
         """A verdade retrospectiva aplica a correção; a causal, não."""
         causal = contexto(as_of=corte(63)).events.ids()
-        retrospectivo = contexto(
-            as_of=corte(63, mode=TemporalMode.CANONICAL_FINAL)
-        ).events.ids()
+        retrospectivo = contexto(as_of=corte(63, mode=TemporalMode.CANONICAL_FINAL)).events.ids()
         assert set(causal) != set(retrospectivo)
 
 

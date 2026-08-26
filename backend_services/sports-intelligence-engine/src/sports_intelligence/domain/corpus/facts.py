@@ -409,7 +409,6 @@ class MatchCorpusFacts:
             )
         return linhas
 
-
     # ------------------------------------------------------------ eventos --
 
     def _eventos_ordenados(self) -> tuple[CanonicalMatchEvent, ...]:

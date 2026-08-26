@@ -139,9 +139,7 @@ class MatchClock:
         if self.stoppage < 0:
             raise ValueError(f"acréscimo negativo: {self.stoppage}")
         if not self.period.is_ball_in_play and (self.minute or self.stoppage):
-            raise ValueError(
-                f"{self.period} não tem relógio correndo, mas veio {self.label}"
-            )
+            raise ValueError(f"{self.period} não tem relógio correndo, mas veio {self.label}")
 
     @property
     def label(self) -> str:
@@ -203,6 +201,4 @@ class ObservationTimes:
         são de fato diferentes, e igualá-los apaga a latência que a qualidade
         do dado depende de medir.
         """
-        return cls(
-            occurred_at=moment, observed_at=moment, received_at=moment, ingested_at=moment
-        )
+        return cls(occurred_at=moment, observed_at=moment, received_at=moment, ingested_at=moment)

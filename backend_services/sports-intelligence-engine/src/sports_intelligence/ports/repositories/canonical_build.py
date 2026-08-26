@@ -156,9 +156,7 @@ class CanonicalBuildRecordRepositoryPort(Protocol):
         """
         ...
 
-    async def record_family_decisions(
-        self, run_id: str, decisions: Sequence[BuildDecision]
-    ) -> int:
+    async def record_family_decisions(self, run_id: str, decisions: Sequence[BuildDecision]) -> int:
         """Grava a decisão POR FAMÍLIA de cada partida (§20).
 
         SEPARADA DO REGISTRO DE FATO porque a granularidade é outra: um fato é
@@ -167,9 +165,7 @@ class CanonicalBuildRecordRepositoryPort(Protocol):
         """
         ...
 
-    async def family_decisions_of(
-        self, run_id: str, match_id: MatchId
-    ) -> Sequence[FamilyDecision]:
+    async def family_decisions_of(self, run_id: str, match_id: MatchId) -> Sequence[FamilyDecision]:
         """As decisões por família de uma partida — a resposta do §20.
 
         «As odds desta partida sumiram?» só tem resposta honesta com estas

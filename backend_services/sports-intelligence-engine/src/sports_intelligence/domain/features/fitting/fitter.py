@@ -38,7 +38,7 @@ from sports_intelligence.domain.features.fitting.artifact import (
     NormalizerFitArtifact,
     cutoff_canonical,
 )
-from sports_intelligence.domain.features.fitting.population import FeaturePopulation
+from sports_intelligence.domain.features.fitting.population import FitPopulation
 from sports_intelligence.domain.features.normalization import (
     NormalizationMethod,
     NormalizationScope,
@@ -97,14 +97,13 @@ class RobustNormalizerFitter:
             return DEFAULT_MINIMUM_AVAILABLE_SAMPLES
         if not isinstance(bruto, int) or isinstance(bruto, bool) or bruto < 1:
             raise ValidationError(
-                f"{MINIMUM_SAMPLES_PARAMETER} inválido em {self.definition.key}: "
-                f"{bruto!r}"
+                f"{MINIMUM_SAMPLES_PARAMETER} inválido em {self.definition.key}: {bruto!r}"
             )
         return bruto
 
     def fit(
         self,
-        population: FeaturePopulation,
+        population: FitPopulation,
         *,
         feature: FeatureDefinition,
         source_corpus_fingerprint: str,

@@ -207,9 +207,7 @@ class ResolutionConfidence:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.value <= 1.0:
-            raise ValidationError(
-                f"confiança {self.value!r} fora de [0,1]"
-            )
+            raise ValidationError(f"confiança {self.value!r} fora de [0,1]")
         object.__setattr__(self, "value", float(self.value))
 
     @classmethod
@@ -457,9 +455,7 @@ class ResolutionDecision:
         exigiria reexecutar o resolver — e o resolver já mudou.
         """
         if status.yields_canonical_reference:
-            raise ValidationError(
-                f"{status} não é um estado indeciso — use `resolved`"
-            )
+            raise ValidationError(f"{status} não é um estado indeciso — use `resolved`")
         return cls(
             id=str(uuid.uuid4()),
             subject_type=subject_type,
@@ -562,11 +558,7 @@ class DecisionCounts:
 
     def assert_consistent(self) -> None:
         soma = (
-            self.resolved
-            + self.unresolved
-            + self.ambiguous
-            + self.review_required
-            + self.rejected
+            self.resolved + self.unresolved + self.ambiguous + self.review_required + self.rejected
         )
         if soma != self.total:
             raise ValidationError(
@@ -576,4 +568,3 @@ class DecisionCounts:
 
 #: Campos que a fila de revisão precisa ver e que não cabem numa linha.
 MAX_ALTERNATIVES_STORED: Final[int] = 10
-

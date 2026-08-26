@@ -120,9 +120,7 @@ class ResolutionRun:
 
     def __post_init__(self) -> None:
         if self.status.is_terminal and self.completed_at is None:
-            raise ValidationError(
-                f"execução em {self.status} sem instante de conclusão"
-            )
+            raise ValidationError(f"execução em {self.status} sem instante de conclusão")
         if self.completed_at is not None and self.completed_at < self.started_at:
             raise ValidationError("execução concluída antes de começar")
         if self.status is RunStatus.FAILED and not (self.failure_reason or "").strip():
@@ -162,11 +160,7 @@ class ResolutionRun:
         """
         self._assert_can_finish()
         counts.assert_consistent()
-        destino = (
-            RunStatus.COMPLETED_WITH_REVIEW
-            if counts.needs_human > 0
-            else RunStatus.COMPLETED
-        )
+        destino = RunStatus.COMPLETED_WITH_REVIEW if counts.needs_human > 0 else RunStatus.COMPLETED
         return replace(self, status=destino, counts=counts, completed_at=at)
 
     def fail(self, *, reason: str, at: Instant) -> Self:

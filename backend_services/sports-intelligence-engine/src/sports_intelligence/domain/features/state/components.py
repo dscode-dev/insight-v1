@@ -323,8 +323,8 @@ class TeamDisciplinaryState:
         saiu é outra pergunta, e a resposta ausente degrada o CAMPO, não a
         disciplina.
         """
-        expulsos = self.sent_off if player is None else tuple(
-            sorted({*self.sent_off, player}, key=str)
+        expulsos = (
+            self.sent_off if player is None else tuple(sorted({*self.sent_off, player}, key=str))
         )
         return replace(self, dismissals=self.dismissals + 1, sent_off=expulsos)
 

@@ -81,9 +81,16 @@ class ContextFeatureKind(StrEnum):
 
     O NOME DIZ O QUE ELE MEDE (§16). `SAME_COMP_PREV_KICKOFF_GAP` e nunca
     `REST_DAYS`: o que se mede é o intervalo até a partida anterior DA MESMA
-    COMPETIÇÃO, medido de apito a apito. Um time que jogou a Champions na
-    quarta aparece aqui como se tivesse descansado a semana inteira, e o nome
-    da feature precisa admitir isso.
+    COMPETIÇÃO, medido de PONTAPÉ A PONTAPÉ — `kickoff(atual)` menos
+    `kickoff(anterior)`. Um time que jogou a Champions na quarta aparece aqui
+    como se tivesse descansado a semana inteira, e o nome da feature precisa
+    admitir isso.
+
+    «DE APITO A APITO» ERA AMBÍGUO, e por isso saiu (PR-05.5.1 §132): lia-se
+    com igual naturalidade como «do apito FINAL da anterior ao inicial da
+    atual», que é a medida que o ADR-0033 rejeita — o corpus não publica quando
+    a partida anterior terminou. A conta nunca foi essa; o texto é que dava a
+    entender que sim.
     """
 
     PREV_KICKOFF_GAP_HOURS = "PREV_KICKOFF_GAP_HOURS"

@@ -268,9 +268,7 @@ class RunIdentityResolution:
         if dataset is None:
             raise NotFoundError(f"dataset {dataset_id} não registrado")
         if dataset.lifecycle is not DatasetLifecycle.STAGED:
-            raise ConflictError(
-                f"resolução exige dataset STAGED; este está em {dataset.lifecycle}"
-            )
+            raise ConflictError(f"resolução exige dataset STAGED; este está em {dataset.lifecycle}")
         mapeamento = await self.source_mappings.active_for(dataset_id)
         if mapeamento is None:
             raise ConflictError(
@@ -320,23 +318,17 @@ class RunIdentityResolution:
                 )
                 for decisao in decisoes:
                     contagens = contagens.with_status(decisao.status)
-                total_decisoes += await self.decisions.append_many(
-                    decisoes, run_id=execucao.id
-                )
+                total_decisoes += await self.decisions.append_many(decisoes, run_id=execucao.id)
                 total_revisao += await self.review.create_many(itens)
         except Exception as erro:
-            falha = execucao.fail(
-                reason=f"{type(erro).__name__}", at=self.clock.now()
-            )
+            falha = execucao.fail(reason=f"{type(erro).__name__}", at=self.clock.now())
             await self.runs.finish(falha)
             raise
 
         concluida = execucao.complete(counts=contagens, at=self.clock.now())
         await self.runs.finish(concluida)
         await self._publicar(concluida, correlation_id)
-        return ResolutionOutput(
-            run=concluida, decisions=total_decisoes, review_items=total_revisao
-        )
+        return ResolutionOutput(run=concluida, decisions=total_decisoes, review_items=total_revisao)
 
     # ------------------------------------------------------------- lote --
 
@@ -480,9 +472,7 @@ class RunIdentityResolution:
             if sujeito is SubjectType.TEAM
             else (SemanticRole.PLAYER_PROVIDER_ID,)
         )
-        resolver = (
-            self.resolvers.team if sujeito is SubjectType.TEAM else self.resolvers.player
-        )
+        resolver = self.resolvers.team if sujeito is SubjectType.TEAM else self.resolvers.player
         saida: dict[str, Outcome] = {}
         for papel in papeis:
             for referencia in lote.distinct_texts(papel):
@@ -593,9 +583,7 @@ class RunIdentityResolution:
             # traz um id que já foi traduzido, o texto do clube deixa de ser
             # autoridade de identidade e passa a ser procedência (§51).
             referencia = registro.text_of(papel_de_referencia)
-            do_provedor = (
-                por_referencia_de_time.get(referencia) if referencia else None
-            )
+            do_provedor = por_referencia_de_time.get(referencia) if referencia else None
             resultado = do_provedor or (times.get(texto or "") if texto else None)
             if resultado is None:
                 return saida
@@ -616,9 +604,7 @@ class RunIdentityResolution:
                 )
             )
             lados[papel] = (
-                resultado.entity_id
-                if resultado.status.yields_canonical_reference
-                else None
+                resultado.entity_id if resultado.status.yields_canonical_reference else None
             )
 
         mandante = lados[SemanticRole.HOME_TEAM_NAME]
@@ -638,9 +624,7 @@ class RunIdentityResolution:
                 kickoff=kickoff,
                 kickoff_timezone_undeclared=not registro.has(SemanticRole.KICKOFF),
                 round_number=(
-                    valor.integer
-                    if (valor := registro.get(SemanticRole.ROUND_NUMBER))
-                    else None
+                    valor.integer if (valor := registro.get(SemanticRole.ROUND_NUMBER)) else None
                 ),
             ),
             context=contexto,
@@ -760,7 +744,9 @@ class RunIdentityResolution:
             return decisao, None
 
         decisao = ResolutionDecision.undecided(
-            status=resultado.status, method=resultado.method, **comum  # type: ignore[arg-type]
+            status=resultado.status,
+            method=resultado.method,
+            **comum,  # type: ignore[arg-type]
         )
         if not resultado.status.needs_human:
             return decisao, None
@@ -835,12 +821,10 @@ class RunIdentityResolution:
             if nomes_de_jogador
             else []
         )
-        ids_de_jogador = {
-            str(j.id) for j in jogadores
-        } | {str(j.id) for _, j in candidatos_de_jogador}
-        vinculos = (
-            await self.registry.tenures_of(sorted(ids_de_jogador)) if ids_de_jogador else []
-        )
+        ids_de_jogador = {str(j.id) for j in jogadores} | {
+            str(j.id) for _, j in candidatos_de_jogador
+        }
+        vinculos = await self.registry.tenures_of(sorted(ids_de_jogador)) if ids_de_jogador else []
         # MAPEAMENTO DE PROVEDOR, DOS DOIS TIPOS. Até o PR-03.1 só as
         # referências de mandante eram carregadas — e nenhuma era CONSULTADA,
         # porque a resolução por nome distinto nunca passava `provider_ref`.
@@ -855,14 +839,17 @@ class RunIdentityResolution:
             ),
         ]
         aliases = [
-            *await self.aliases.by_normalized(SubjectType.COMPETITION, sorted(
-                {normalizador.normalize(t)
-                 for t in lote.distinct_texts(SemanticRole.COMPETITION_NAME)}
-            )),
-            *await self.aliases.by_normalized(SubjectType.TEAM, sorted(nomes_de_time)),
             *await self.aliases.by_normalized(
-                SubjectType.PLAYER, sorted(nomes_de_jogador)
+                SubjectType.COMPETITION,
+                sorted(
+                    {
+                        normalizador.normalize(t)
+                        for t in lote.distinct_texts(SemanticRole.COMPETITION_NAME)
+                    }
+                ),
             ),
+            *await self.aliases.by_normalized(SubjectType.TEAM, sorted(nomes_de_time)),
+            *await self.aliases.by_normalized(SubjectType.PLAYER, sorted(nomes_de_jogador)),
         ]
 
         construtor = (
@@ -955,9 +942,7 @@ class RunIdentityResolution:
         completo = registro.get(SemanticRole.KICKOFF)
         if completo and completo.moment:
             momento = completo.moment
-            return instant(
-                momento if momento.tzinfo else momento.replace(tzinfo=UTC)
-            )
+            return instant(momento if momento.tzinfo else momento.replace(tzinfo=UTC))
         apenas_data = registro.get(SemanticRole.KICKOFF_DATE)
         if apenas_data and apenas_data.day:
             return instant(datetime.combine(apenas_data.day, time.min, tzinfo=UTC))
@@ -1081,8 +1066,7 @@ class ResolveReviewItem:
             item.resolve_with(
                 chosen=chosen, decision_id=decisao.id, actor=actor, reason=reason, at=agora
             )
-            if chosen is not None
-            and any(c.canonical_entity_id == chosen for c in item.candidates)
+            if chosen is not None and any(c.canonical_entity_id == chosen for c in item.candidates)
             else (
                 item.link_to(
                     entity=chosen,
@@ -1092,9 +1076,7 @@ class ResolveReviewItem:
                     at=agora,
                 )
                 if chosen is not None
-                else item.reject(
-                    decision_id=decisao.id, actor=actor, reason=reason, at=agora
-                )
+                else item.reject(decision_id=decisao.id, actor=actor, reason=reason, at=agora)
             )
         )
         if not await self.review.update_status(fechado, expected_status=item.status.value):
@@ -1107,9 +1089,7 @@ class ResolveReviewItem:
 
         await self.audit.record(
             AuditEntry.of(
-                AuditAction.DATASET_STAGED
-                if chosen is not None
-                else AuditAction.DATASET_REJECTED,
+                AuditAction.DATASET_STAGED if chosen is not None else AuditAction.DATASET_REJECTED,
                 actor=actor,
                 at=agora,
                 correlation_id=correlation_id,
@@ -1252,9 +1232,7 @@ class ListResolutionDecisions:
         limit: int = 100,
         offset: int = 0,
     ) -> tuple[Sequence[ResolutionDecision], int]:
-        return await self.decisions.by_run(
-            run_id, subject=subject, limit=limit, offset=offset
-        )
+        return await self.decisions.by_run(run_id, subject=subject, limit=limit, offset=offset)
 
 
 @final

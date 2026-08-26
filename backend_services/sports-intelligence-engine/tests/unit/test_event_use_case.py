@@ -298,7 +298,8 @@ class TestAAmostraDeLinhagem:
         primeira = await Ambiente().rodar(muitos, lote=5)
         segunda = await Ambiente().rodar(muitos, lote=5)
         assert [r.source_key for r in primeira.records] == [  # type: ignore[attr-defined]
-            r.source_key for r in segunda.records  # type: ignore[attr-defined]
+            r.source_key
+            for r in segunda.records  # type: ignore[attr-defined]
         ]
 
     async def test_o_repositorio_continua_sendo_a_autoridade(self) -> None:

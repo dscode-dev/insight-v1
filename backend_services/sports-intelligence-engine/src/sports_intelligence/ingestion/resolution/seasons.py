@@ -80,10 +80,10 @@ class SeasonHint:
     def agreement_with(self, other: SeasonHint) -> float:
         """Quão bem os dois rótulos concordam, em [0,1].
 
-            1,00   mesmo início e mesmo fim
-            0,70   mesmo início, um deles sem fim declarado
-            0,45   os anos se tocam, mas em posições diferentes
-            0,00   incompatíveis
+        1,00   mesmo início e mesmo fim
+        0,70   mesmo início, um deles sem fim declarado
+        0,45   os anos se tocam, mas em posições diferentes
+        0,00   incompatíveis
         """
         if not self.compatible_with(other):
             return 0.0
@@ -96,9 +96,7 @@ class SeasonHint:
     def __str__(self) -> str:
         if self.unparseable:
             return f"{self.raw!r} (irreconhecível)"
-        faixa = (
-            f"{self.start_year}/{self.end_year}" if self.is_split_year else str(self.start_year)
-        )
+        faixa = f"{self.start_year}/{self.end_year}" if self.is_split_year else str(self.start_year)
         return f"{faixa}{' (ambíguo)' if self.ambiguous else ''}"
 
 

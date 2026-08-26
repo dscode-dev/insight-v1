@@ -128,11 +128,7 @@ def build_object_key(
     if safe_filename in ("", ".", ".."):
         raise ValidationError(f"nome de arquivo inválido para chave: {safe_filename!r}")
     return (
-        f"{RAW_PREFIX}/"
-        f"dataset={dataset_id}/"
-        f"version={version}/"
-        f"sha256={content_hash}/"
-        f"{safe_filename}"
+        f"{RAW_PREFIX}/dataset={dataset_id}/version={version}/sha256={content_hash}/{safe_filename}"
     )
 
 

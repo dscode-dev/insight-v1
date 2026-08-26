@@ -112,9 +112,7 @@ async def _publicar(cenario: dict[str, Any]) -> tuple[Any, Any]:  # noqa: F811
         audit=pipeline.audit,
         store=cenario["store"],
     )
-    versao = await contêiner.publish_version.execute(
-        actor=PUBLICADOR, version_id=saida.version.id
-    )
+    versao = await contêiner.publish_version.execute(actor=PUBLICADOR, version_id=saida.version.id)
     assert versao.status is DatasetVersionStatus.READY
     return versao, saida.manifest
 
@@ -176,9 +174,7 @@ class TestOEstadoEmVolume:
         # ---- 2. um décimo das partidas, para revelar a FORMA da curva ------
         async with contando_consultas(banco) as consultas_pequenas:
             with medindo("reconstrução de mil") as pequena:
-                await caso().execute(
-                    source_corpus=origem, match_ids=pequenas, as_of_of=_corte
-                )
+                await caso().execute(source_corpus=origem, match_ids=pequenas, as_of_of=_corte)
 
         # ---- 3. o determinismo sob lotes diferentes ------------------------
         estreito = await caso(batch_size=97).execute(
@@ -281,11 +277,7 @@ class TestOEstadoEmVolume:
         # §16 do PR-04.4.2, aplicado ao estado: o tamanho do lote é detalhe de
         # execução, e não pode mudar o que sai.
         assert estreito.built == largo.built
-        assert [e.fingerprint for e in estreito.states] == [
-            e.fingerprint for e in largo.states
-        ]
+        assert [e.fingerprint for e in estreito.states] == [e.fingerprint for e in largo.states]
 
         # §196. E duas execuções do MESMO lote dão as mesmas impressões.
-        assert [e.fingerprint for e in de_novo.states] == [
-            e.fingerprint for e in largo.states
-        ]
+        assert [e.fingerprint for e in de_novo.states] == [e.fingerprint for e in largo.states]

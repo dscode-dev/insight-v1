@@ -304,9 +304,7 @@ def evento_canonico(
         ),
         team_id=CASA if time else None,
         player_id=JOGADOR_DO_EVENTO if jogador else None,
-        start_location=(
-            None if ponto is None else PitchCoordinate(x=ponto[0], y=ponto[1])
-        ),
+        start_location=(None if ponto is None else PitchCoordinate(x=ponto[0], y=ponto[1])),
         detail=detalhe,
         revision=revision,
         supersedes=supersedes,

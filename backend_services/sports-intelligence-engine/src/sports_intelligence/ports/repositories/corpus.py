@@ -389,9 +389,7 @@ class CorpusEventReaderPort(Protocol):
     produziram para esta partida» é o que a versão declarou publicar.
     """
 
-    async def usage_scopes_of(
-        self, event_build_run_ids: Sequence[str]
-    ) -> Mapping[str, UsageScope]:
+    async def usage_scopes_of(self, event_build_run_ids: Sequence[str]) -> Mapping[str, UsageScope]:
         """O escopo de uso de cada execução de evento.
 
         É A CONFERÊNCIA DO §27 APLICADA A EVENTO: compor um corpus comercial

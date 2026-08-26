@@ -108,9 +108,7 @@ class TestPublicarELer:
             "sports_intelligence.historical.events.builder",
             "sports_intelligence.historical.events.eligibility",
         )
-        violacoes = internal_violations(
-            files_in("domain/corpus", "historical/corpus"), proibidos
-        )
+        violacoes = internal_violations(files_in("domain/corpus", "historical/corpus"), proibidos)
         assert not violacoes, str(violacoes)
 
     def test_a_composicao_le_o_registro_canonico_e_nao_o_bruto(self) -> None:
@@ -122,9 +120,7 @@ class TestPublicarELer:
             "sports_intelligence.domain.events.records",
             "sports_intelligence.ingestion.historical.reader",
         )
-        violacoes = internal_violations(
-            files_in("domain/corpus", "historical/corpus"), proibidos
-        )
+        violacoes = internal_violations(files_in("domain/corpus", "historical/corpus"), proibidos)
         assert not violacoes, str(violacoes)
 
 
@@ -146,9 +142,7 @@ class TestAFronteiraComOPR05:
         em `BUILDING`, que pode estar com pertinência pela metade."""
         from sports_intelligence.domain.corpus.versions import DatasetVersionStatus
 
-        legiveis = {
-            estado for estado in DatasetVersionStatus if estado.is_readable_corpus
-        }
+        legiveis = {estado for estado in DatasetVersionStatus if estado.is_readable_corpus}
         assert legiveis == {
             DatasetVersionStatus.READY,
             DatasetVersionStatus.SUPERSEDED,

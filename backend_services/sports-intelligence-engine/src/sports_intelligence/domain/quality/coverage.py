@@ -104,9 +104,7 @@ class FamilyCoverage:
 
     def __post_init__(self) -> None:
         if self.available_count < 0:
-            raise ValidationError(
-                f"{self.family}: contagem negativa ({self.available_count})"
-            )
+            raise ValidationError(f"{self.family}: contagem negativa ({self.available_count})")
         if self.expected_count is not None and self.expected_count < 0:
             raise ValidationError(f"{self.family}: esperado negativo")
         if self.state is CoverageState.MEASURED and self.expected_count is None:
@@ -202,9 +200,7 @@ class CoverageReport:
     def of(cls, *families: FamilyCoverage) -> Self:
         """Constrói em ORDEM CANÔNICA, independente da ordem de chamada."""
         por_familia = {f.family: f for f in families}
-        return cls(
-            families=tuple(por_familia[f] for f in FAMILY_ORDER if f in por_familia)
-        )
+        return cls(families=tuple(por_familia[f] for f in FAMILY_ORDER if f in por_familia))
 
     def of_family(self, family: CoverageFamily) -> FamilyCoverage | None:
         return next((f for f in self.families if f.family is family), None)
@@ -216,9 +212,7 @@ class CoverageReport:
     @property
     def declared_families(self) -> tuple[CoverageFamily, ...]:
         """As famílias que a fonte de fato trabalha — as que dá para exigir."""
-        return tuple(
-            f.family for f in self.families if f.state is not CoverageState.NOT_DECLARED
-        )
+        return tuple(f.family for f in self.families if f.state is not CoverageState.NOT_DECLARED)
 
     def merged_with(self, other: CoverageReport) -> CoverageReport:
         """Soma cobertura de dois escopos — de partida para temporada, por exemplo.

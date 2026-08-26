@@ -107,9 +107,7 @@ class CanonicalMatchBuilder:
 
     fact_type: ClassVar[CanonicalFactType] = CanonicalFactType.MATCH
 
-    def build(
-        self, *, decision: BuildDecision, identity: MatchIdentityFacts
-    ) -> Match:
+    def build(self, *, decision: BuildDecision, identity: MatchIdentityFacts) -> Match:
         _assert_authorized(decision, CoverageFamily.MATCH)
         if identity.match_id != decision.match_id:
             raise InvariantViolationError(
@@ -149,9 +147,7 @@ class CanonicalResultBuilder:
 
     fact_type: ClassVar[CanonicalFactType] = CanonicalFactType.MATCH_RESULT
 
-    def build(
-        self, *, decision: BuildDecision, scores: ScoreFacts
-    ) -> MatchResult | None:
+    def build(self, *, decision: BuildDecision, scores: ScoreFacts) -> MatchResult | None:
         _assert_authorized(decision, CoverageFamily.MATCH)
         if not scores.has_regular_time:
             return None
@@ -168,8 +164,7 @@ class CanonicalResultBuilder:
             ),
             penalties=(
                 Score(home=scores.penalties_home, away=scores.penalties_away)
-                if scores.penalties_home is not None
-                and scores.penalties_away is not None
+                if scores.penalties_home is not None and scores.penalties_away is not None
                 else None
             ),
         )

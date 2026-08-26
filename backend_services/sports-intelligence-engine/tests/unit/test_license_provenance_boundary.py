@@ -106,9 +106,9 @@ class TestPapelERotuloOuFato:
 class TestCenarioA_GrafiaRestritaNaoContamina:
     """§7. A fonte restrita só empresta o NOME de um time que já é canônico.
 
-        `TeamId(X)` já existe, provado por evidência elegível
-        fonte RESEARCH_ONLY escreve `Man City` e mais nada de fato
-        → o núcleo da partida NÃO fica restrito
+    `TeamId(X)` já existe, provado por evidência elegível
+    fonte RESEARCH_ONLY escreve `Man City` e mais nada de fato
+    → o núcleo da partida NÃO fica restrito
     """
 
     def _cena(self) -> Cenario:
@@ -116,9 +116,7 @@ class TestCenarioA_GrafiaRestritaNaoContamina:
 
     def test_a_grafia_restrita_nao_entra_na_pegada_de_licenca(self) -> None:
         pegada = _avaliar(self._cena()).assessment.usage.footprint
-        assert pegada.by_family[CoverageFamily.MATCH] == frozenset(
-            {LicenseClass.PUBLIC_DOMAIN}
-        )
+        assert pegada.by_family[CoverageFamily.MATCH] == frozenset({LicenseClass.PUBLIC_DOMAIN})
         assert LicenseClass.RESEARCH_ONLY not in pegada.all_licenses
 
     def test_o_build_comercial_constroi_o_nucleo(self) -> None:
@@ -152,16 +150,16 @@ class TestCenarioB_SoRestritaSustentaOFato:
 
     def test_o_nucleo_fica_com_procedencia_restrita(self) -> None:
         pegada = _avaliar(self._cena()).assessment.usage.footprint
-        assert pegada.by_family[CoverageFamily.MATCH] == frozenset(
-            {LicenseClass.RESEARCH_ONLY}
-        )
+        assert pegada.by_family[CoverageFamily.MATCH] == frozenset({LicenseClass.RESEARCH_ONLY})
         # E não há suporte independente ELEGÍVEL: a única fonte é a restrita.
-        assert pegada.family_verdict(
-            CoverageFamily.MATCH, UsageScope.RESEARCH
-        ) is UsageEligibility.ELIGIBLE
-        assert pegada.family_verdict(
-            CoverageFamily.MATCH, UsageScope.COMMERCIAL
-        ) is UsageEligibility.INELIGIBLE
+        assert (
+            pegada.family_verdict(CoverageFamily.MATCH, UsageScope.RESEARCH)
+            is UsageEligibility.ELIGIBLE
+        )
+        assert (
+            pegada.family_verdict(CoverageFamily.MATCH, UsageScope.COMMERCIAL)
+            is UsageEligibility.INELIGIBLE
+        )
 
     def test_pesquisa_constroi(self) -> None:
         decisao = DEFAULT_RESEARCH_BUILD_POLICY.decide(_avaliar(self._cena()))
@@ -183,8 +181,7 @@ class TestCenarioB_SoRestritaSustentaOFato:
         """§17. Descartar o núcleo deixaria a partida sem o que a torna uma
         partida — então a política nem oferece essa saída."""
         assert (
-            CoverageFamily.MATCH
-            not in DEFAULT_COMMERCIAL_BUILD_POLICY.license_droppable_families
+            CoverageFamily.MATCH not in DEFAULT_COMMERCIAL_BUILD_POLICY.license_droppable_families
         )
 
 
@@ -208,18 +205,14 @@ class TestSuporteIndependente:
         assert pegada.by_family[CoverageFamily.MATCH] == frozenset(
             {LicenseClass.PUBLIC_DOMAIN, LicenseClass.RESEARCH_ONLY}
         )
-        assert LicenseClass.PUBLIC_DOMAIN in pegada.independent_support[
-            CoverageFamily.MATCH
-        ]
+        assert LicenseClass.PUBLIC_DOMAIN in pegada.independent_support[CoverageFamily.MATCH]
 
     def test_a_presenca_da_restrita_nao_contamina_o_que_a_publica_sustenta(
         self,
     ) -> None:
         """§42. Sem a restrita o valor seria idêntico; ela confirma, não
         deriva — e o corpus comercial não perde a partida por isso."""
-        decisao = DEFAULT_COMMERCIAL_BUILD_POLICY.decide(
-            _avaliar(self._cena_confirmada())
-        )
+        decisao = DEFAULT_COMMERCIAL_BUILD_POLICY.decide(_avaliar(self._cena_confirmada()))
         assert decisao.outcome is BuildOutcome.BUILD
         assert CoverageFamily.MATCH in decisao.included_families
 
@@ -233,17 +226,16 @@ class TestSuporteIndependente:
                 )
             }
         )
-        assert pegada.family_verdict(
-            CoverageFamily.MATCH, UsageScope.COMMERCIAL
-        ) is UsageEligibility.INELIGIBLE
+        assert (
+            pegada.family_verdict(CoverageFamily.MATCH, UsageScope.COMMERCIAL)
+            is UsageEligibility.INELIGIBLE
+        )
 
     def test_suporte_independente_exige_contribuicao(self) -> None:
         with pytest.raises(Exception, match="não contribuiu"):
             LicenseFootprint(
                 by_family={CoverageFamily.MATCH: frozenset({LicenseClass.PUBLIC_DOMAIN})},
-                independent_support={
-                    CoverageFamily.ODDS: frozenset({LicenseClass.PUBLIC_DOMAIN})
-                },
+                independent_support={CoverageFamily.ODDS: frozenset({LicenseClass.PUBLIC_DOMAIN})},
             )
 
     def test_desempate_NAO_produz_suporte_independente(self) -> None:
@@ -269,9 +261,7 @@ class TestTextoContraFato:
         a política reage pelas regras que já existem — conflito de núcleo é
         bloqueante."""
         registro = _avaliar(kickoff_em_conflito(0))
-        assert IssueCode.UNRESOLVED_FUSION_CONFLICT in {
-            p.code for p in registro.assessment.issues
-        }
+        assert IssueCode.UNRESOLVED_FUSION_CONFLICT in {p.code for p in registro.assessment.issues}
         assert registro.eligibility is BuildEligibility.INELIGIBLE
 
     def test_e_o_build_nao_constroi_a_partida(self) -> None:

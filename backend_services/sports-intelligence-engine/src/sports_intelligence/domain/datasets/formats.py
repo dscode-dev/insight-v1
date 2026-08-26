@@ -135,9 +135,7 @@ def sanitize_filename(raw: str) -> str:
     limpo = _PONTOS_SEGUIDOS.sub(".", limpo).strip("._-")
 
     if not limpo:
-        raise ValidationError(
-            f"nome de arquivo {raw!r} não sobrou nada depois da limpeza"
-        )
+        raise ValidationError(f"nome de arquivo {raw!r} não sobrou nada depois da limpeza")
     if limpo.split(".", 1)[0].lower() in _RESERVADOS:
         limpo = f"arquivo_{limpo}"
     if len(limpo) > MAX_FILENAME_LENGTH:

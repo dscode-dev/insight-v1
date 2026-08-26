@@ -48,9 +48,7 @@ PROVEDOR = ProviderId("benchmark_source")
 CAMPOS: tuple[SourceFieldMapping, ...] = (
     SourceFieldMapping(column="Competition", role=SemanticRole.COMPETITION_NAME),
     SourceFieldMapping(column="Season", role=SemanticRole.SEASON_LABEL),
-    SourceFieldMapping(
-        column="Date", role=SemanticRole.KICKOFF_DATE, date_format="%Y-%m-%d"
-    ),
+    SourceFieldMapping(column="Date", role=SemanticRole.KICKOFF_DATE, date_format="%Y-%m-%d"),
     SourceFieldMapping(column="Kickoff", role=SemanticRole.KICKOFF),
     SourceFieldMapping(column="Round", role=SemanticRole.ROUND_NUMBER),
     SourceFieldMapping(column="HomeTeam", role=SemanticRole.HOME_TEAM_NAME),
@@ -113,9 +111,7 @@ async def _assinatura_da_execucao(
             """,
             _uuid.UUID(run_id),
         )
-    return [
-        tuple(linha) if com_alternativas else tuple(linha)[:-1] for linha in linhas
-    ]
+    return [tuple(linha) if com_alternativas else tuple(linha)[:-1] for linha in linhas]
 
 
 async def _preparar(
@@ -378,11 +374,7 @@ class TestBatchingNaoMudaSemantica:
 
         assert assinaturas[250], "a execução não produziu decisão nenhuma"
         divergentes = {
-            lote: sum(
-                1
-                for a, b in zip(assinaturas[250], assinaturas[lote], strict=True)
-                if a != b
-            )
+            lote: sum(1 for a, b in zip(assinaturas[250], assinaturas[lote], strict=True) if a != b)
             for lote in (1_000, 5_000)
         }
         _relatar(

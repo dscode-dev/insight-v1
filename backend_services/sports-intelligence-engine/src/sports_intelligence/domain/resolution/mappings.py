@@ -134,15 +134,10 @@ class ProviderEntityMapping:
 
     def __str__(self) -> str:
         janela = "" if self.is_current else f" (até {self.valid_to})"
-        return (
-            f"{self.provider_id}:{self.provider_entity_id} → "
-            f"{self.canonical_entity_id}{janela}"
-        )
+        return f"{self.provider_id}:{self.provider_entity_id} → {self.canonical_entity_id}{janela}"
 
 
-def mapping_lookup_key(
-    provider: ProviderId, entity_type: SubjectType, external_id: str
-) -> str:
+def mapping_lookup_key(provider: ProviderId, entity_type: SubjectType, external_id: str) -> str:
     """A mesma chave, para quem ainda não tem o mapeamento em mãos."""
     return f"{provider}|{entity_type}|{external_id.strip()}"
 

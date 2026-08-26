@@ -98,12 +98,8 @@ class TestReconstrucaoDeReferencia:
         assert (fora.yellow_cards, fora.dismissals) == (0, 1)
 
     def test_o_estado_de_referencia_nao_tem_problema_degradante(self) -> None:
-        resultado = construir(
-            entrada(odds=(cotacao(-60.0),)), as_of=corte(conhecimento=63)
-        )
-        degradantes = [
-            i for i in resultado.issues if i.severity is StateIssueSeverity.DEGRADED
-        ]
+        resultado = construir(entrada(odds=(cotacao(-60.0),)), as_of=corte(conhecimento=63))
+        degradantes = [i for i in resultado.issues if i.severity is StateIssueSeverity.DEGRADED]
         assert degradantes == []
 
     def test_o_estado_carrega_o_contexto_publicado(self) -> None:
@@ -123,9 +119,7 @@ class TestCausalidade:
         estado = construir().state
         assert estado.events.effective_count == len(passado())
         assert estado.provenance.effective_events.count == len(passado())
-        assert id_de(GOL_CASA_70) not in {
-            c.reference for c in estado.provenance.score.sample
-        }
+        assert id_de(GOL_CASA_70) not in {c.reference for c in estado.provenance.score.sample}
 
     def test_o_corte_pre_jogo_nao_ve_nenhum_evento(self) -> None:
         """§81 — antes do apito, o placar é 0-0 OBSERVADO, e não desconhecido."""
@@ -138,18 +132,14 @@ class TestCausalidade:
         assert casa.size == 11
 
     def test_o_corte_pos_jogo_ve_a_partida_inteira(self) -> None:
-        estado = construir(
-            as_of=FeatureAsOf.at(PARTIDA, Period.FULL_TIME, 90)
-        ).state
+        estado = construir(as_of=FeatureAsOf.at(PARTIDA, Period.FULL_TIME, 90)).state
         assert (estado.score.home, estado.score.away) == (2, 1)
         assert estado.events.effective_count == len(historia())
 
     def test_o_corte_de_outra_partida_e_recusado(self) -> None:
         outra = MatchId.derive("pr052", "outra-partida")
         with pytest.raises(ValidationError, match="o corte é de"):
-            HistoricalMatchStateBuilder(
-                policy=TemporalAvailabilityPolicy.default()
-            ).build(
+            HistoricalMatchStateBuilder(policy=TemporalAvailabilityPolicy.default()).build(
                 entrada(),
                 as_of=FeatureAsOf.at(outra, Period.SECOND_HALF, 63),
                 source=origem_completa(),
@@ -158,9 +148,7 @@ class TestCausalidade:
     def test_evento_de_outra_partida_na_entrada_e_erro(self) -> None:
         """§113 — filtrar em silêncio produziria um jogo que não aconteceu."""
         outra = MatchId.derive("pr052", "outra-partida")
-        intruso = evento(
-            "intruso", tipo=EventType.GOAL, minuto=10, time=CASA, match_id=outra
-        )
+        intruso = evento("intruso", tipo=EventType.GOAL, minuto=10, time=CASA, match_id=outra)
         with pytest.raises(ValidationError, match="é da partida"):
             entrada(eventos=(*passado(), intruso))
 
@@ -253,9 +241,7 @@ class TestCobertura:
 
     def test_jogador_nos_dois_times_degrada_o_campo_e_preserva_o_placar(self) -> None:
         """§26, §106 — o defeito é do elenco, e o placar não depende dele."""
-        cruzada = escalacoes(
-            titulares_fora=(CASA_TITULARES[0], *FORA_TITULARES[1:])
-        )
+        cruzada = escalacoes(titulares_fora=(CASA_TITULARES[0], *FORA_TITULARES[1:]))
         resultado = construir(entrada(lineups=cruzada, eventos=passado()))
         assert StateIssueCode.PLAYER_IN_BOTH_TEAMS in codigos(resultado)
         assert not resultado.state.on_field.is_available
@@ -394,9 +380,11 @@ class TestImpressao:
     def test_corpus_diferente_muda_a_impressao(self) -> None:
         """§8, §70 — dois estados só são comparáveis sob o mesmo corpus."""
         outro = origem(families=TODAS_AS_FAMILIAS, fingerprint="b" * 64)
-        estado = HistoricalMatchStateBuilder(
-            policy=TemporalAvailabilityPolicy.default()
-        ).build(entrada(), as_of=corte(), source=outro).state
+        estado = (
+            HistoricalMatchStateBuilder(policy=TemporalAvailabilityPolicy.default())
+            .build(entrada(), as_of=corte(), source=outro)
+            .state
+        )
         assert estado.fingerprint != construir().state.fingerprint
 
     def test_politica_diferente_muda_a_impressao(self) -> None:
@@ -420,9 +408,7 @@ class TestImpressao:
 class TestParcialidade:
     def test_o_estado_completo_nao_e_parcial(self) -> None:
         """Todos os componentes afirmáveis — o único caso em que ele é inteiro."""
-        estado = construir(
-            entrada(odds=(cotacao(-60.0),)), as_of=corte(conhecimento=63)
-        ).state
+        estado = construir(entrada(odds=(cotacao(-60.0),)), as_of=corte(conhecimento=63)).state
         assert not estado.is_partial
 
     def test_familia_nao_publicada_torna_o_estado_parcial(self) -> None:

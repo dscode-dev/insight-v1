@@ -25,18 +25,35 @@ APPS = RAIZ / "apps"
 #: Pacotes que o domínio, features e engines não podem conhecer.
 INFRA_EXTERNA = frozenset(
     {
-        "fastapi", "starlette", "uvicorn",
-        "sqlalchemy", "asyncpg", "psycopg", "psycopg2",
-        "redis", "aioredis",
-        "clickhouse_driver", "clickhouse_connect",
-        "boto3", "botocore", "minio", "aioboto3", "aiobotocore",
+        "fastapi",
+        "starlette",
+        "uvicorn",
+        "sqlalchemy",
+        "asyncpg",
+        "psycopg",
+        "psycopg2",
+        "redis",
+        "aioredis",
+        "clickhouse_driver",
+        "clickhouse_connect",
+        "boto3",
+        "botocore",
+        "minio",
+        "aioboto3",
+        "aiobotocore",
         "pgvector",
-        "typer", "rich",
-        "httpx", "requests", "aiohttp",
+        "typer",
+        "rich",
+        "httpx",
+        "requests",
+        "aiohttp",
         # Bibliotecas de dataframe: um domínio que as importa tem um
         # dataframe no modelo, e o modelo passa a ser desenhado pelo que é
         # fácil de ler em vez de pelo que é verdade sobre o dado.
-        "polars", "pyarrow", "pandas", "numpy",
+        "polars",
+        "pyarrow",
+        "pandas",
+        "numpy",
     }
 )
 
@@ -124,10 +141,7 @@ def code_only(caminho: Path) -> str:
             and no.end_lineno is not None
         ):
             apagar.update(range(no.lineno - 1, no.end_lineno))
-    mantidas = [
-        "" if n in apagar else linha.split("#", 1)[0]
-        for n, linha in enumerate(linhas)
-    ]
+    mantidas = ["" if n in apagar else linha.split("#", 1)[0] for n, linha in enumerate(linhas)]
     return "\n".join(mantidas).lower()
 
 

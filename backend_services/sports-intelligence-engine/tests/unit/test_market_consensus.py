@@ -83,10 +83,7 @@ class TestOsQuantis:
 
     def test_o_metodo_e_declarado_e_unico(self) -> None:
         assert list(QuantileMethod) == [QuantileMethod.LINEAR_INTERPOLATED_V1]
-        assert (
-            QuantileMethod.LINEAR_INTERPOLATED_V1.value
-            == "LINEAR_INTERPOLATED_QUANTILE_V1"
-        )
+        assert QuantileMethod.LINEAR_INTERPOLATED_V1.value == "LINEAR_INTERPOLATED_QUANTILE_V1"
 
     def test_a_ordem_da_entrada_nao_muda_o_quantil(self) -> None:
         direta = QuantileSummary([Decimal(v) for v in ("1", "2", "3", "4")])
@@ -159,9 +156,7 @@ class TestAsEspecificacoes:
             )
 
     def test_a_linha_faz_parte_do_casamento(self) -> None:
-        over = next(
-            s for s in MARKET_SPECS_V1 if s.key_fragment == "totals_over_25"
-        )
+        over = next(s for s in MARKET_SPECS_V1 if s.key_fragment == "totals_over_25")
         assert over.matches(market="TOTAL_GOALS", selection="OVER", line="2.5")
         assert not over.matches(market="TOTAL_GOALS", selection="OVER", line="3.5")
 
@@ -169,14 +164,9 @@ class TestAsEspecificacoes:
 class TestOConsenso:
     def test_quatro_casas_dao_mediana_iqr_e_suporte(self) -> None:
         odds = estado(
-            *(
-                quote_state(f"CASA{n}", valor)
-                for n, valor in enumerate(MERCADO_COMPLETO, start=1)
-            )
+            *(quote_state(f"CASA{n}", valor) for n, valor in enumerate(MERCADO_COMPLETO, start=1))
         )
-        consenso = compute_consensus(
-            odds, mercado_1x2_home(), policy=MarketConsensusPolicy()
-        )
+        consenso = compute_consensus(odds, mercado_1x2_home(), policy=MarketConsensusPolicy())
         assert consenso.support == 4
         assert consenso.median == MEDIANA_ESPERADA
         assert consenso.q1 == Q1_ESPERADO
@@ -186,9 +176,7 @@ class TestOConsenso:
     def test_uma_casa_da_mediana_e_nao_da_dispersao(self) -> None:
         """§62, §69 — uma cotação não prova que o mercado é unânime."""
         odds = estado(quote_state("CASA1", "2.00"))
-        consenso = compute_consensus(
-            odds, mercado_1x2_home(), policy=MarketConsensusPolicy()
-        )
+        consenso = compute_consensus(odds, mercado_1x2_home(), policy=MarketConsensusPolicy())
         assert consenso.support == 1
         assert consenso.median == Decimal("2")
         assert consenso.iqr is None
@@ -196,19 +184,14 @@ class TestOConsenso:
     def test_quatro_casas_iguais_dao_dispersao_zero_observada(self) -> None:
         """§70 — aqui o zero é um FATO sobre o mercado."""
         odds = estado(*(quote_state(f"CASA{n}", "2.00") for n in range(1, 5)))
-        consenso = compute_consensus(
-            odds, mercado_1x2_home(), policy=MarketConsensusPolicy()
-        )
+        consenso = compute_consensus(odds, mercado_1x2_home(), policy=MarketConsensusPolicy())
         assert consenso.iqr == Decimal(0)
         assert consenso.support == 4
 
     def test_a_ordem_das_casas_nao_muda_nada(self) -> None:
         """§169, §170 — nada depende da ordem do banco."""
         direta = estado(
-            *(
-                quote_state(f"CASA{n}", valor)
-                for n, valor in enumerate(MERCADO_COMPLETO, start=1)
-            )
+            *(quote_state(f"CASA{n}", valor) for n, valor in enumerate(MERCADO_COMPLETO, start=1))
         )
         invertida = estado(
             *reversed(
@@ -237,9 +220,7 @@ class TestOConsenso:
             quote_state("CASA1", "2.00", selection="HOME"),
             quote_state("CASA1", "3.40", selection="DRAW"),
         )
-        consenso = compute_consensus(
-            odds, mercado_1x2_home(), policy=MarketConsensusPolicy()
-        )
+        consenso = compute_consensus(odds, mercado_1x2_home(), policy=MarketConsensusPolicy())
         assert consenso.support == 1
         assert consenso.median == Decimal("2")
 
@@ -302,9 +283,7 @@ class TestAsFeaturesDeMercado:
         from tests.support.v2_fixtures import extrair_v2
 
         snapshot = extrair_v2()
-        assert snapshot.value_of("market_1x2_home_median").numeric == float(
-            MEDIANA_ESPERADA
-        )
+        assert snapshot.value_of("market_1x2_home_median").numeric == float(MEDIANA_ESPERADA)
         assert snapshot.value_of("market_1x2_home_iqr").numeric == float(IQR_ESPERADO)
         assert snapshot.value_of("market_1x2_home_support").numeric == 4
 

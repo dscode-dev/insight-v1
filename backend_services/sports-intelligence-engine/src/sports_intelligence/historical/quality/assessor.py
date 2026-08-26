@@ -67,9 +67,7 @@ SCORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(
     {SemanticRole.HOME_SCORE, SemanticRole.AWAY_SCORE}
 )
 
-CORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(
-    SCORE_ROLES | {SemanticRole.KICKOFF}
-)
+CORE_ROLES: Final[frozenset[SemanticRole]] = frozenset(SCORE_ROLES | {SemanticRole.KICKOFF})
 
 #: As identidades sem as quais uma partida canônica não existe (§13). Jogador
 #: NÃO está aqui, e a ausência é a decisão do §14: ele afeta as famílias que
@@ -225,11 +223,7 @@ class HistoricalQualityAssessor:
     @staticmethod
     def _cobertura_de_odds(evidence: CandidateEvidence) -> FamilyCoverage:
         conjunto = next(
-            (
-                c
-                for c in evidence.candidate.observation_sets
-                if c.kind == ODDS_OBSERVATION_KIND
-            ),
+            (c for c in evidence.candidate.observation_sets if c.kind == ODDS_OBSERVATION_KIND),
             None,
         )
         if conjunto is None or not len(conjunto):
@@ -333,9 +327,7 @@ class HistoricalQualityAssessor:
         achados.extend(self._problemas_de_licenca(footprint, alvo))
         return tuple(achados)
 
-    def _problemas_de_linhagem(
-        self, evidence: CandidateEvidence, alvo: str
-    ) -> list[QualityIssue]:
+    def _problemas_de_linhagem(self, evidence: CandidateEvidence, alvo: str) -> list[QualityIssue]:
         """A linhagem quebrada é bloqueante porque o corpus inteiro se
         justifica por ser rastreável (§47, §48).
 
@@ -348,9 +340,7 @@ class HistoricalQualityAssessor:
             return []
         problemas: list[QualityIssue] = []
         if not evidence.candidate.group_id.strip():
-            problemas.append(
-                QualityIssue.of(IssueCode.BROKEN_LINEAGE, alvo, motivo="sem grupo")
-            )
+            problemas.append(QualityIssue.of(IssueCode.BROKEN_LINEAGE, alvo, motivo="sem grupo"))
         sem_procedencia = [
             str(contribuicao.record_ref)
             for campo in evidence.candidate.fields
@@ -400,14 +390,10 @@ class HistoricalQualityAssessor:
                         IssueCode.MISSING_REQUIRED_IDENTITY, alvo, identity=sujeito.value
                     )
                 )
-        for sujeito, valor in sorted(
-            identidades.by_subject.items(), key=lambda p: p[0].value
-        ):
+        for sujeito, valor in sorted(identidades.by_subject.items(), key=lambda p: p[0].value):
             if valor <= 0.0:
                 problemas.append(
-                    QualityIssue.of(
-                        IssueCode.UNRESOLVED_IDENTITY, alvo, identity=sujeito.value
-                    )
+                    QualityIssue.of(IssueCode.UNRESOLVED_IDENTITY, alvo, identity=sujeito.value)
                 )
         for rascunho in evidence.lineup_drafts:
             if rascunho.unresolved:
@@ -426,9 +412,7 @@ class HistoricalQualityAssessor:
         return problemas
 
     @staticmethod
-    def _problemas_de_conflito(
-        evidence: CandidateEvidence, alvo: str
-    ) -> list[QualityIssue]:
+    def _problemas_de_conflito(evidence: CandidateEvidence, alvo: str) -> list[QualityIssue]:
         """SÓ O NÚCLEO VIRA PROBLEMA DE QUALIDADE (§45, §46).
 
         Um conflito de placar significa que uma das fontes está errada sobre
@@ -465,17 +449,14 @@ class HistoricalQualityAssessor:
                 problemas.append(
                     QualityIssue.of(
                         IssueCode.NEGATIVE_OBSERVED_VALUE,
-                        f"{evidence.candidate.canonical_match_id}:"
-                        f"{campo.field_name.value}",
+                        f"{evidence.candidate.canonical_match_id}:{campo.field_name.value}",
                         value=campo.selected_value[:64],
                     )
                 )
         return problemas
 
     @staticmethod
-    def _problemas_de_licenca(
-        footprint: LicenseFootprint, alvo: str
-    ) -> list[QualityIssue]:
+    def _problemas_de_licenca(footprint: LicenseFootprint, alvo: str) -> list[QualityIssue]:
         """A licença aparece no MESMO relatório e NÃO é qualidade (§16, §30).
 
         A dimensão afetada destes dois códigos é `None`, e é assim que o tipo
@@ -483,20 +464,14 @@ class HistoricalQualityAssessor:
         elegibilidade de uso, que roda ao lado com veredito próprio.
         """
         problemas: list[QualityIssue] = []
-        for familia, licencas in sorted(
-            footprint.by_family.items(), key=lambda p: p[0].value
-        ):
+        for familia, licencas in sorted(footprint.by_family.items(), key=lambda p: p[0].value):
             if LicenseClass.RESEARCH_ONLY in licencas:
                 problemas.append(
-                    QualityIssue.of(
-                        IssueCode.LICENSE_RESTRICTED, f"{alvo}:{familia.value}"
-                    )
+                    QualityIssue.of(IssueCode.LICENSE_RESTRICTED, f"{alvo}:{familia.value}")
                 )
             if LicenseClass.UNKNOWN in licencas:
                 problemas.append(
-                    QualityIssue.of(
-                        IssueCode.LICENSE_UNKNOWN, f"{alvo}:{familia.value}"
-                    )
+                    QualityIssue.of(IssueCode.LICENSE_UNKNOWN, f"{alvo}:{familia.value}")
                 )
         return problemas
 
@@ -531,21 +506,18 @@ class HistoricalQualityAssessor:
         candidato = evidence.candidate
         campos = candidato.fields
         contribuicoes = [c for campo in campos for c in campo.contributions]
-        com_procedencia = sum(
-            1 for c in contribuicoes if str(c.record_ref).strip()
-        )
-        nucleo_total = sum(
-            1 for campo in campos if campo.field_name in CORE_ROLES
-        )
+        com_procedencia = sum(1 for c in contribuicoes if str(c.record_ref).strip())
+        nucleo_total = sum(1 for campo in campos if campo.field_name in CORE_ROLES)
         nucleo_em_conflito = sum(
             1 for campo in candidato.unresolved_conflicts if campo.field_name in CORE_ROLES
         )
-        placar_presente = sum(
-            1 for papel in SCORE_ROLES if _tem_valor(candidato, papel)
-        )
+        placar_presente = sum(1 for papel in SCORE_ROLES if _tem_valor(candidato, papel))
         return QualityVector(
-            integrity=_zero_se(problemas, IssueCode.MISSING_REQUIRED_IDENTITY,
-                               IssueCode.DANGLING_CANONICAL_REFERENCE),
+            integrity=_zero_se(
+                problemas,
+                IssueCode.MISSING_REQUIRED_IDENTITY,
+                IssueCode.DANGLING_CANONICAL_REFERENCE,
+            ),
             consistency=_fracao(nucleo_total - nucleo_em_conflito, nucleo_total),
             completeness=_fracao(placar_presente, len(SCORE_ROLES)),
             identity_confidence=identidades.aggregate,
@@ -586,8 +558,7 @@ class HistoricalQualityAssessor:
                 {
                     family_of(campo.field_name)
                     for campo in evidence.candidate.unresolved_conflicts
-                    if campo.field_name not in CORE_ROLES
-                    and not campo.field_name.is_identity_label
+                    if campo.field_name not in CORE_ROLES and not campo.field_name.is_identity_label
                 },
                 key=lambda f: f.value,
             )

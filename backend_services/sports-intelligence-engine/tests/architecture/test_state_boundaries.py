@@ -69,8 +69,7 @@ PACOTES_FUTUROS = (
 
 def texto_do_estado() -> list[tuple[str, str]]:
     return [
-        (arquivo.name, arquivo.read_text(encoding="utf-8").lower())
-        for arquivo in files_in(ESTADO)
+        (arquivo.name, arquivo.read_text(encoding="utf-8").lower()) for arquivo in files_in(ESTADO)
     ]
 
 
@@ -154,9 +153,7 @@ class TestOEstadoNaoCalculaFeature:
 
     def test_o_estado_nao_chama_calculador_de_feature(self) -> None:
         """§169 — a relação é a inversa: o estado alimenta as features."""
-        violacoes = internal_violations(
-            files_in(ESTADO), ("sports_intelligence.ports.features",)
-        )
+        violacoes = internal_violations(files_in(ESTADO), ("sports_intelligence.ports.features",))
         assert not violacoes, str(violacoes)
 
 
@@ -263,9 +260,16 @@ class TestOContratoEExecutavel:
         modulos = {imp.module for imp in imports_of(port)}
         assert not {m for m in modulos if m.startswith(("asyncpg", "sports_intelligence.adapters"))}
 
-    def test_este_pr_nao_traz_migracao(self) -> None:
-        """§94, §183 — reconstrução não grava, e por isso não muda o esquema."""
-        migracoes = sorted(
-            p.name for p in (FONTE.parent.parent / "migrations").glob("*.sql")
-        )
-        assert migracoes[-1] == "0011_event_corpus_membership.sql", migracoes[-3:]
+    def test_nenhuma_migration_guarda_estado_de_partida(self) -> None:
+        """§94, §183 — reconstrução não grava, e por isso não cria tabela.
+
+        A FORMA DA GUARDA MUDOU NO PR-05.5.1, e o sentido não. «A última
+        migration é a 0011» era um jeito indireto de dizer «o PR-05.2 não
+        trouxe migration»; a `0012` é do PR-05.5.1 e é legítima. O que se
+        protege é o ADR-0031: nenhuma tabela armazena `HistoricalMatchState`.
+        """
+        proibidas = ("match_state", "historical_match_states", "match_snapshots")
+        for arquivo in sorted((FONTE.parent.parent / "migrations").glob("*.sql")):
+            sql = arquivo.read_text(encoding="utf-8").lower()
+            for termo in proibidas:
+                assert f"create table {termo}" not in sql, f"{arquivo.name}: {termo}"

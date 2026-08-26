@@ -120,14 +120,10 @@ class TestQualidadeEConstrucaoEmVolume:
 
         async with contando_consultas(banco_semeado) as consultas_do_build:
             with medindo("construção canônica") as construcao:
-                saida_do_build = await contêiner.build_for(
-                    DEFAULT_RESEARCH_BUILD_POLICY
-                ).execute(
+                saida_do_build = await contêiner.build_for(DEFAULT_RESEARCH_BUILD_POLICY).execute(
                     actor=CONSTRUTOR,
                     quality_run_id=saida_da_qualidade.run.id,
-                    batches=candidate_batches(
-                        candidates=candidatos, batch_size=LOTE
-                    ),
+                    batches=candidate_batches(candidates=candidatos, batch_size=LOTE),
                 )
 
         partidas = saida_da_qualidade.run.counts.records_examined
@@ -137,8 +133,7 @@ class TestQualidadeEConstrucaoEmVolume:
         _relatar(
             f"PR-04.2 · {REGISTROS:_} registros → {partidas:_} partidas",
             [
-                f"remontagem       {remontagem.segundos:.1f}s · "
-                f"pico {remontagem.pico_mb:.0f} MB",
+                f"remontagem       {remontagem.segundos:.1f}s · pico {remontagem.pico_mb:.0f} MB",
                 f"avaliação        {avaliacao.segundos:.1f}s · "
                 f"{avaliacao.por_segundo(max(partidas, 1)):.0f} partidas/s · "
                 f"pico {avaliacao.pico_mb:.0f} MB",

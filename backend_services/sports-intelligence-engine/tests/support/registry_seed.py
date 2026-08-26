@@ -50,9 +50,7 @@ async def limpar_execucoes(database: Database) -> None:
     teste custaria segundos por teste, e o que se quer isolar é o DADO.
     """
     async with database.acquire() as conexao:
-        await conexao.execute(
-            f"TRUNCATE {', '.join(TABELAS_DE_EXECUCAO)} RESTART IDENTITY CASCADE"
-        )
+        await conexao.execute(f"TRUNCATE {', '.join(TABELAS_DE_EXECUCAO)} RESTART IDENTITY CASCADE")
 
 
 async def seed_corpus(database: Database, corpus: Corpus) -> None:

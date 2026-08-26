@@ -153,9 +153,7 @@ class BuildHistoricalMatchStates:
                 if entrada is None:
                     continue
                 for corte in as_of_of(partida):
-                    resultado = construtor.build(
-                        entrada, as_of=corte, source=source_corpus
-                    )
+                    resultado = construtor.build(entrada, as_of=corte, source=source_corpus)
                     construidos += 1
                     if resultado.is_partial:
                         parciais += 1
@@ -175,5 +173,3 @@ class BuildHistoricalMatchStates:
 def _contar(destino: dict[str, int], issues: Sequence[StateIssue]) -> None:
     for problema in issues:
         destino[problema.code.value] = destino.get(problema.code.value, 0) + 1
-
-

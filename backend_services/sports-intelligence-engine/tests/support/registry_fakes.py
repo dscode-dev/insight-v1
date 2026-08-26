@@ -128,9 +128,7 @@ class FakeDatasetFileRepository:
         dataset = self._datasets.datasets.get(dataset_id)
         if dataset is None:
             return
-        do_dataset = tuple(
-            f for f in self.files.values() if f.dataset_id == dataset_id
-        )
+        do_dataset = tuple(f for f in self.files.values() if f.dataset_id == dataset_id)
         self._datasets.datasets[dataset_id] = dataset.with_files(do_dataset)
 
     async def register_intent(self, file: DatasetFile) -> DatasetFile:
@@ -166,9 +164,7 @@ class FakeDatasetFileRepository:
     async def by_content(self, dataset_id: DatasetId, sha256: str) -> DatasetFile | None:
         return self.files.get(f"{dataset_id}:{sha256}")
 
-    async def record_inspection(
-        self, file_id: str, *, row_count: int, column_count: int
-    ) -> None:
+    async def record_inspection(self, file_id: str, *, row_count: int, column_count: int) -> None:
         for chave, arquivo in self.files.items():
             if str(arquivo.id) == file_id:
                 self.files[chave] = arquivo.with_inspection(
@@ -221,9 +217,7 @@ class FakeManifestRepository:
         return do_dataset[-1] if do_dataset else None
 
     async def by_fingerprint(self, fingerprint: str) -> DatasetManifest | None:
-        return next(
-            (m for m in self.manifests if m.fingerprint.value == fingerprint), None
-        )
+        return next((m for m in self.manifests if m.fingerprint.value == fingerprint), None)
 
 
 @final

@@ -122,9 +122,7 @@ class CanonicalRegistryPort(Protocol):
 
     async def seasons_of(self, competitions: Sequence[CompetitionId]) -> Sequence[Season]: ...
 
-    async def teams_by_normalized_names(
-        self, normalized: Sequence[str]
-    ) -> Sequence[Team]: ...
+    async def teams_by_normalized_names(self, normalized: Sequence[str]) -> Sequence[Team]: ...
 
     async def teams_by_ids(self, ids: Sequence[TeamId]) -> Sequence[Team]: ...
 
@@ -150,9 +148,7 @@ class CanonicalRegistryPort(Protocol):
         """O mesmo para jogador."""
         ...
 
-    async def players_by_normalized_names(
-        self, normalized: Sequence[str]
-    ) -> Sequence[Player]: ...
+    async def players_by_normalized_names(self, normalized: Sequence[str]) -> Sequence[Player]: ...
 
     async def tenures_of(self, players: Sequence[str]) -> Sequence[PlayerTeamTenure]:
         """Os vínculos dos candidatos, para a evidência temporal (§20)."""
@@ -187,9 +183,7 @@ class SourceMappingRepositoryPort(Protocol):
 
     async def by_id(self, mapping_id: str) -> SourceMappingDefinition | None: ...
 
-    async def history_for(
-        self, dataset_id: DatasetId
-    ) -> Sequence[SourceMappingDefinition]: ...
+    async def history_for(self, dataset_id: DatasetId) -> Sequence[SourceMappingDefinition]: ...
 
 
 @runtime_checkable
@@ -256,9 +250,7 @@ class ResolutionDecisionRepositoryPort(Protocol):
         """
         ...
 
-    async def resolved_entities_of_run(
-        self, run_id: str, subject: SubjectType
-    ) -> dict[str, str]:
+    async def resolved_entities_of_run(self, run_id: str, subject: SubjectType) -> dict[str, str]:
         """`record_ref → canonical_entity_id` das decisões RESOLVED.
 
         É O QUE A FUSÃO CONSOME. Só `RESOLVED` entra: um registro cuja
@@ -287,9 +279,7 @@ class ReviewQueueRepositoryPort(Protocol):
 
     async def by_id(self, item_id: str) -> ResolutionReviewItem | None: ...
 
-    async def update_status(
-        self, item: ResolutionReviewItem, *, expected_status: str
-    ) -> bool:
+    async def update_status(self, item: ResolutionReviewItem, *, expected_status: str) -> bool:
         """Muda o estado SE ele ainda for o esperado. `False` se não era.
 
         É o que impede dois operadores de decidirem o mesmo item em paralelo

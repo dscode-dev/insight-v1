@@ -103,12 +103,8 @@ class BuildExtendedFeatureSnapshot:
     catalog: ExtendedFeatureCatalog = field(default_factory=extended_feature_catalog)
     v1_space: FeatureSpaceDefinition = field(default_factory=match_state_raw_space_v1)
 
-    async def execute(
-        self, *, source_corpus: CorpusSource, as_of: FeatureAsOf
-    ) -> FeatureSnapshot:
-        insumos = await self.state_source.load(
-            source_corpus.version_id, [as_of.match_id]
-        )
+    async def execute(self, *, source_corpus: CorpusSource, as_of: FeatureAsOf) -> FeatureSnapshot:
+        insumos = await self.state_source.load(source_corpus.version_id, [as_of.match_id])
         entrada = insumos.get(as_of.match_id)
         if entrada is None:
             raise NotFoundError(
@@ -182,9 +178,7 @@ class BuildExtendedFeatureSnapshots:
                     continue
                 contexto_da_partida = contextos.get(partida)
                 for corte in as_of_of(partida):
-                    build = construtor.build(
-                        entrada, as_of=corte, source=source_corpus
-                    )
+                    build = construtor.build(entrada, as_of=corte, source=source_corpus)
                     snapshot = extrator.extract(
                         ExtendedFeatureExtractionContext.of(
                             build,

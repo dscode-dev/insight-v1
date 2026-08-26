@@ -85,9 +85,7 @@ def _um_corte(match_id: MatchId) -> Sequence[FeatureAsOf]:
 
 
 def _cinco_cortes(match_id: MatchId) -> Sequence[FeatureAsOf]:
-    return tuple(
-        FeatureAsOf.at(match_id, Period.SECOND_HALF, m) for m in CORTES_POR_PARTIDA
-    )
+    return tuple(FeatureAsOf.at(match_id, Period.SECOND_HALF, m) for m in CORTES_POR_PARTIDA)
 
 
 async def _publicar(cenario: dict[str, Any]) -> tuple[Any, Any]:  # noqa: F811
@@ -103,9 +101,7 @@ async def _publicar(cenario: dict[str, Any]) -> tuple[Any, Any]:  # noqa: F811
         audit=pipeline.audit,
         store=cenario["store"],
     )
-    versao = await contêiner.publish_version.execute(
-        actor=PUBLICADOR, version_id=saida.version.id
-    )
+    versao = await contêiner.publish_version.execute(actor=PUBLICADOR, version_id=saida.version.id)
     assert versao.status is DatasetVersionStatus.READY
     return versao, saida.manifest
 
@@ -177,9 +173,7 @@ class TestOSnapshotEmVolume:
                     source=fonte,
                     policy=TemporalAvailabilityPolicy.default(),
                     batch_size=LOTE,
-                ).execute(
-                    source_corpus=origem, match_ids=partidas, as_of_of=_um_corte
-                )
+                ).execute(source_corpus=origem, match_ids=partidas, as_of_of=_um_corte)
 
         # ---- determinismo sob lotes diferentes -----------------------------
         estreito = await caso(batch_size=97).execute(

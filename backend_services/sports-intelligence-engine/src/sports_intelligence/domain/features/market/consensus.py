@@ -155,9 +155,7 @@ def compute_consensus(
     uma segunda regra temporal, que divergiria da primeira no caso difícil.
     """
     elegiveis = tuple(
-        q
-        for q in odds.quotes
-        if spec.matches(market=q.market, selection=q.selection, line=q.line)
+        q for q in odds.quotes if spec.matches(market=q.market, selection=q.selection, line=q.line)
     )
     if not elegiveis:
         return MarketConsensus(spec=spec)
@@ -195,9 +193,7 @@ def _para_decimal(quote: OddsQuoteState) -> Decimal:
     try:
         valor = Decimal(quote.decimal_odds)
     except InvalidOperation as erro:  # pragma: no cover - o estado já valida
-        raise ValidationError(
-            f"cotação não decimal no estado: {quote.decimal_odds!r}"
-        ) from erro
+        raise ValidationError(f"cotação não decimal no estado: {quote.decimal_odds!r}") from erro
     if valor <= 0:
         # §68 — cotação decimal zero ou negativa não existe no domínio. Ela não
         # é «ausente»: é um dado inválido que chegou onde só há válidos.

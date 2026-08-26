@@ -39,7 +39,7 @@ class TestOCicloNormal:
             assert can_transition(atual, seguinte), f"{atual} -> {seguinte}"
 
     def test_toda_transicao_registra_o_motivo(self) -> None:
-        """"Por que esta partida virou DATA_INVALID às 03:14?" é a primeira
+        """ "Por que esta partida virou DATA_INVALID às 03:14?" é a primeira
         pergunta de todo incidente."""
         t = transition_to(
             MatchLifecycle.LIVE,
@@ -52,9 +52,7 @@ class TestOCicloNormal:
 
     def test_motivo_vazio_e_recusado(self) -> None:
         with pytest.raises(ValueError, match="motivo"):
-            transition_to(
-                MatchLifecycle.SCHEDULED, MatchLifecycle.PRE_MATCH, at=AGORA, reason="  "
-            )
+            transition_to(MatchLifecycle.SCHEDULED, MatchLifecycle.PRE_MATCH, at=AGORA, reason="  ")
 
 
 class TestTransicoesProibidas:
@@ -62,9 +60,7 @@ class TestTransicoesProibidas:
         """Ir de agendada direto para ao vivo pula a janela pré-jogo, onde o
         contexto e o mercado são coletados."""
         with pytest.raises(IllegalTransitionError):
-            transition_to(
-                MatchLifecycle.SCHEDULED, MatchLifecycle.LIVE, at=AGORA, reason="x"
-            )
+            transition_to(MatchLifecycle.SCHEDULED, MatchLifecycle.LIVE, at=AGORA, reason="x")
 
     def test_cancelada_nao_volta(self) -> None:
         for alvo in MatchLifecycle:
@@ -78,12 +74,10 @@ class TestTransicoesProibidas:
         assert MatchLifecycle.HISTORICAL_ACTIVE.is_terminal
 
     def test_o_erro_lista_o_que_era_possivel(self) -> None:
-        """"Transição inválida" manda quem lê procurar o grafo; listar os
+        """ "Transição inválida" manda quem lê procurar o grafo; listar os
         alvos permitidos resolve na mesma linha."""
         with pytest.raises(IllegalTransitionError) as erro:
-            transition_to(
-                MatchLifecycle.DISCOVERED, MatchLifecycle.LIVE, at=AGORA, reason="x"
-            )
+            transition_to(MatchLifecycle.DISCOVERED, MatchLifecycle.LIVE, at=AGORA, reason="x")
         assert "allowed" in erro.value.context
         assert "SCHEDULED" in erro.value.context["allowed"]
 

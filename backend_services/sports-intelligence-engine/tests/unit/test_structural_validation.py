@@ -87,14 +87,12 @@ class TestInspecaoDeCSV:
         assert por_nome["HomeTeam"] is DetectedType.STRING
 
     def test_linha_irregular_e_localizada_pela_linha(self, tmp_path: Path) -> None:
-        """"linha 3 tem 2 campos e o cabeçalho tem 5" manda alguém ao lugar
+        """ "linha 3 tem 2 campos e o cabeçalho tem 5" manda alguém ao lugar
         certo. "Erro de parsing" manda alguém abrir cem mil linhas."""
         arquivo = tmp_path / "e0.csv"
         arquivo.write_text(CSV_BOM + "2019-08-11,Arsenal\n", encoding="utf-8")
         r = inspect_csv(arquivo, file_id="f1", max_rows=1000)
-        problemas = [
-            i for i in r.issues if i.code is IssueCode.INCONSISTENT_FIELD_COUNT
-        ]
+        problemas = [i for i in r.issues if i.code is IssueCode.INCONSISTENT_FIELD_COUNT]
         assert problemas
         assert problemas[0].location == "linha 4"
 
@@ -149,9 +147,7 @@ class TestInspecaoDeCSV:
 
     def test_limite_de_linhas_interrompe_a_leitura(self, tmp_path: Path) -> None:
         arquivo = tmp_path / "grande.csv"
-        arquivo.write_text(
-            "a,b\n" + "1,2\n" * 500, encoding="utf-8"
-        )
+        arquivo.write_text("a,b\n" + "1,2\n" * 500, encoding="utf-8")
         r = inspect_csv(arquivo, file_id="f1", max_rows=10)
         assert IssueCode.ROW_LIMIT_EXCEEDED.value in _codigos(r)
 
@@ -205,9 +201,7 @@ class TestInspecaoDeJSONL:
         problemas = [i for i in r.issues if "aninhamento" in i.message]
         assert problemas
 
-    def test_chave_de_string_com_chaves_nao_conta_como_aninhamento(
-        self, tmp_path: Path
-    ) -> None:
+    def test_chave_de_string_com_chaves_nao_conta_como_aninhamento(self, tmp_path: Path) -> None:
         """Um `{` num nome de time não é abertura de objeto. Contá-lo
         produziria recusa falsa."""
         arquivo = tmp_path / "chaves.jsonl"
@@ -376,9 +370,7 @@ class TestValidacaoDoDatasetInteiro:
         assert IssueCode.OBJECT_MISSING.value in {i.code.value for i in relatorio.issues}
         assert relatorio.has_blocking_issues
 
-    async def test_conteudo_duplicado_entre_arquivos_e_impeditivo(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_conteudo_duplicado_entre_arquivos_e_impeditivo(self, tmp_path: Path) -> None:
         validador, archive = self._ambiente(tmp_path)
         base = self._dataset()
         a = await self._gravar(archive, base, CSV_BOM.encode(), "e0.csv")
@@ -386,9 +378,7 @@ class TestValidacaoDoDatasetInteiro:
         relatorio = await validador.validate(base.with_files((a, b)))
         assert IssueCode.DUPLICATE_CONTENT.value in {i.code.value for i in relatorio.issues}
 
-    async def test_divergencia_de_schema_entre_arquivos_e_so_aviso(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_divergencia_de_schema_entre_arquivos_e_so_aviso(self, tmp_path: Path) -> None:
         """Um dataset de vinte temporadas costuma ter a temporada em que a
         fonte passou a publicar xG com uma coluna a mais. Legítimo — e não
         pode passar despercebido."""
@@ -406,9 +396,7 @@ class TestValidacaoDoDatasetInteiro:
         b = await self._gravar(archive, base, com_xg.encode(), "e1.csv")
         relatorio = await validador.validate(base.with_files((a, b)))
         divergencias = [
-            i
-            for i in relatorio.issues
-            if i.code is IssueCode.SCHEMA_DIVERGENCE_BETWEEN_FILES
+            i for i in relatorio.issues if i.code is IssueCode.SCHEMA_DIVERGENCE_BETWEEN_FILES
         ]
         assert divergencias
         assert divergencias[0].severity is IssueSeverity.WARNING
@@ -421,9 +409,7 @@ class TestValidacaoDoDatasetInteiro:
         contrato = DatasetSchemaContract(required_columns=frozenset({"Referee"}))
         relatorio = await validador.validate(base.with_files((arquivo,)), contract=contrato)
         assert relatorio.has_blocking_issues
-        assert IssueCode.MISSING_REQUIRED_COLUMN.value in {
-            i.code.value for i in relatorio.issues
-        }
+        assert IssueCode.MISSING_REQUIRED_COLUMN.value in {i.code.value for i in relatorio.issues}
 
     async def test_arquivo_pendente_nao_entra_na_validacao(self, tmp_path: Path) -> None:
         """`stored_files` e não `files`: uma promessa não é evidência."""
@@ -444,9 +430,7 @@ class TestValidacaoDoDatasetInteiro:
         relatorio = await validador.validate(base.with_files((confirmado, pendente)))
         assert relatorio.files_checked == 1
 
-    async def test_jsonl_e_parquet_tem_cobertura_no_fluxo_inteiro(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_jsonl_e_parquet_tem_cobertura_no_fluxo_inteiro(self, tmp_path: Path) -> None:
         import pyarrow as pa
         import pyarrow.parquet as pq
 

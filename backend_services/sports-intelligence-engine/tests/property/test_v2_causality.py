@@ -107,9 +107,7 @@ class TestOContextoEcausal:
     def test_o_resultado_da_partida_atual_nao_muda_o_contexto(self) -> None:
         """§165."""
         sem = extrair_v2(entrada_v2(result=None))
-        com = extrair_v2(
-            entrada_v2(result=MatchResult(regular_time=Score(home=9, away=0)))
-        )
+        com = extrair_v2(entrada_v2(result=MatchResult(regular_time=Score(home=9, away=0))))
         assert valores(com, CHAVES_DE_CONTEXTO) == valores(sem, CHAVES_DE_CONTEXTO)
 
     def test_o_contexto_e_o_mesmo_em_todos_os_cortes(self) -> None:
@@ -120,9 +118,7 @@ class TestOContextoEcausal:
             corte(63, conhecimento=63),
             corte(80, conhecimento=80),
         ]
-        referencia = valores(
-            extrair_v2(as_of=cortes[0]), CHAVES_DE_CONTEXTO
-        )
+        referencia = valores(extrair_v2(as_of=cortes[0]), CHAVES_DE_CONTEXTO)
         for alvo in cortes[1:]:
             assert valores(extrair_v2(as_of=alvo), CHAVES_DE_CONTEXTO) == referencia
 
@@ -167,9 +163,10 @@ class TestOContextoEcausal:
         sem = extrair_v2(
             contexto=contexto_de_partida(casa=((KICKOFF_A, MATCH_A), (KICKOFF_B, MATCH_B)))
         )
-        assert com.value_of("ctx_same_comp_prev_gap_hours_home").numeric != sem.value_of(
-            "ctx_same_comp_prev_gap_hours_home"
-        ).numeric
+        assert (
+            com.value_of("ctx_same_comp_prev_gap_hours_home").numeric
+            != sem.value_of("ctx_same_comp_prev_gap_hours_home").numeric
+        )
         assert com.value_of("ctx_same_comp_matches_14d_home").numeric == 1
         assert sem.value_of("ctx_same_comp_matches_14d_home").numeric == 0
 
@@ -180,12 +177,8 @@ class TestOContextoEcausal:
             for d in (dias, dias + 3, dias + 9)
         )
         direta = extrair_v2(contexto=contexto_de_partida(casa=anteriores))
-        invertida = extrair_v2(
-            contexto=contexto_de_partida(casa=tuple(reversed(anteriores)))
-        )
-        assert valores(invertida, CHAVES_DE_CONTEXTO) == valores(
-            direta, CHAVES_DE_CONTEXTO
-        )
+        invertida = extrair_v2(contexto=contexto_de_partida(casa=tuple(reversed(anteriores))))
+        assert valores(invertida, CHAVES_DE_CONTEXTO) == valores(direta, CHAVES_DE_CONTEXTO)
 
 
 # ------------------------------------------------------------------ §215 --
@@ -197,9 +190,7 @@ class TestOMercadoEcausal:
     def test_cotacoes_futuras_nao_mudam_o_mercado(self) -> None:
         """§174 — a cotação vista aos 80 não existe num snapshot de 63."""
         alvo = corte(63, conhecimento=63)
-        so_passado = extrair_v2(
-            entrada_v2(odds=odds_do_cenario(minuto=-60.0)), as_of=alvo
-        )
+        so_passado = extrair_v2(entrada_v2(odds=odds_do_cenario(minuto=-60.0)), as_of=alvo)
         com_futuro = extrair_v2(
             entrada_v2(
                 odds=(
@@ -209,19 +200,13 @@ class TestOMercadoEcausal:
             ),
             as_of=alvo,
         )
-        assert valores(com_futuro, CHAVES_DE_MERCADO) == valores(
-            so_passado, CHAVES_DE_MERCADO
-        )
+        assert valores(com_futuro, CHAVES_DE_MERCADO) == valores(so_passado, CHAVES_DE_MERCADO)
 
     def test_a_ordem_das_casas_nao_muda_nada(self) -> None:
         """§169, §170 — nem valor, nem digest de procedência."""
         direta = extrair_v2(entrada_v2(odds=odds_do_cenario()))
-        invertida = extrair_v2(
-            entrada_v2(odds=tuple(reversed(odds_do_cenario())))
-        )
-        assert valores(invertida, CHAVES_DE_MERCADO) == valores(
-            direta, CHAVES_DE_MERCADO
-        )
+        invertida = extrair_v2(entrada_v2(odds=tuple(reversed(odds_do_cenario()))))
+        assert valores(invertida, CHAVES_DE_MERCADO) == valores(direta, CHAVES_DE_MERCADO)
         for chave in CHAVES_DE_MERCADO:
             assert (
                 invertida.value_of(chave).provenance.contribution_digest
@@ -231,19 +216,14 @@ class TestOMercadoEcausal:
     def test_toda_permutacao_das_casas_da_o_mesmo_resultado(self) -> None:
         base = odds_do_cenario(com_btts=False)
         impressoes = {
-            tuple(
-                extrair_v2(entrada_v2(odds=ordem)).value_of(k).numeric
-                for k in CHAVES_DE_MERCADO
-            )
+            tuple(extrair_v2(entrada_v2(odds=ordem)).value_of(k).numeric for k in CHAVES_DE_MERCADO)
             for ordem in itertools.permutations(base)
         }
         assert len(impressoes) == 1
 
     def test_uma_casa_da_mediana_e_nao_da_dispersao(self) -> None:
         """§171."""
-        snapshot = extrair_v2(
-            entrada_v2(odds=odds_do_cenario(casas_1x2=("2.00",), com_btts=False))
-        )
+        snapshot = extrair_v2(entrada_v2(odds=odds_do_cenario(casas_1x2=("2.00",), com_btts=False)))
         assert snapshot.value_of("market_1x2_home_median").numeric == 2.0
         assert snapshot.value_of("market_1x2_home_support").numeric == 1
         assert not snapshot.value_of("market_1x2_home_iqr").is_available
@@ -252,9 +232,7 @@ class TestOMercadoEcausal:
         """§172 — aqui o zero é OBSERVADO."""
         snapshot = extrair_v2(
             entrada_v2(
-                odds=odds_do_cenario(
-                    casas_1x2=("2.00", "2.00", "2.00", "2.00"), com_btts=False
-                )
+                odds=odds_do_cenario(casas_1x2=("2.00", "2.00", "2.00", "2.00"), com_btts=False)
             )
         )
         assert snapshot.value_of("market_1x2_home_median").numeric == 2.0
@@ -310,12 +288,14 @@ class TestOMercadoEcausal:
             as_of=corte(10, periodo=Period.FIRST_HALF, conhecimento=10),
         )
         tarde = extrair_v2(entrada_v2(odds=cotacoes), as_of=corte(63, conhecimento=63))
-        assert cedo.value_of("market_1x2_home_median").numeric == tarde.value_of(
-            "market_1x2_home_median"
-        ).numeric
-        assert cedo.value_of("market_1x2_home_iqr").numeric != tarde.value_of(
-            "market_1x2_home_iqr"
-        ).numeric
+        assert (
+            cedo.value_of("market_1x2_home_median").numeric
+            == tarde.value_of("market_1x2_home_median").numeric
+        )
+        assert (
+            cedo.value_of("market_1x2_home_iqr").numeric
+            != tarde.value_of("market_1x2_home_iqr").numeric
+        )
 
 
 # ------------------------------------------------- §216, §217, §218 --

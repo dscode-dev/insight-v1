@@ -66,8 +66,26 @@ _INICIO_DOS_REGIMES: Final[datetime] = datetime(1990, 1, 1, tzinfo=UTC)
 #: propósito: nenhum clube real aparece aqui, então o benchmark não depende de
 #: um catálogo que pode mudar.
 _PREFIXOS: Final[tuple[str, ...]] = (
-    "Ash", "Brad", "Chel", "Dun", "East", "Fair", "Glen", "Hart", "Kirk", "Lang",
-    "Marl", "North", "Oak", "Pen", "Red", "Ship", "Thorn", "Vale", "West", "York",
+    "Ash",
+    "Brad",
+    "Chel",
+    "Dun",
+    "East",
+    "Fair",
+    "Glen",
+    "Hart",
+    "Kirk",
+    "Lang",
+    "Marl",
+    "North",
+    "Oak",
+    "Pen",
+    "Red",
+    "Ship",
+    "Thorn",
+    "Vale",
+    "West",
+    "York",
 )
 _SUFIXOS: Final[tuple[str, ...]] = ("ford", "bury", "ton", "field", "dale")
 
@@ -104,8 +122,17 @@ _ANO_PARTIDO: Final[frozenset[CompetitionCode]] = frozenset(
 #: É o comportamento certo do resolver (§25) e seria o cenário errado aqui:
 #: mediríamos a recusa, não a resolução.
 CABECALHO: Final[tuple[str, ...]] = (
-    "Competition", "Season", "Date", "Kickoff", "Round",
-    "HomeTeam", "AwayTeam", "FTHG", "FTAG", "HS", "AS",
+    "Competition",
+    "Season",
+    "Date",
+    "Kickoff",
+    "Round",
+    "HomeTeam",
+    "AwayTeam",
+    "FTHG",
+    "FTAG",
+    "HS",
+    "AS",
 )
 
 
@@ -263,8 +290,10 @@ def build_corpus(
         for n in range(seasons_per_competition):
             ano = first_season_start_year + n
             rotulo = f"{ano}/{str(ano + 1)[-2:]}" if codigo in _ANO_PARTIDO else str(ano)
-            inicio = datetime(ano, 8, 1, tzinfo=UTC) if codigo in _ANO_PARTIDO else datetime(
-                ano, 1, 15, tzinfo=UTC
+            inicio = (
+                datetime(ano, 8, 1, tzinfo=UTC)
+                if codigo in _ANO_PARTIDO
+                else datetime(ano, 1, 15, tzinfo=UTC)
             )
             fim = inicio + timedelta(days=300)
             temporada = Season.create(
@@ -400,9 +429,7 @@ def _grafia(sintetico: TimeSintetico, caminho: Caminho, indice: int) -> str:
     return f"Clube Externo {indice % 997:03d}"
 
 
-def linhas(
-    corpus: Corpus, *, total: int, shots_offset: int = 0
-) -> Iterator[tuple[str, ...]]:
+def linhas(corpus: Corpus, *, total: int, shots_offset: int = 0) -> Iterator[tuple[str, ...]]:
     """As linhas da fonte, na ordem em que um arquivo de verdade estaria.
 
     `shots_offset` DESLOCA APENAS OS CHUTES, e existe para a fusão: duas

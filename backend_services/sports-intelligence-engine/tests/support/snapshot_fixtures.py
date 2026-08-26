@@ -208,9 +208,7 @@ def segundo_tempo_ate_o_corte() -> tuple[CanonicalMatchEvent, ...]:
     """Os fatos do segundo tempo ATÉ os 63 minutos, inclusive."""
     return (
         evento("st-escanteio-46", tipo=EventType.CORNER, minuto=46, sequencia=10),
-        evento(
-            "st-chute-52", tipo=EventType.SHOT, minuto=52, sequencia=11, xg="0.05"
-        ),
+        evento("st-chute-52", tipo=EventType.SHOT, minuto=52, sequencia=11, xg="0.05"),
         evento("st-gol-53", tipo=EventType.GOAL, minuto=53, sequencia=12, xg="0.40"),
         evento(
             "st-chute-56",
@@ -228,9 +226,7 @@ def segundo_tempo_ate_o_corte() -> tuple[CanonicalMatchEvent, ...]:
             outcome=ShotOutcome.SAVED,
             xg="0.30",
         ),
-        evento(
-            "st-chute-59", tipo=EventType.SHOT, minuto=59, sequencia=15, xg="0.11"
-        ),
+        evento("st-chute-59", tipo=EventType.SHOT, minuto=59, sequencia=15, xg="0.11"),
         evento(
             "st-chute-60",
             tipo=EventType.SHOT,

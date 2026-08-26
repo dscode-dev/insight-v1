@@ -56,9 +56,7 @@ class FeatureCalculator(Protocol):
         """
         ...
 
-    def compute(
-        self, context: CanonicalFeatureContext, as_of: FeatureAsOf
-    ) -> ComputedFeature:
+    def compute(self, context: CanonicalFeatureContext, as_of: FeatureAsOf) -> ComputedFeature:
         """O valor da feature naquele corte.
 
         `as_of` VEM SEPARADO DO CONTEXTO de propósito, mesmo o contexto já o

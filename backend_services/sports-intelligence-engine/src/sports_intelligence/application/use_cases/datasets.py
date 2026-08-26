@@ -612,9 +612,7 @@ class StageDataset:
                 f"o relatório mais recente é da versão {relatorio.dataset_version} e o "
                 f"dataset está em {dataset.version}: revalide antes de promover"
             )
-        assert_can_stage(
-            dataset.lifecycle, has_blocking_issues=relatorio.has_blocking_issues
-        )
+        assert_can_stage(dataset.lifecycle, has_blocking_issues=relatorio.has_blocking_issues)
 
         agora = self.clock.now()
         tomou = await self.datasets.transition(
@@ -659,9 +657,7 @@ class StageDataset:
                 },
             )
         )
-        return dataset.with_lifecycle(
-            DatasetLifecycle.STAGED, at=agora, reason=reason
-        )
+        return dataset.with_lifecycle(DatasetLifecycle.STAGED, at=agora, reason=reason)
 
 
 @final
@@ -706,9 +702,7 @@ class GetDatasetValidation:
             else await self.validations.latest_for(dataset_id)
         )
         if relatorio is None:
-            raise NotFoundError(
-                f"não há relatório de validação para o dataset {dataset_id}"
-            )
+            raise NotFoundError(f"não há relatório de validação para o dataset {dataset_id}")
         if relatorio.dataset_id != dataset_id:
             raise NotFoundError(f"o relatório {report_id} não é deste dataset")
         return relatorio

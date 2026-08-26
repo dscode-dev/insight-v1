@@ -107,19 +107,13 @@ async def status(database: Database, directory: Path | None = None) -> tuple[Mig
     migrations = discover(directory)
     async with database.acquire() as conexao:
         await conexao.execute(_TABELA)
-        linhas = await conexao.fetch(
-            "SELECT version, checksum, applied_at FROM schema_migrations"
-        )
-    aplicadas = {
-        linha["version"]: (linha["checksum"], linha["applied_at"]) for linha in linhas
-    }
+        linhas = await conexao.fetch("SELECT version, checksum, applied_at FROM schema_migrations")
+    aplicadas = {linha["version"]: (linha["checksum"], linha["applied_at"]) for linha in linhas}
     return tuple(
         MigrationStatus(
             version=m.version,
             applied=m.version in aplicadas,
-            applied_at=(
-                aplicadas[m.version][1].isoformat() if m.version in aplicadas else None
-            ),
+            applied_at=(aplicadas[m.version][1].isoformat() if m.version in aplicadas else None),
             checksum_matches=(
                 aplicadas[m.version][0] == m.checksum if m.version in aplicadas else True
             ),
@@ -185,4 +179,3 @@ async def ensure_schema(database: Database, directory: Path | None = None) -> No
     "0 migrations aplicadas" a cada teste não ajuda ninguém.
     """
     await migrate(database, directory)
-

@@ -333,9 +333,7 @@ async def publicado(database: Database, object_store: Any) -> dict[str, Any]:
     return await montar_corpus_publicado(database, object_store)
 
 
-async def montar_corpus_publicado(
-    database: Database, object_store: Any
-) -> dict[str, Any]:
+async def montar_corpus_publicado(database: Database, object_store: Any) -> dict[str, Any]:
     """Um corpus READY, construído pelo caminho inteiro do PR-04.
 
     ELA É FUNÇÃO, E NÃO SÓ FIXTURE. O E2E do PR-05.3 precisa do MESMO corpus, e
@@ -454,9 +452,7 @@ async def montar_corpus_publicado(
         ),
         quality_run_id=qualidade.run.id,
     )
-    versao = await contêiner.publish_version.execute(
-        actor=PUBLICADOR, version_id=saida.version.id
-    )
+    versao = await contêiner.publish_version.execute(actor=PUBLICADOR, version_id=saida.version.id)
     assert versao.status is DatasetVersionStatus.READY
 
     return {
@@ -522,9 +518,7 @@ class TestALeituraVemDaPertinencia:
         assert list(ids) == [publicado["match_id"]]
 
     async def test_os_insumos_chegam_tipados(self, publicado: dict[str, Any]) -> None:
-        insumos = await _fonte(publicado).load(
-            publicado["version"].id, [publicado["match_id"]]
-        )
+        insumos = await _fonte(publicado).load(publicado["version"].id, [publicado["match_id"]])
         entrada = insumos[publicado["match_id"]]
         assert entrada.match.id == publicado["match_id"]
         assert entrada.competition_code == CompetitionCode.PREMIER_LEAGUE.value
@@ -536,9 +530,7 @@ class TestALeituraVemDaPertinencia:
         assert len(entrada.candidate_events) == 7
 
     async def test_o_resultado_publicado_vem_junto(self, publicado: dict[str, Any]) -> None:
-        insumos = await _fonte(publicado).load(
-            publicado["version"].id, [publicado["match_id"]]
-        )
+        insumos = await _fonte(publicado).load(publicado["version"].id, [publicado["match_id"]])
         resultado = insumos[publicado["match_id"]].result
         assert resultado is not None
         assert (resultado.regular_time.home, resultado.regular_time.away) == (2, 1)
@@ -556,9 +548,7 @@ class TestALeituraVemDaPertinencia:
 
 
 class TestOEstadoNoCorte:
-    async def test_o_placar_aos_60_e_o_dos_eventos_ate_ali(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_placar_aos_60_e_o_dos_eventos_ate_ali(self, publicado: dict[str, Any]) -> None:
         resultado = await _estado(
             publicado,
             FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60),
@@ -592,13 +582,9 @@ class TestOEstadoNoCorte:
             publicado, FeatureAsOf.at(publicado["match_id"], Period.FULL_TIME, 90)
         )
         assert (resultado.state.score.home, resultado.state.score.away) == (2, 1)
-        assert StateIssueCode.SCORE_RESULT_MISMATCH not in {
-            i.code for i in resultado.issues
-        }
+        assert StateIssueCode.SCORE_RESULT_MISMATCH not in {i.code for i in resultado.issues}
 
-    async def test_a_disciplina_conta_o_que_ja_aconteceu(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_disciplina_conta_o_que_ja_aconteceu(self, publicado: dict[str, Any]) -> None:
         resultado = await _estado(
             publicado, FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60)
         )
@@ -620,9 +606,7 @@ class TestOEstadoNoCorte:
         assert fora.yellow_cards == 0
 
     async def test_o_pre_jogo_nao_ve_evento_nenhum(self, publicado: dict[str, Any]) -> None:
-        resultado = await _estado(
-            publicado, FeatureAsOf.pre_match(publicado["match_id"])
-        )
+        resultado = await _estado(publicado, FeatureAsOf.pre_match(publicado["match_id"]))
         assert resultado.state.events.effective_count == 0
         assert (resultado.state.score.home, resultado.state.score.away) == (0, 0)
         assert resultado.state.score.is_available
@@ -631,9 +615,7 @@ class TestOEstadoNoCorte:
 class TestACorrecaoAtravessaOsDoisPRs:
     """§151 — gravada pelo PR-04.4.1, projetada pelo PR-05.1."""
 
-    async def test_o_gol_corrigido_conta_uma_vez_so(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_gol_corrigido_conta_uma_vez_so(self, publicado: dict[str, Any]) -> None:
         """Sete publicados, quatro efetivos aos 60' — e o placar é 1-1.
 
         Os quatro: o gol corrigido dos 19, o gol de fora dos 33, o amarelo dos
@@ -658,18 +640,14 @@ class TestACorrecaoAtravessaOsDoisPRs:
 class TestAParcialidadeEHonesta:
     """§105 — o corpus deste cenário não publica escalação, e o estado o diz."""
 
-    async def test_sem_escalacao_o_campo_e_indisponivel(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_sem_escalacao_o_campo_e_indisponivel(self, publicado: dict[str, Any]) -> None:
         resultado = await _estado(
             publicado, FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60)
         )
         assert not resultado.state.on_field.is_available
         assert StateIssueCode.LINEUP_UNAVAILABLE in {i.code for i in resultado.issues}
 
-    async def test_o_placar_sobrevive_a_falta_de_escalacao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_placar_sobrevive_a_falta_de_escalacao(self, publicado: dict[str, Any]) -> None:
         """§106 — a degradação é do componente, e não do estado inteiro."""
         resultado = await _estado(
             publicado, FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60)
@@ -714,9 +692,7 @@ class TestAVersaoSemEventosNaoAfirmaPlacar:
         )
         return {**publicado, "version": versao, "manifest": saida.manifest}
 
-    async def test_a_versao_sem_eventos_nao_traz_evento(
-        self, sem_eventos: dict[str, Any]
-    ) -> None:
+    async def test_a_versao_sem_eventos_nao_traz_evento(self, sem_eventos: dict[str, Any]) -> None:
         insumos = await _fonte(sem_eventos).load(
             sem_eventos["version"].id, [sem_eventos["match_id"]]
         )
@@ -730,9 +706,7 @@ class TestAVersaoSemEventosNaoAfirmaPlacar:
         )
         assert not resultado.state.score.is_available
         assert resultado.state.score.availability is FeatureAvailability.NOT_DECLARED
-        assert StateIssueCode.INCOMPLETE_EVENT_HISTORY in {
-            i.code for i in resultado.issues
-        }
+        assert StateIssueCode.INCOMPLETE_EVENT_HISTORY in {i.code for i in resultado.issues}
 
     async def test_os_dois_corpus_dao_estados_com_identidades_diferentes(
         self, publicado: dict[str, Any], sem_eventos: dict[str, Any]
@@ -747,9 +721,7 @@ class TestAVersaoSemEventosNaoAfirmaPlacar:
 class TestOLote:
     """§162 — o caminho em lote produz o mesmo que o individual."""
 
-    async def test_o_lote_reconstroi_a_partida_da_versao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_lote_reconstroi_a_partida_da_versao(self, publicado: dict[str, Any]) -> None:
         alvo = FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60)
         saida = await BuildHistoricalMatchStates(
             source=_fonte(publicado), policy=TemporalAvailabilityPolicy.default()
@@ -767,8 +739,7 @@ class TestOLote:
         self, publicado: dict[str, Any]
     ) -> None:
         cortes = tuple(
-            FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, m)
-            for m in (50, 60, 75)
+            FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, m) for m in (50, 60, 75)
         )
         saida = await BuildHistoricalMatchStates(
             source=_fonte(publicado), policy=TemporalAvailabilityPolicy.default()
@@ -780,9 +751,7 @@ class TestOLote:
         assert saida.built == 3
         assert len({e.fingerprint for e in saida.states}) == 3
 
-    async def test_o_lote_agrega_os_problemas_por_codigo(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_lote_agrega_os_problemas_por_codigo(self, publicado: dict[str, Any]) -> None:
         saida = await BuildHistoricalMatchStates(
             source=_fonte(publicado), policy=TemporalAvailabilityPolicy.default()
         ).execute(
@@ -804,9 +773,7 @@ class TestAReprodutibilidadeSobreOBanco:
         segunda = await _estado(publicado, alvo)
         assert primeira.state.fingerprint == segunda.state.fingerprint
 
-    async def test_a_politica_entra_na_identidade(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_politica_entra_na_identidade(self, publicado: dict[str, Any]) -> None:
         alvo = FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, 60)
         padrao = await _estado(publicado, alvo)
         estrita = await BuildHistoricalMatchState(

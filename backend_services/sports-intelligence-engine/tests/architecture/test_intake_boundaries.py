@@ -99,8 +99,7 @@ class TestIntakeNaoResolveFutebol:
         violacoes = internal_violations(arquivos, DOMINIO_FUTEBOLISTICO)
         assert not violacoes, (
             f"{pacote} importa o domínio futebolístico — o intake trata de EVIDÊNCIA, "
-            f"e traduzir evidência em conhecimento é o PR-03:\n"
-            + "\n".join(map(str, violacoes))
+            f"e traduzir evidência em conhecimento é o PR-03:\n" + "\n".join(map(str, violacoes))
         )
 
     @pytest.mark.parametrize("pacote", PACOTES_DE_INTAKE)
@@ -132,8 +131,7 @@ class TestIntakeNaoResolveFutebol:
             if nome in NOMES_DE_RESOLUCAO
         ]
         assert not encontradas, (
-            "resolução de identidade definida na camada de intake:\n"
-            + "\n".join(encontradas)
+            "resolução de identidade definida na camada de intake:\n" + "\n".join(encontradas)
         )
 
     def test_o_verificador_enxerga_de_verdade(self, tmp_path: Path) -> None:
@@ -200,9 +198,7 @@ class TestIntakeRespeitaAsCamadas:
 
     def test_ingestion_nao_importa_adapters(self) -> None:
         """A ingestão fala por ports. Ela não escolhe S3 nem PostgreSQL."""
-        violacoes = internal_violations(
-            files_in("ingestion"), ("sports_intelligence.adapters",)
-        )
+        violacoes = internal_violations(files_in("ingestion"), ("sports_intelligence.adapters",))
         assert not violacoes, str(violacoes)
 
     def test_ingestion_nao_importa_application_nem_apps(self) -> None:

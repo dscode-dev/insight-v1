@@ -76,9 +76,7 @@ class TestAProjecaoEmVolume:
     def test_cem_mil_eventos_projetados(self) -> None:
         """§147. Duração, throughput e pico de memória."""
         historia = _historia_grande()
-        projecao = EffectiveEventProjection.with_policy(
-            TemporalAvailabilityPolicy.default()
-        )
+        projecao = EffectiveEventProjection.with_policy(TemporalAvailabilityPolicy.default())
         with medindo("projeção efetiva") as medida:
             resultado = projecao.project(historia, as_of=corte(63))
 
@@ -91,8 +89,7 @@ class TestAProjecaoEmVolume:
                 "",
                 f"entrada          {EVENTOS:_} eventos ({EVENTOS // A_CADA:_} revisões)",
                 f"efetivos         {resultado.size:_}",
-                f"excluídos        {resultado.excluded_total:_} · "
-                f"{resultado.excluded_by_reason}",
+                f"excluídos        {resultado.excluded_total:_} · {resultado.excluded_by_reason}",
             ],
         )
 
@@ -112,15 +109,11 @@ class TestAProjecaoEmVolume:
         ser inviável por acidente de implementação.
         """
         historia = _historia_grande()
-        projecao = EffectiveEventProjection.with_policy(
-            TemporalAvailabilityPolicy.default()
-        )
+        projecao = EffectiveEventProjection.with_policy(TemporalAvailabilityPolicy.default())
         with medindo("causal") as causal:
             projecao.project(historia, as_of=corte(63))
         with medindo("retrospectivo") as retrospectivo:
-            projecao.project(
-                historia, as_of=corte(63, mode=TemporalMode.CANONICAL_FINAL)
-            )
+            projecao.project(historia, as_of=corte(63, mode=TemporalMode.CANONICAL_FINAL))
         _relatar(
             "PR-05.1 · projeção por modo temporal",
             [

@@ -28,6 +28,13 @@ dependencies = [
     "aioboto3>=13.2",
     "pyarrow>=18.0",
     "polars>=1.17",
+    # A BASE DE FUSOS DO SISTEMA, e não uma conveniência. O motor grava
+    # `timestamp(us, tz=UTC)` no Parquet, e ler essas colunas de volta exige
+    # que o `zoneinfo` encontre a base — que existe no Linux e NÃO existe no
+    # Windows. Sem ela, um dataset perfeitamente gravado é ilegível na máquina
+    # ao lado, com uma mensagem que fala de módulo ausente e não de fuso
+    # (PR-05.5.1: aqui o Parquet é a fonte das linhas, e não uma cópia).
+    "tzdata>=2024.2",
 ]
 
 [project.optional-dependencies]

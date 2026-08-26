@@ -219,9 +219,7 @@ class LineupDraft:
         entries: tuple[LineupDraftEntry, ...],
         formation: str | None = None,
     ) -> Self:
-        return cls(
-            match_id=match_id, team_id=team_id, entries=entries, formation=formation
-        )
+        return cls(match_id=match_id, team_id=team_id, entries=entries, formation=formation)
 
     def __str__(self) -> str:
         pendentes = len(self.unresolved)

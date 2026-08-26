@@ -106,12 +106,9 @@ def group_by_identity(
         entidade = next(iter(principais.values())).canonical_entity_id
         if not isinstance(entidade, MatchId):
             raise ValidationError(
-                f"agrupamento de fusão recebeu {type(entidade).__name__}; a V1 funde "
-                "partidas"
+                f"agrupamento de fusão recebeu {type(entidade).__name__}; a V1 funde partidas"
             )
-        grupos.append(
-            FusionGroup.of(entidade, tuple(principais.values()), tuple(extras))
-        )
+        grupos.append(FusionGroup.of(entidade, tuple(principais.values()), tuple(extras)))
     return tuple(grupos), tuple(descartados)
 
 
@@ -149,9 +146,7 @@ class FusionEngine:
 
         observacoes.extend(self._observacoes_de_odds(group))
         conjuntos = (
-            (ObservationSet.deduplicated(ODDS_SET_KIND, tuple(observacoes)),)
-            if observacoes
-            else ()
+            (ObservationSet.deduplicated(ODDS_SET_KIND, tuple(observacoes)),) if observacoes else ()
         )
         return FusedMatchCandidate(
             canonical_match_id=group.canonical_match_id,

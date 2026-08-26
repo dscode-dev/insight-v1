@@ -269,9 +269,7 @@ async def start_resolution_run(
     return _run_out(saida.run)
 
 
-@router.get(
-    "/datasets/{dataset_id}/resolution-runs", response_model=list[ResolutionRunOut]
-)
+@router.get("/datasets/{dataset_id}/resolution-runs", response_model=list[ResolutionRunOut])
 async def list_resolution_runs(
     dataset_id: str,
     contêiner: ContainerDep,
@@ -287,9 +285,7 @@ async def list_resolution_runs(
 
 
 @router.get("/resolution-runs/{run_id}", response_model=ResolutionRunOut)
-async def get_resolution_run(
-    run_id: str, contêiner: ContainerDep, _: ActorDep
-) -> ResolutionRunOut:
+async def get_resolution_run(run_id: str, contêiner: ContainerDep, _: ActorDep) -> ResolutionRunOut:
     return _run_out(await contêiner.resolution.get_resolution_run.execute(run_id))
 
 
@@ -314,9 +310,7 @@ async def list_decisions(
             status=d.status.value,
             method=d.method.value,
             confidence=d.confidence.value,
-            canonical_entity_id=str(d.canonical_entity_id)
-            if d.canonical_entity_id
-            else None,
+            canonical_entity_id=str(d.canonical_entity_id) if d.canonical_entity_id else None,
             record_ref=d.record_ref,
             evidence=[str(e) for e in d.evidence],
             alternatives=[
@@ -392,9 +386,7 @@ async def resolve_review(
     execução resolver sozinha — que é o ciclo que a fila existe para fechar.
     """
     if corpo.chosen_entity_id is None:
-        raise ValidationError(
-            "escolha ausente: use /reject para recusar todos os candidatos"
-        )
+        raise ValidationError("escolha ausente: use /reject para recusar todos os candidatos")
     decisao = await contêiner.resolution.resolve_review.execute(
         actor=ator,
         item_id=item_id,
@@ -456,9 +448,7 @@ async def reject_review(
     )
 
 
-@router.post(
-    "/fusion-runs", response_model=FusionRunOut, status_code=status.HTTP_201_CREATED
-)
+@router.post("/fusion-runs", response_model=FusionRunOut, status_code=status.HTTP_201_CREATED)
 async def start_fusion_run(
     corpo: RunFusionIn,
     contêiner: ContainerDep,
@@ -480,9 +470,7 @@ async def start_fusion_run(
 
 
 @router.get("/fusion-runs/{run_id}", response_model=FusionRunOut)
-async def get_fusion_run(
-    run_id: str, contêiner: ContainerDep, _: ActorDep
-) -> FusionRunOut:
+async def get_fusion_run(run_id: str, contêiner: ContainerDep, _: ActorDep) -> FusionRunOut:
     return _fusion_out(await contêiner.resolution.get_fusion_run.execute(run_id))
 
 
@@ -500,9 +488,7 @@ async def list_conflicts(
     número de aparência decidida que ninguém revisaria.
     """
     conflitos = await contêiner.resolution.list_conflicts.execute(run_id, limit=limit)
-    return [
-        ConflictOut(canonical_match_id=m, field_name=c, values=v) for m, c, v in conflitos
-    ]
+    return [ConflictOut(canonical_match_id=m, field_name=c, values=v) for m, c, v in conflitos]
 
 
 # ---------------------------------------------------------- tradução ----
@@ -565,10 +551,7 @@ def _fusion_out(run: Any) -> FusionRunOut:
         fields_selected=run.counts.fields_selected,
         conflicts=run.counts.conflicts,
         unresolved_conflicts=run.counts.unresolved_conflicts,
-        output_fingerprint=run.output_fingerprint.value
-        if run.output_fingerprint
-        else None,
+        output_fingerprint=run.output_fingerprint.value if run.output_fingerprint else None,
         started_at=run.started_at.isoformat(),
         completed_at=run.completed_at.isoformat() if run.completed_at else None,
     )
-

@@ -205,9 +205,7 @@ class StructuralValidator:
         caminho: Path | None = None
         try:
             caminho, cabeca = await self._materializar(arquivo)
-            exame = probe(
-                cabeca, declared=arquivo.format, size_bytes=arquivo.size_bytes
-            )
+            exame = probe(cabeca, declared=arquivo.format, size_bytes=arquivo.size_bytes)
             if exame.compression is not None:
                 return Inspection(
                     observation=None,

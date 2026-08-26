@@ -82,9 +82,7 @@ class PeriodLocalTime:
 
     def __post_init__(self) -> None:
         if self.elapsed_seconds < 0:
-            raise ValidationError(
-                f"tempo local negativo: {self.elapsed_seconds}s"
-            )
+            raise ValidationError(f"tempo local negativo: {self.elapsed_seconds}s")
 
     @classmethod
     def of(cls, period: Period, minute: int = 0, stoppage: int = 0) -> Self:
@@ -263,9 +261,7 @@ class RollingEventWindowSelector:
 
     window: RollingWindow
 
-    def select(
-        self, events: Iterable[ProjectedEvent], *, as_of: FeatureAsOf
-    ) -> WindowSelection:
+    def select(self, events: Iterable[ProjectedEvent], *, as_of: FeatureAsOf) -> WindowSelection:
         corte = PeriodLocalTime.of_position(as_of.position)
         dentro: list[CanonicalMatchEvent] = []
         futuros = 0
@@ -279,9 +275,7 @@ class RollingEventWindowSelector:
                 continue
             if self.window.contains(momento, cutoff=corte):
                 dentro.append(projetado.event)
-        return WindowSelection(
-            events=_em_ordem_canonica(dentro), refused_future=futuros
-        )
+        return WindowSelection(events=_em_ordem_canonica(dentro), refused_future=futuros)
 
 
 def _em_ordem_canonica(

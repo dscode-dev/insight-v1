@@ -25,7 +25,7 @@ calculado de novo não serviria para comparar nada.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final, Self, final
 
 from sports_intelligence.domain.features.availability import TemporalAvailabilityPolicy
@@ -73,6 +73,16 @@ class FeatureSnapshot:
     policy_version: str
     policy_fingerprint: str
     features: tuple[ComputedFeature, ...]
+    #: A impressão, MEMOIZADA (PR-05.5.1 §140). Calculá-la serializa as 105
+    #: features, e a materialização a pede duas vezes por linha — uma no
+    #: digesto da linha e outra na coluna do Parquet. Sem memória, o dataset
+    #: de dez mil partidas paga a serialização 1,8 milhão de vezes.
+    #:
+    #: `init=False` E `compare=False` DE PROPÓSITO: um `replace()` não pode
+    #: herdar a impressão do original — ela descreveria o snapshot anterior —,
+    #: e dois snapshots iguais não deixam de ser iguais por um deles já ter
+    #: sido impresso.
+    _fingerprint: str = field(default="", compare=False, repr=False, init=False)
 
     def __post_init__(self) -> None:
         esperadas = self.space.keys
@@ -167,8 +177,14 @@ class FeatureSnapshot:
 
     @property
     def fingerprint(self) -> str:
-        """A impressão SEMÂNTICA do snapshot (§140)."""
-        return hashlib.sha256(canonical_json(self.as_canonical())).hexdigest()
+        """A impressão SEMÂNTICA do snapshot (§140). Calculada uma vez."""
+        if not self._fingerprint:
+            object.__setattr__(
+                self,
+                "_fingerprint",
+                hashlib.sha256(canonical_json(self.as_canonical())).hexdigest(),
+            )
+        return self._fingerprint
 
     @property
     def identity(self) -> str:

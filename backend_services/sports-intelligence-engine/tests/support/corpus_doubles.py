@@ -259,11 +259,7 @@ class FakeMembershipRepository:
         self, version_id: str, match_id: MatchId
     ) -> Sequence[CorpusEventMember]:
         return sorted(
-            (
-                m
-                for m in self.event_members.get(version_id, {}).values()
-                if m.match_id == match_id
-            ),
+            (m for m in self.event_members.get(version_id, {}).values() if m.match_id == match_id),
             key=lambda m: str(m.event_id),
         )
 
@@ -469,9 +465,7 @@ class FakeCorpusEventReader:
         self.contagens = 0
         self.leituras = 0
 
-    async def usage_scopes_of(
-        self, event_build_run_ids: Sequence[str]
-    ) -> Mapping[str, UsageScope]:
+    async def usage_scopes_of(self, event_build_run_ids: Sequence[str]) -> Mapping[str, UsageScope]:
         return {b: e for b, e in self.scopes.items() if b in set(event_build_run_ids)}
 
     async def policy_versions_of(

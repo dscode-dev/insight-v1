@@ -54,9 +54,7 @@ from sports_intelligence.domain.shared.temporal import instant
 #: NA JANELA ELA É `EXISTS`, e não `JOIN`: a junção ali é `LEFT`, e um `JOIN`
 #: interno com `match_results` a transformaria em interna — a partida atual sem
 #: anteriores sumiria do resultado, que é justamente o que o `LEFT` evita.
-_EXISTE_RESULTADO: Final[str] = (
-    "AND EXISTS (SELECT 1 FROM match_results r WHERE r.match_id = p.id)"
-)
+_EXISTE_RESULTADO: Final[str] = "AND EXISTS (SELECT 1 FROM match_results r WHERE r.match_id = p.id)"
 _JUNCAO_DE_RESULTADO: Final[str] = "JOIN match_results r ON r.match_id = p.id"
 
 
@@ -72,9 +70,7 @@ class PostgresHistoricalContextSource:
         # pagaria vinte vezes por uma resposta idêntica.
         self._cobertura: dict[str, Mapping[CompetitionId, ContextCoverage]] = {}
 
-    async def coverage(
-        self, version_id: str
-    ) -> Mapping[CompetitionId, ContextCoverage]:
+    async def coverage(self, version_id: str) -> Mapping[CompetitionId, ContextCoverage]:
         """A primeira partida publicada de cada competição, naquela versão."""
         memorizada = self._cobertura.get(version_id)
         if memorizada is not None:

@@ -130,9 +130,7 @@ class RunFusion:
                 conflicts=contagens.unresolved_conflicts,
             )
         )
-        return FusionOutput(
-            run=concluida, candidates=candidatos, discarded=len(descartados)
-        )
+        return FusionOutput(run=concluida, candidates=candidatos, discarded=len(descartados))
 
     async def _validar_entradas(self, ids: Sequence[str]) -> None:
         """Recusa fundir a partir de execuções que não produziram saída útil.
@@ -196,9 +194,7 @@ class RunFusion:
                     payload={
                         "run_id": run.id,
                         "unresolved": run.counts.unresolved_conflicts,
-                        "affected_matches": sum(
-                            1 for c in candidates if c.has_unresolved_conflict
-                        ),
+                        "affected_matches": sum(1 for c in candidates if c.has_unresolved_conflict),
                     },
                 )
             )
@@ -220,9 +216,7 @@ class BuildResolvedRecords:
     async def execute(
         self, *, run_id: str, records: Sequence[ResolvedSourceRecord]
     ) -> tuple[ResolvedSourceRecord, ...]:
-        resolvidos = await self.decisions.resolved_entities_of_run(
-            run_id, SubjectType.MATCH
-        )
+        resolvidos = await self.decisions.resolved_entities_of_run(run_id, SubjectType.MATCH)
         return tuple(r for r in records if str(r.record_ref) in resolvidos)
 
 
@@ -249,9 +243,7 @@ class ListFusionConflicts:
 
     fusion_runs: FusionRunRepositoryPort
 
-    async def execute(
-        self, run_id: str, *, limit: int = 100
-    ) -> Sequence[tuple[str, str, str]]:
+    async def execute(self, run_id: str, *, limit: int = 100) -> Sequence[tuple[str, str, str]]:
         if await self.fusion_runs.by_id(run_id) is None:
             raise NotFoundError(f"execução de fusão {run_id} não encontrada")
         return await self.fusion_runs.conflicts_of(run_id, limit=limit)

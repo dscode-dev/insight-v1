@@ -201,10 +201,5 @@ class DuelDetail:
 #: (apito inicial) e interrupções não têm detalhe próprio, e um detalhe vazio
 #: obrigatório seria ruído.
 EventDetail = (
-    ShotDetail
-    | PassDetail
-    | CardDetail
-    | SubstitutionDetail
-    | GoalkeeperDetail
-    | DuelDetail
+    ShotDetail | PassDetail | CardDetail | SubstitutionDetail | GoalkeeperDetail | DuelDetail
 )

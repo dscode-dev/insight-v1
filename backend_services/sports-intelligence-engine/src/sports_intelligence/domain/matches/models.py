@@ -51,9 +51,7 @@ class Venue:
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ValueError("venue sem nome")
-        if self.country is not None and (
-            len(self.country) != 2 or not self.country.isupper()
-        ):
+        if self.country is not None and (len(self.country) != 2 or not self.country.isupper()):
             raise ValueError(f"country {self.country!r} inválido: ISO-3166 alpha-2 maiúsculo")
 
 

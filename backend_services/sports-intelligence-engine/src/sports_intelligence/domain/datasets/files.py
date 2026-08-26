@@ -189,8 +189,7 @@ class DatasetFile:
         """O que a inspeção mediu. Só faz sentido em arquivo gravado."""
         if not self.staging_state.counts_as_present:
             raise ConflictError(
-                f"inspeção de arquivo em {self.staging_state}: "
-                "não há bytes confirmados para medir",
+                f"inspeção de arquivo em {self.staging_state}: não há bytes confirmados para medir",
                 context={"file_id": str(self.id)},
             )
         return type(self)(

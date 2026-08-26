@@ -178,9 +178,7 @@ class DatasetManifest:
             license_class=dataset.source.license_class.value,
             source_url=dataset.source.source_url,
             retrieved_at=dataset.source.retrieved_at,
-            declared_competitions=tuple(
-                sorted(c.value for c in dataset.declared_competitions)
-            ),
+            declared_competitions=tuple(sorted(c.value for c in dataset.declared_competitions)),
             declared_seasons=tuple(sorted(dataset.declared_seasons)),
             validation_id=report.id,
             validation_status=report.status.value,

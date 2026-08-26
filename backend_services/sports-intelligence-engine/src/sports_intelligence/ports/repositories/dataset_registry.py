@@ -148,9 +148,7 @@ class DatasetFileRepositoryPort(Protocol):
         """
         ...
 
-    async def record_inspection(
-        self, file_id: str, *, row_count: int, column_count: int
-    ) -> None:
+    async def record_inspection(self, file_id: str, *, row_count: int, column_count: int) -> None:
         """O que a inspeção mediu. Separado do resto porque só existe depois
         da validação, e um `update` genérico permitiria reescrever o hash."""
         ...

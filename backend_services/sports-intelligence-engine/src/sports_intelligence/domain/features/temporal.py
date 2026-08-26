@@ -127,9 +127,7 @@ class MatchTimePoint:
     @classmethod
     def from_clock(cls, clock: MatchClock, *, sequence: int | None = None) -> Self:
         """A posição de um fato que carrega `MatchClock` — o caso do evento."""
-        return cls.of(
-            clock.period, clock.minute, clock.stoppage, sequence=sequence
-        )
+        return cls.of(clock.period, clock.minute, clock.stoppage, sequence=sequence)
 
     @property
     def period(self) -> Period:
@@ -228,9 +226,7 @@ class FeatureAsOf:
         knowledge_cutoff: Instant | None = None,
     ) -> Self:
         """O estado ANTES do apito inicial — o corte do §81."""
-        return cls.at(
-            match_id, Period.PRE_MATCH, mode=mode, knowledge_cutoff=knowledge_cutoff
-        )
+        return cls.at(match_id, Period.PRE_MATCH, mode=mode, knowledge_cutoff=knowledge_cutoff)
 
     @property
     def has_knowledge_cutoff(self) -> bool:

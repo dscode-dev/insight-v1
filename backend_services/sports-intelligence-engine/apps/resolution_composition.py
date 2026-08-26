@@ -200,9 +200,7 @@ async def read_batches(
                 provenance=arquivo.provenance,
                 mapping=mapping,
             )
-            for lote in reader.read(
-                caminho, file_format=arquivo.format, context=contexto
-            ):
+            for lote in reader.read(caminho, file_format=arquivo.format, context=contexto):
                 yield lote
         finally:
             if caminho is not None:
@@ -261,4 +259,3 @@ async def resolved_match_map(
     for run_id in run_ids:
         juntos.update(await decisions.resolved_entities_of_run(run_id, SubjectType.MATCH))
     return juntos
-

@@ -117,8 +117,7 @@ class StateReducer:
             # NÃO FILTRA EM SILÊNCIO (§113). Um evento de outra partida entrando
             # num estado produziria um jogo plausível que não aconteceu.
             raise ValidationError(
-                f"evento {event.id} é da partida {event.match_id} e o estado é de "
-                f"{state.match_id}",
+                f"evento {event.id} é da partida {event.match_id} e o estado é de {state.match_id}",
                 context={"event_id": str(event.id), "match_id": str(state.match_id)},
             )
         efeito = structural_effect_of(event.type)
@@ -199,9 +198,7 @@ class StateReducer:
     # ---------------------------------------------------- substituição --
 
     @staticmethod
-    def _substituicao(
-        state: StructuralState, event: CanonicalMatchEvent
-    ) -> StructuralState:
+    def _substituicao(state: StructuralState, event: CanonicalMatchEvent) -> StructuralState:
         """Quem sai sai, quem entra entra — e nada é adivinhado (§29 ao §33)."""
         detalhe = event.detail
         if not isinstance(detalhe, SubstitutionDetail) or event.team_id is None:

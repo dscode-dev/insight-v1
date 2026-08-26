@@ -280,9 +280,7 @@ class CompetitionResolver:
         # acesso ao nome de exibição.
         for entrada in CATALOG.values():
             if context.normalizer.normalize(entrada.name) == name.normalized:
-                return self._por_codigo(
-                    entrada.code, name, ExplanationCode.EXACT_NAME_MATCH
-                )
+                return self._por_codigo(entrada.code, name, ExplanationCode.EXACT_NAME_MATCH)
 
         return Outcome.rejected(
             (
@@ -854,9 +852,7 @@ class PlayerResolver:
                 if jogador.nationality:
                     score = _aplicar(score, 0.08 if bate else -0.25)
 
-            evidencia_time, delta_time = self._avaliar_time(
-                team, player_id, at, context, policy
-            )
+            evidencia_time, delta_time = self._avaliar_time(team, player_id, at, context, policy)
             evidencias.append(evidencia_time)
             score = _aplicar(score, delta_time)
 
@@ -1101,9 +1097,7 @@ class MatchResolver:
                     lado,
                     weight=policy.weight_of(lado),
                     explanation=(
-                        ExplanationCode.VALUE_MATCHED
-                        if bate
-                        else ExplanationCode.SIDES_REVERSED
+                        ExplanationCode.VALUE_MATCHED if bate else ExplanationCode.SIDES_REVERSED
                     ),
                     source_value=str(esperado),
                     canonical_value=str(encontrado),
@@ -1201,4 +1195,3 @@ class ResolverBundle:
 
     def normalized(self, raw: str) -> NormalizedName:
         return NormalizedName.of(raw, self.normalizer)
-

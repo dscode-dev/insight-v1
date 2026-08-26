@@ -151,8 +151,7 @@ class StreamingReceiver:
             total += len(bloco)
             if total > self._max_bytes:
                 raise ValidationError(
-                    f"upload excede o limite de {self._max_bytes} bytes "
-                    f"(já foram lidos {total})",
+                    f"upload excede o limite de {self._max_bytes} bytes (já foram lidos {total})",
                     context={"max_bytes": self._max_bytes},
                 )
             if len(cabeca) < SNIFF_BYTES:

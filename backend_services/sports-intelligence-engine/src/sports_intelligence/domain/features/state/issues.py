@@ -90,9 +90,7 @@ class StateIssue:
 
     @classmethod
     def noted(cls, code: StateIssueCode, component: str, detail: str = "") -> Self:
-        return cls(
-            code=code, severity=StateIssueSeverity.NOTED, component=component, detail=detail
-        )
+        return cls(code=code, severity=StateIssueSeverity.NOTED, component=component, detail=detail)
 
     def as_canonical(self) -> dict[str, str]:
         return {

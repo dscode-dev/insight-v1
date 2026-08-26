@@ -42,9 +42,7 @@ from sports_intelligence.domain.shared.errors import ValidationError
 from tests.unit.test_feature_catalog import GOLDEN_SPACE
 
 #: A impressão DOURADA da V2 (§91).
-GOLDEN_SPACE_V2: Final[str] = (
-    "9ab9b3222f9997a272d3dbde25b18698a1807092a0c6278382eb8a25194f266a"
-)
+GOLDEN_SPACE_V2: Final[str] = "9ab9b3222f9997a272d3dbde25b18698a1807092a0c6278382eb8a25194f266a"
 
 #: As impressões douradas das definições NOVAS (§92): uma de intervalo, duas de
 #: contagem — incluindo a diferença —, e uma de cada dimensão de mercado.
@@ -58,15 +56,11 @@ GOLDEN_V2_FEATURES: Final[dict[str, str]] = {
     "ctx_same_comp_matches_30d_diff": (
         "e17cc125038e451d1e00011b60dd2caaf5d6f6e3ce23f035d8e1caf7d1fb6a28"
     ),
-    "market_1x2_home_median": (
-        "6a380b1a87308de4eba916fbf6c545c1c322d0c29aae3b36ba981decdca73112"
-    ),
+    "market_1x2_home_median": ("6a380b1a87308de4eba916fbf6c545c1c322d0c29aae3b36ba981decdca73112"),
     "market_totals_over_25_iqr": (
         "91aa2accb602af4a3d337b8f6655307f5d1dffc53ef13ea40c6a308ca8f5322a"
     ),
-    "market_btts_yes_support": (
-        "f09264e3f70814a8cf5405d25f26bede73b4332de8826b26e4a07d757f3dcc35"
-    ),
+    "market_btts_yes_support": ("f09264e3f70814a8cf5405d25f26bede73b4332de8826b26e4a07d757f3dcc35"),
 }
 
 TOTAL_V2: Final[int] = 105
@@ -126,9 +120,7 @@ class TestAV2:
     def test_a_v2_continua_crua(self) -> None:
         """§152 — nenhuma definição declara normalizador."""
         com_normalizador = [
-            d.key
-            for d in extended_feature_catalog().definitions
-            if d.normalizer_key is not None
+            d.key for d in extended_feature_catalog().definitions if d.normalizer_key is not None
         ]
         assert com_normalizador == []
 
@@ -184,9 +176,7 @@ class TestOsDouradosDaV2:
     """§92 — mudar uma destas exige decidir sobre versão."""
 
     @pytest.mark.parametrize(("chave", "esperada"), sorted(GOLDEN_V2_FEATURES.items()))
-    def test_a_impressao_da_definicao_e_a_dourada(
-        self, chave: str, esperada: str
-    ) -> None:
+    def test_a_impressao_da_definicao_e_a_dourada(self, chave: str, esperada: str) -> None:
         assert extended_feature_catalog().spec_of(chave).definition.fingerprint == esperada
 
 
@@ -238,24 +228,18 @@ class TestAsExigenciasDaV2:
 
     def test_um_corpus_sem_odds_e_compativel(self) -> None:
         match_state_raw_space_v2().assert_compatible_with(
-            frozenset(
-                {CoverageFamily.EVENT, CoverageFamily.LINEUP, CoverageFamily.MATCH}
-            )
+            frozenset({CoverageFamily.EVENT, CoverageFamily.LINEUP, CoverageFamily.MATCH})
         )
 
     def test_um_corpus_sem_event_nao_e_compativel(self) -> None:
         with pytest.raises(ValidationError, match="EVENT"):
-            match_state_raw_space_v2().assert_compatible_with(
-                frozenset({CoverageFamily.MATCH})
-            )
+            match_state_raw_space_v2().assert_compatible_with(frozenset({CoverageFamily.MATCH}))
 
     def test_familia_obrigatoria_e_opcional_ao_mesmo_tempo_e_recusada(self) -> None:
         from sports_intelligence.domain.features.space import CorpusRequirement
 
         with pytest.raises(ValidationError, match="obrigatória E opcional"):
-            CorpusRequirement.of(
-                CoverageFamily.ODDS, optional=(CoverageFamily.ODDS,)
-            )
+            CorpusRequirement.of(CoverageFamily.ODDS, optional=(CoverageFamily.ODDS,))
 
     def test_requisito_sem_opcionais_produz_o_documento_antigo(self) -> None:
         """A garantia que preserva a impressão da V1."""
@@ -284,10 +268,7 @@ class TestAPoliticaNaIdentidade:
     def test_a_politica_padrao_e_a_da_v2(self) -> None:
         catalogo = extended_feature_catalog()
         gap = catalogo.spec_of("ctx_same_comp_prev_gap_hours_home").definition
-        assert (
-            gap.parameters["context_policy_fingerprint"]
-            == DEFAULT_CONTEXT_POLICY.fingerprint
-        )
+        assert gap.parameters["context_policy_fingerprint"] == DEFAULT_CONTEXT_POLICY.fingerprint
 
     def test_as_features_de_mercado_sao_intra_jogo(self) -> None:
         """§160 — o mercado MUDA com o corte, ao contrário do contexto."""

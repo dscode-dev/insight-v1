@@ -101,9 +101,7 @@ def disponibilidades(snapshot: FeatureSnapshot) -> dict[str, FeatureAvailability
 
 
 def digests(snapshot: FeatureSnapshot) -> dict[str, str]:
-    return {
-        f.definition_key: f.provenance.contribution_digest for f in snapshot.features
-    }
+    return {f.definition_key: f.provenance.contribution_digest for f in snapshot.features}
 
 
 # ------------------------------------------------------------------ §198 --
@@ -137,9 +135,7 @@ class TestFuturoNaoVaza:
         alvo = FeatureAsOf.at(PARTIDA, Period.SECOND_HALF, minuto)
         historia = (*primeiro_tempo(), *segundo_tempo_ate_o_corte())
         limpo = extrair(entrada(eventos=historia), as_of=alvo)
-        ruidoso = extrair(
-            entrada(eventos=(*historia, *futuro_absurdo())), as_of=alvo
-        )
+        ruidoso = extrair(entrada(eventos=(*historia, *futuro_absurdo())), as_of=alvo)
         if minuto >= 70:
             assert valores(ruidoso) != valores(limpo)
         else:
@@ -325,9 +321,7 @@ class TestTempoEfetivoContraTempoDeConhecimento:
             status=EventStatus.CANCELLED,
             conhecido_em=relogio_de_parede(62),
         )
-        conhecimento = EventKnowledge(
-            by_event={cancelamento.id: relogio_de_parede(62)}
-        )
+        conhecimento = EventKnowledge(by_event={cancelamento.id: relogio_de_parede(62)})
         snapshot = extrair(
             entrada(eventos=(original, cancelamento), knowledge=conhecimento),
             as_of=corte(63, conhecimento=63),
@@ -355,9 +349,7 @@ class TestTempoEfetivoContraTempoDeConhecimento:
             status=EventStatus.CANCELLED,
             conhecido_em=relogio_de_parede(70),
         )
-        conhecimento = EventKnowledge(
-            by_event={cancelamento.id: relogio_de_parede(70)}
-        )
+        conhecimento = EventKnowledge(by_event={cancelamento.id: relogio_de_parede(70)})
         snapshot = extrair(
             entrada(eventos=(original, cancelamento), knowledge=conhecimento),
             as_of=corte(63, conhecimento=63),
@@ -385,9 +377,7 @@ class TestZeroNaoEAusente:
 
     def test_a_ausencia_tem_motivo_tipado_e_nao_texto_livre(self) -> None:
         ausente = extrair(entrada(families=SEM_EVENTO), families=SEM_EVENTO)
-        estados = {
-            e for e in disponibilidades(ausente).values() if not e.is_available
-        }
+        estados = {e for e in disponibilidades(ausente).values() if not e.is_available}
         assert estados <= set(FeatureAvailability)
         assert FeatureAvailability.NOT_DECLARED in estados
 
@@ -400,9 +390,7 @@ class TestXgAusenteNaoEZero:
         """§157, primeira metade."""
         com_zero = extrair(
             entrada(
-                eventos=(
-                    evento("zero", tipo=EventType.SHOT, minuto=62, sequencia=95, xg="0.0"),
-                )
+                eventos=(evento("zero", tipo=EventType.SHOT, minuto=62, sequencia=95, xg="0.0"),)
             )
         )
         computada = com_zero.value_of("xg_home_3m")
@@ -412,11 +400,7 @@ class TestXgAusenteNaoEZero:
     def test_xg_ausente_torna_a_soma_indisponivel(self) -> None:
         """§157, segunda metade — e as duas produzem valores diferentes."""
         sem_xg = extrair(
-            entrada(
-                eventos=(
-                    evento("sem-xg", tipo=EventType.SHOT, minuto=62, sequencia=96),
-                )
-            )
+            entrada(eventos=(evento("sem-xg", tipo=EventType.SHOT, minuto=62, sequencia=96),))
         )
         computada = sem_xg.value_of("xg_home_3m")
         assert not computada.is_available
@@ -477,9 +461,7 @@ class TestDiferencas:
                 assert diff == casa - fora, f"{prefixo}_{janela}"
 
     def test_a_diferenca_de_estado_tambem_respeita_a_guarda(self) -> None:
-        snapshot = extrair(
-            entrada(families=SEM_EVENTO), families=SEM_EVENTO
-        )
+        snapshot = extrair(entrada(families=SEM_EVENTO), families=SEM_EVENTO)
         assert not snapshot.value_of("score_difference").is_available
 
 
@@ -513,8 +495,7 @@ class TestDeterminismo:
         """Cento e vinte ordens, um snapshot (§87, §155)."""
         recorte = segundo_tempo_ate_o_corte()[:5]
         impressoes = {
-            extrair(entrada(eventos=ordem)).fingerprint
-            for ordem in itertools.permutations(recorte)
+            extrair(entrada(eventos=ordem)).fingerprint for ordem in itertools.permutations(recorte)
         }
         assert len(impressoes) == 1
 

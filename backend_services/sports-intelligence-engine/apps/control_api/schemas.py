@@ -184,9 +184,7 @@ class DatasetOut(BaseModel):
                 retrieved_at=dataset.source.retrieved_at.isoformat(),
                 source_url=dataset.source.source_url,
                 publisher=dataset.source.publisher,
-                provider_id=str(dataset.source.provider_id)
-                if dataset.source.provider_id
-                else None,
+                provider_id=str(dataset.source.provider_id) if dataset.source.provider_id else None,
                 needs_license_review=dataset.needs_license_review,
             ),
             files=[

@@ -26,6 +26,8 @@ from rich.table import Table
 
 from apps.cli import corpus as comandos_de_corpus
 from apps.cli import dataset as comandos_de_dataset
+from apps.cli import feature_dataset as comandos_de_features
+from apps.cli import normalized_dataset as comandos_de_normalizacao
 from apps.cli import resolution as comandos_de_resolucao
 from sports_intelligence.config.settings import (
     AppSettings,
@@ -49,6 +51,8 @@ app.add_typer(comandos_de_dataset.app)
 app.add_typer(comandos_de_resolucao.app)
 app.add_typer(comandos_de_resolucao.fusion_app)
 app.add_typer(comandos_de_corpus.app)
+app.add_typer(comandos_de_features.app)
+app.add_typer(comandos_de_normalizacao.app)
 
 
 class Estado(StrEnum):

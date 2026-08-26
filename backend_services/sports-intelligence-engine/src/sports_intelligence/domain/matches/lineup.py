@@ -139,9 +139,7 @@ class Lineup:
 
         titulares = [e for e in self.entries if e.is_starter]
         if len(titulares) > STARTERS:
-            raise ValueError(
-                f"{len(titulares)} titulares: o máximo é {STARTERS}"
-            )
+            raise ValueError(f"{len(titulares)} titulares: o máximo é {STARTERS}")
 
         capitaes = [e for e in self.entries if e.captain]
         if len(capitaes) > 1:
@@ -188,9 +186,7 @@ class Lineup:
         entries: tuple[LineupEntry, ...],
         formation: FormationLabel | None = None,
     ) -> Self:
-        return cls(
-            match_id=match_id, team_id=team_id, entries=entries, formation=formation
-        )
+        return cls(match_id=match_id, team_id=team_id, entries=entries, formation=formation)
 
 
 def assert_squads_are_disjoint(home: Lineup, away: Lineup) -> None:
@@ -205,9 +201,7 @@ def assert_squads_are_disjoint(home: Lineup, away: Lineup) -> None:
     comparar escalações de partidas distintas passaria trivialmente.
     """
     if home.match_id != away.match_id:
-        raise ValueError(
-            f"escalações de partidas diferentes: {home.match_id} e {away.match_id}"
-        )
+        raise ValueError(f"escalações de partidas diferentes: {home.match_id} e {away.match_id}")
     if home.team_id == away.team_id:
         raise ValueError(f"as duas escalações são do mesmo time ({home.team_id})")
     comuns = home.player_ids & away.player_ids

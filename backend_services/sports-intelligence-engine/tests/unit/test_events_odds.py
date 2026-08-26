@@ -357,9 +357,7 @@ class TestOdds:
     def test_a_serie_e_identificada_por_casa_mercado_e_linha(self) -> None:
         """As seleções de um mercado são lados da mesma cotação e se movem
         juntas."""
-        over = self._quote(
-            market=OddsMarket.TOTAL_GOALS, selection=OddsSelection.OVER, line="2.5"
-        )
+        over = self._quote(market=OddsMarket.TOTAL_GOALS, selection=OddsSelection.OVER, line="2.5")
         under = self._quote(
             market=OddsMarket.TOTAL_GOALS, selection=OddsSelection.UNDER, line="2.5"
         )

@@ -405,9 +405,7 @@ class CorpusAccumulator:
             if len(self._exemplos) < MAX_ISSUE_EXAMPLES:
                 self._exemplos.append(f"{codigo}: {problema.subject}")
 
-    def _absorver_eventos(
-        self, facts: ComposedMatchCorpusFacts, particao: tuple[str, str]
-    ) -> None:
+    def _absorver_eventos(self, facts: ComposedMatchCorpusFacts, particao: tuple[str, str]) -> None:
         """Conta os eventos desta partida — e só os que ela PUBLICA.
 
         ELE NÃO GUARDA EVENTO NENHUM. O que sobrevive ao lote são contadores;

@@ -113,12 +113,9 @@ class RunHistoricalQualityAssessment:
         try:
             async for lote in batches:
                 registros = tuple(
-                    avaliador.assess(evidencia, quality_run_id=execucao.id)
-                    for evidencia in lote
+                    avaliador.assess(evidencia, quality_run_id=execucao.id) for evidencia in lote
                 )
-                gravados += await self.assessments.append_many(
-                    registros, policy=self.policy
-                )
+                gravados += await self.assessments.append_many(registros, policy=self.policy)
                 contagens = contagens.merged_with(
                     QualityCounts.of(tuple(r.assessment for r in registros))
                 )
@@ -147,9 +144,7 @@ class RunHistoricalQualityAssessment:
         )
         return QualityOutput(run=concluida, persisted=gravados)
 
-    async def _validar_entradas(
-        self, run_ids: Sequence[str]
-    ) -> tuple[QualityRunInput, ...]:
+    async def _validar_entradas(self, run_ids: Sequence[str]) -> tuple[QualityRunInput, ...]:
         """Recusa avaliar sobre fusões que não produziram saída utilizável.
 
         E CARREGA A IMPRESSÃO DE CADA UMA. Sem ela, «esta avaliação rodou sobre

@@ -177,9 +177,7 @@ class ResolutionReviewItem:
         """Marca que alguém está olhando. Impede decisão dupla."""
         self._assert_transition(ReviewStatus.IN_REVIEW)
         if actor.is_automated:
-            raise ValidationError(
-                "item de revisão atribuído a ator de serviço — a fila é humana"
-            )
+            raise ValidationError("item de revisão atribuído a ator de serviço — a fila é humana")
         _ = at
         return replace(self, status=ReviewStatus.IN_REVIEW, assigned_to=actor)
 

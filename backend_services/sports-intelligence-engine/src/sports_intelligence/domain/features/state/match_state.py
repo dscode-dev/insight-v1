@@ -107,9 +107,7 @@ class MatchContext:
             "competition_code": self.competition_code,
             "neutral_venue": self.neutral_venue,
             "scheduled_kickoff": (
-                None
-                if self.scheduled_kickoff is None
-                else instant_text(self.scheduled_kickoff)
+                None if self.scheduled_kickoff is None else instant_text(self.scheduled_kickoff)
             ),
             "season_label": self.season_label,
             "stage": self.stage,

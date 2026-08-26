@@ -75,6 +75,37 @@ class AuditAction(StrEnum):
     CORPUS_VERSION_FAILED = "CORPUS_VERSION_FAILED"
     CORPUS_VERSION_SUPERSEDED = "CORPUS_VERSION_SUPERSEDED"
 
+    # ---- PR-05.5.1. O DATASET DE FEATURES TEM AÇÕES PRÓPRIAS, e não reusa as
+    # do corpus: as duas coisas são publicadas por autorizações diferentes, e
+    # uma trilha que as confundisse responderia «quem publicou a 1.0?» com duas
+    # publicações de objetos distintos. `VALIDATED` existe aqui e não lá porque
+    # a validação do dataset é uma FASE com veredito — ela pode reprovar uma
+    # versão já construída.
+    FEATURE_DATASET_CREATED = "FEATURE_DATASET_CREATED"
+    FEATURE_DATASET_VERSION_CREATED = "FEATURE_DATASET_VERSION_CREATED"
+    FEATURE_DATASET_VERSION_BUILT = "FEATURE_DATASET_VERSION_BUILT"
+    FEATURE_DATASET_VERSION_VALIDATED = "FEATURE_DATASET_VERSION_VALIDATED"
+    FEATURE_DATASET_VERSION_PUBLISHED = "FEATURE_DATASET_VERSION_PUBLISHED"
+    FEATURE_DATASET_VERSION_FAILED = "FEATURE_DATASET_VERSION_FAILED"
+    FEATURE_DATASET_VERSION_SUPERSEDED = "FEATURE_DATASET_VERSION_SUPERSEDED"
+
+    # ---- PR-05.5.2. O AJUSTE TEM AÇÕES PRÓPRIAS, separadas das do dataset
+    # normalizado, porque são duas decisões distintas: «esta é a escala» e
+    # «esta é a representação publicada». Um mesmo ajuste alimenta várias
+    # representações, e uma trilha que os confundisse não saberia dizer qual
+    # das duas mudou quando os números mudaram.
+    NORMALIZER_ARTIFACT_SET_FITTED = "NORMALIZER_ARTIFACT_SET_FITTED"
+    NORMALIZER_ARTIFACT_SET_VALIDATED = "NORMALIZER_ARTIFACT_SET_VALIDATED"
+    NORMALIZER_ARTIFACT_SET_PUBLISHED = "NORMALIZER_ARTIFACT_SET_PUBLISHED"
+    NORMALIZER_ARTIFACT_SET_FAILED = "NORMALIZER_ARTIFACT_SET_FAILED"
+    NORMALIZED_DATASET_CREATED = "NORMALIZED_DATASET_CREATED"
+    NORMALIZED_DATASET_VERSION_CREATED = "NORMALIZED_DATASET_VERSION_CREATED"
+    NORMALIZED_DATASET_VERSION_BUILT = "NORMALIZED_DATASET_VERSION_BUILT"
+    NORMALIZED_DATASET_VERSION_VALIDATED = "NORMALIZED_DATASET_VERSION_VALIDATED"
+    NORMALIZED_DATASET_VERSION_PUBLISHED = "NORMALIZED_DATASET_VERSION_PUBLISHED"
+    NORMALIZED_DATASET_VERSION_FAILED = "NORMALIZED_DATASET_VERSION_FAILED"
+    NORMALIZED_DATASET_VERSION_SUPERSEDED = "NORMALIZED_DATASET_VERSION_SUPERSEDED"
+
     @property
     def is_decision(self) -> bool:
         """Se a ação foi um julgamento humano e não um passo mecânico.
@@ -89,6 +120,15 @@ class AuditAction(StrEnum):
             # agora — e superar é decidir que ele deixou de ser.
             AuditAction.CORPUS_VERSION_PUBLISHED,
             AuditAction.CORPUS_VERSION_SUPERSEDED,
+            # Publicar um dataset de features é decidir que ESTA população é a
+            # base de comparação a partir de agora.
+            AuditAction.FEATURE_DATASET_VERSION_PUBLISHED,
+            AuditAction.FEATURE_DATASET_VERSION_SUPERSEDED,
+            # Publicar um ajuste é decidir que ESTA é a escala sob a qual duas
+            # partidas passam a ser comparáveis.
+            AuditAction.NORMALIZER_ARTIFACT_SET_PUBLISHED,
+            AuditAction.NORMALIZED_DATASET_VERSION_PUBLISHED,
+            AuditAction.NORMALIZED_DATASET_VERSION_SUPERSEDED,
         )
 
 

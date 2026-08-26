@@ -104,9 +104,7 @@ class TestLifecycle:
         nove estados e afirma que `VALIDATED` é o ÚNICO predecessor possível —
         o que continua valendo quando um estado novo for acrescentado.
         """
-        predecessores = [
-            e for e in DatasetLifecycle if can_transition(e, DatasetLifecycle.STAGED)
-        ]
+        predecessores = [e for e in DatasetLifecycle if can_transition(e, DatasetLifecycle.STAGED)]
         assert predecessores == [DatasetLifecycle.VALIDATED]
 
     def test_staged_e_rejected_sao_terminais(self) -> None:
@@ -208,9 +206,10 @@ class TestIdentidadeDoDataset:
         assert outra.id != dataset().id
 
     def test_nome_e_normalizado_antes_de_derivar(self) -> None:
-        assert dataset(name="  Premier-League-2019-2024  ").id == dataset(
-            name="premier-league-2019-2024"
-        ).id
+        assert (
+            dataset(name="  Premier-League-2019-2024  ").id
+            == dataset(name="premier-league-2019-2024").id
+        )
 
     def test_nome_invalido_e_recusado(self) -> None:
         for ruim in ("ab", "Com Espaço", "-comeca-com-hifen", "a" * 80):
@@ -335,9 +334,7 @@ class TestChaveDeObjeto:
         primeira = build_object_key(
             dataset_id=d, version=V1, content_hash=h, safe_filename="e0.csv"
         )
-        segunda = build_object_key(
-            dataset_id=d, version=V1, content_hash=h, safe_filename="e0.csv"
-        )
+        segunda = build_object_key(dataset_id=d, version=V1, content_hash=h, safe_filename="e0.csv")
         assert primeira == segunda
 
     def test_chave_contem_o_hash_e_nao_depende_do_nome_para_ser_unica(self) -> None:

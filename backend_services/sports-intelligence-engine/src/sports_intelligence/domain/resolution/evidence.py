@@ -242,9 +242,7 @@ class ResolutionEvidence:
         if self.source_value is not None:
             valores = f" ({self.source_value}"
             valores += (
-                f" contra {self.canonical_value})"
-                if self.canonical_value is not None
-                else ")"
+                f" contra {self.canonical_value})" if self.canonical_value is not None else ")"
             )
         return f"{marca} {self.kind}{valores} [{self.explanation}, peso {self.weight:.2f}]"
 
@@ -290,6 +288,4 @@ def rank_alternatives(
     """
     if limit < 1:
         raise ValidationError(f"limite de alternativas {limit!r} inválido")
-    return tuple(
-        sorted(candidatos, key=lambda a: (-a.score, str(a.canonical_entity_id)))
-    )[:limit]
+    return tuple(sorted(candidatos, key=lambda a: (-a.score, str(a.canonical_entity_id))))[:limit]

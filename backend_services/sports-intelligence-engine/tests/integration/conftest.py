@@ -60,9 +60,7 @@ def postgres_dsn() -> Iterator[str]:
     try:
         from testcontainers.postgres import PostgresContainer
     except ImportError:
-        pytest.skip(
-            "sem PostgreSQL: defina SIE_TEST_POSTGRES_DSN ou instale testcontainers"
-        )
+        pytest.skip("sem PostgreSQL: defina SIE_TEST_POSTGRES_DSN ou instale testcontainers")
 
     try:
         with PostgresContainer("postgres:17-alpine", driver=None) as container:
@@ -90,6 +88,26 @@ def _settings_de_postgres(postgres_dsn: str) -> PostgresSettings:
     )
 
 
+@pytest.fixture(scope="session", autouse=True)
+def exclusividade_da_integracao(
+    _settings_de_postgres: PostgresSettings,
+) -> Iterator[None]:
+    """UMA suíte destrutiva por banco, por vez — e a integração É destrutiva.
+
+    O `database` abaixo dá `TRUNCATE ... CASCADE` a CADA teste. Rodar isso ao
+    mesmo tempo que o benchmark faz uma suíte arrancar as tabelas debaixo da
+    outra, e a falha se apresenta como defeito do motor. Aconteceu no
+    PR-05.5.1, e os números daquela execução foram descartados.
+
+    O LOCK É O MESMO DA PERFORMANCE, e essa é a correção: uma chave só, tomada
+    pelas duas suítes. Quem chegar depois espera.
+    """
+    from tests.support.db_exclusivity import exclusividade_do_banco
+
+    with exclusividade_do_banco(_settings_de_postgres.dsn(), rotulo="integração"):
+        yield
+
+
 @pytest.fixture
 async def database(_settings_de_postgres: PostgresSettings) -> AsyncIterator[Database]:
     """Um banco conectado, com o schema aplicado e as tabelas limpas.
@@ -107,7 +125,13 @@ async def database(_settings_de_postgres: PostgresSettings) -> AsyncIterator[Dat
     await migrations.migrate(banco, MIGRATIONS)
     async with banco.acquire() as conexao:
         await conexao.execute(
-            "TRUNCATE datasets, dataset_audit_log RESTART IDENTITY CASCADE"
+            # `historical_feature_datasets` NÃO cai por cascata de `datasets`:
+            # ele não tem chave estrangeira para lá, e é identidade própria
+            # (PR-05.5.1). Sem ele na lista, um dataset criado por um teste
+            # sobrevive para o próximo — e o próximo passa a exercitar o
+            # caminho «já existe» em vez do caminho de criação.
+            "TRUNCATE datasets, dataset_audit_log, historical_feature_datasets "
+            "RESTART IDENTITY CASCADE"
         )
     try:
         yield banco
@@ -156,3 +180,68 @@ def minio_only(object_store: Any) -> Any:
 def prefixo_unico() -> str:
     """Um prefixo por teste, para que execuções paralelas não se cruzem."""
     return uuid.uuid4().hex[:8]
+
+
+# ============================== o dataset de features (PR-05.5.1) ==
+#
+# ELES MORAM AQUI, e não num módulo de teste: dois E2E os usam — o do caminho
+# feliz e o da cadeia de integridade —, e importar fixture de um arquivo de
+# teste para outro faz o `pytest` registrar a mesma função duas vezes.
+
+
+@pytest.fixture
+async def publicado(database: Database, object_store: Any) -> dict[str, Any]:
+    """O corpus READY do PR-05.2, pronto para virar dataset de features."""
+    from tests.integration.test_match_state_e2e import montar_corpus_publicado
+
+    return await montar_corpus_publicado(database, object_store)
+
+
+@pytest.fixture
+async def construido(
+    database: Database, object_store: Any, publicado: dict[str, Any]
+) -> dict[str, Any]:
+    """Uma versão do dataset já materializada, parada em `VALIDATING`."""
+    from tests.support.dataset_e2e import Montagem, construir_versao
+
+    montagem = Montagem(database, object_store)
+    saida = await construir_versao(montagem, publicado)
+    return {"montagem": montagem, "saida": saida, "publicado": publicado}
+
+
+# ============================ o dataset normalizado (PR-05.5.2) ==
+
+
+@pytest.fixture
+async def cru_publicado(construido: dict[str, Any]) -> dict[str, Any]:
+    """A versão crua levada a `READY` — o insumo do ajuste.
+
+    ELA EXISTE PORQUE O AJUSTE RECUSA UMA VERSÃO NÃO PUBLICADA (§26): a escala
+    sairia sobre linhas que ainda podem mudar, e a impressão do ajuste
+    apontaria para um conteúdo que deixou de existir.
+    """
+    from tests.support.normalized_e2e import publicar_versao_crua
+
+    publicada = await publicar_versao_crua(construido)
+    return {**construido, "versao_crua": publicada}
+
+
+@pytest.fixture
+async def normalizado(
+    database: Database, object_store: Any, cru_publicado: dict[str, Any]
+) -> dict[str, Any]:
+    """O ajuste feito e conferido, sobre a versão crua publicada."""
+    from tests.support.normalized_e2e import ATOR, MontagemNormalizada
+
+    crua = cru_publicado["versao_crua"]
+    montagem = MontagemNormalizada(
+        database,
+        object_store,
+        reference_end_exclusive=crua.spec.reference_end_exclusive,
+    )
+    ajuste = await montagem.ajustar.execute(
+        source_version_id=crua.id,
+        raw_dataset_name=crua.spec.space_name and "match-state-raw",
+        actor=ATOR,
+    )
+    return {**cru_publicado, "montagem_n": montagem, "ajuste": ajuste}

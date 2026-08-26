@@ -279,9 +279,7 @@ class DatasetValidationReport:
                 f"({len(self.issues)}) — a contagem total nunca é menor que a amostra"
             )
         if self.truncated and self.issue_count <= len(self.issues):
-            raise ValidationError(
-                "relatório marcado como truncado sem ter perdido nenhuma issue"
-            )
+            raise ValidationError("relatório marcado como truncado sem ter perdido nenhuma issue")
         for nome in ("files_checked", "rows_observed"):
             if getattr(self, nome) < 0:
                 raise ValidationError(f"{nome} negativo")

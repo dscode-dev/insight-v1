@@ -114,14 +114,10 @@ class CanonicalBuildPolicy:
     #: restritiva (§20). Vazio significa «nenhuma»: descartar dado restrito
     #: para conseguir publicar é uma permissão declarada, nunca um recurso que
     #: o motor usa por conta própria.
-    license_droppable_families: frozenset[CoverageFamily] = field(
-        default_factory=frozenset
-    )
+    license_droppable_families: frozenset[CoverageFamily] = field(default_factory=frozenset)
 
     on_review_required: ReviewHandling = ReviewHandling.NEVER_BUILD
-    on_optional_conflict: OptionalConflictHandling = (
-        OptionalConflictHandling.EXCLUDE_FAMILY
-    )
+    on_optional_conflict: OptionalConflictHandling = OptionalConflictHandling.EXCLUDE_FAMILY
 
     #: Se uma partida pode entrar no corpus SEM resultado (§33). `False` para
     #: um corpus de resultados; `True` para um de calendário e contexto.
@@ -141,9 +137,7 @@ class CanonicalBuildPolicy:
                 f"{sorted(f.value for f in sobrepostas)} — a política não decidiria "
                 "o que fazer quando elas faltassem"
             )
-        nao_construiveis = (
-            self.required_families | self.optional_families
-        ) - BUILDABLE_FAMILIES
+        nao_construiveis = (self.required_families | self.optional_families) - BUILDABLE_FAMILIES
         if nao_construiveis:
             raise ValidationError(
                 f"a política exige famílias que o contrato fundido desta fase não "
@@ -185,9 +179,7 @@ class CanonicalBuildPolicy:
                     record,
                     outcome=BuildOutcome.REVIEW_REQUIRED,
                     reason_family=FamilyExclusionReason.ASSESSMENT_REVIEW,
-                    reason=(
-                        f"qualidade REVIEW_REQUIRED: {avaliacao.reason or 'sem detalhe'}"
-                    ),
+                    reason=(f"qualidade REVIEW_REQUIRED: {avaliacao.reason or 'sem detalhe'}"),
                 )
             return self._decidir_familias(record, apenas_obrigatorias=True)
 
@@ -218,8 +210,7 @@ class CanonicalBuildPolicy:
             scope=self.scope,
             build_policy_version=self.version,
             families=tuple(
-                destino(familia, reason_family)
-                for familia in self._familias_consideradas(record)
+                destino(familia, reason_family) for familia in self._familias_consideradas(record)
             ),
             reason=reason,
         )
@@ -272,9 +263,7 @@ class CanonicalBuildPolicy:
                 scope=self.scope,
                 build_policy_version=self.version,
                 families=tuple(
-                    FamilyDecision.excluded(
-                        d.family, FamilyExclusionReason.MATCH_NOT_BUILT
-                    )
+                    FamilyDecision.excluded(d.family, FamilyExclusionReason.MATCH_NOT_BUILT)
                     if d.outcome.materializes
                     else d
                     for d in decisoes
@@ -307,9 +296,7 @@ class CanonicalBuildPolicy:
                 f"{familia} é obrigatória e a fonte não a trouxe" if obrigatoria else None,
             )
 
-        veredito, licenca = self._licenca_de(
-            record.assessment.usage.footprint, familia
-        )
+        veredito, licenca = self._licenca_de(record.assessment.usage.footprint, familia)
         if veredito is not UsageEligibility.ELIGIBLE:
             if familia in self.license_droppable_families:
                 return (
@@ -332,9 +319,7 @@ class CanonicalBuildPolicy:
 
         if familia in record.families_unresolved_identity:
             return (
-                FamilyDecision.excluded(
-                    familia, FamilyExclusionReason.UNRESOLVED_IDENTITY
-                ),
+                FamilyDecision.excluded(familia, FamilyExclusionReason.UNRESOLVED_IDENTITY),
                 f"{familia} depende de identidade não resolvida e é obrigatória"
                 if obrigatoria
                 else None,
@@ -343,31 +328,23 @@ class CanonicalBuildPolicy:
         if familia in record.families_in_conflict:
             if obrigatoria:
                 return (
-                    FamilyDecision.excluded(
-                        familia, FamilyExclusionReason.UNRESOLVED_CONFLICT
-                    ),
+                    FamilyDecision.excluded(familia, FamilyExclusionReason.UNRESOLVED_CONFLICT),
                     f"{familia} é obrigatória e as fontes divergem sem resolução — "
                     "escolher uma seria inventar o fato (§45)",
                 )
             if self.on_optional_conflict is OptionalConflictHandling.REVIEW_FAMILY:
                 return (
-                    FamilyDecision.needs_review(
-                        familia, FamilyExclusionReason.UNRESOLVED_CONFLICT
-                    ),
+                    FamilyDecision.needs_review(familia, FamilyExclusionReason.UNRESOLVED_CONFLICT),
                     None,
                 )
             return (
-                FamilyDecision.excluded(
-                    familia, FamilyExclusionReason.UNRESOLVED_CONFLICT
-                ),
+                FamilyDecision.excluded(familia, FamilyExclusionReason.UNRESOLVED_CONFLICT),
                 None,
             )
 
         return FamilyDecision.included(familia), None
 
-    def _familias_consideradas(
-        self, record: MatchQualityRecord
-    ) -> tuple[CoverageFamily, ...]:
+    def _familias_consideradas(self, record: MatchQualityRecord) -> tuple[CoverageFamily, ...]:
         """As famílias que este build precisa se pronunciar sobre.
 
         AS DECLARADAS PELA FONTE ENTRAM MESMO FORA DE ESCOPO, e é o §20: uma
@@ -428,9 +405,7 @@ class CanonicalBuildPolicy:
     def as_canonical(self) -> dict[str, object]:
         """A forma determinística — ela é gravada junto da execução (§18)."""
         return {
-            "license_droppable_families": sorted(
-                f.value for f in self.license_droppable_families
-            ),
+            "license_droppable_families": sorted(f.value for f in self.license_droppable_families),
             "on_optional_conflict": self.on_optional_conflict.value,
             "on_review_required": self.on_review_required.value,
             "optional_families": sorted(f.value for f in self.optional_families),
@@ -467,10 +442,7 @@ def _sem_resultado(record: MatchQualityRecord) -> bool:
     ausência foi o avaliador, sob a política de qualidade, e reobservá-la aqui
     seria a segunda opinião que o §5 proíbe.
     """
-    return any(
-        problema.code is IssueCode.MISSING_RESULT
-        for problema in record.assessment.issues
-    )
+    return any(problema.code is IssueCode.MISSING_RESULT for problema in record.assessment.issues)
 
 
 #: O BUILD DE PESQUISA. Inclui tudo que a fonte trouxe, porque `RESEARCH_ONLY`

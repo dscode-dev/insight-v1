@@ -129,9 +129,7 @@ class LicenseFootprint:
     — que é a pergunta que o build comercial faz.
     """
 
-    by_family: dict[CoverageFamily, frozenset[LicenseClass]] = field(
-        default_factory=dict
-    )
+    by_family: dict[CoverageFamily, frozenset[LicenseClass]] = field(default_factory=dict)
     #: As licenças das fontes que sustentam a família **SOZINHAS** — as que
     #: teriam produzido o MESMO valor sem nenhuma das outras.
     #:
@@ -153,9 +151,7 @@ class LicenseFootprint:
     #:
     #: VAZIO É O DEFAULT E É CONSERVADOR: sem suporte independente declarado,
     #: vale a regra antiga, que é a restritiva.
-    independent_support: dict[CoverageFamily, frozenset[LicenseClass]] = field(
-        default_factory=dict
-    )
+    independent_support: dict[CoverageFamily, frozenset[LicenseClass]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for familia, licencas in self.by_family.items():
@@ -175,13 +171,9 @@ class LicenseFootprint:
 
     @property
     def all_licenses(self) -> frozenset[LicenseClass]:
-        return frozenset(
-            licenca for licencas in self.by_family.values() for licenca in licencas
-        )
+        return frozenset(licenca for licencas in self.by_family.values() for licenca in licencas)
 
-    def family_verdict(
-        self, family: CoverageFamily, scope: UsageScope
-    ) -> UsageEligibility:
+    def family_verdict(self, family: CoverageFamily, scope: UsageScope) -> UsageEligibility:
         """O veredito de UMA família, considerando o suporte independente.
 
         A ORDEM DA PERGUNTA É O PONTO: primeiro «há alguma fonte elegível que
@@ -193,10 +185,7 @@ class LicenseFootprint:
         if any(eligibility_of(lic, scope) is UsageEligibility.ELIGIBLE for lic in sozinhas):
             return UsageEligibility.ELIGIBLE
         return worst(
-            tuple(
-                eligibility_of(lic, scope)
-                for lic in self.by_family.get(family, frozenset())
-            )
+            tuple(eligibility_of(lic, scope) for lic in self.by_family.get(family, frozenset()))
         )
 
     def verdict(
@@ -231,8 +220,7 @@ class LicenseFootprint:
                 (
                     familia
                     for familia in self.by_family
-                    if self.family_verdict(familia, scope)
-                    is UsageEligibility.INELIGIBLE
+                    if self.family_verdict(familia, scope) is UsageEligibility.INELIGIBLE
                 ),
                 key=lambda f: f.value,
             )
@@ -247,9 +235,7 @@ class LicenseFootprint:
         juntas: dict[CoverageFamily, frozenset[LicenseClass]] = dict(self.by_family)
         for familia, licencas in other.by_family.items():
             juntas[familia] = juntas.get(familia, frozenset()) | licencas
-        sozinhas: dict[CoverageFamily, frozenset[LicenseClass]] = dict(
-            self.independent_support
-        )
+        sozinhas: dict[CoverageFamily, frozenset[LicenseClass]] = dict(self.independent_support)
         for familia, licencas in other.independent_support.items():
             sozinhas[familia] = sozinhas.get(familia, frozenset()) | licencas
         return LicenseFootprint(by_family=juntas, independent_support=sozinhas)
@@ -257,16 +243,17 @@ class LicenseFootprint:
     def as_canonical(self) -> dict[str, list[str]]:
         return {
             familia.value: sorted(lic.value for lic in licencas)
-            for familia, licencas in sorted(
-                self.by_family.items(), key=lambda p: p[0].value
-            )
+            for familia, licencas in sorted(self.by_family.items(), key=lambda p: p[0].value)
         }
 
     def __str__(self) -> str:
-        return ", ".join(
-            f"{f.value}={sorted(lic.value for lic in ls)}"
-            for f, ls in sorted(self.by_family.items(), key=lambda p: p[0].value)
-        ) or "sem licença registrada"
+        return (
+            ", ".join(
+                f"{f.value}={sorted(lic.value for lic in ls)}"
+                for f, ls in sorted(self.by_family.items(), key=lambda p: p[0].value)
+            )
+            or "sem licença registrada"
+        )
 
 
 @final
@@ -295,9 +282,7 @@ class UsageVerdict:
     ) -> Self:
         return cls(
             research=footprint.verdict(UsageScope.RESEARCH),
-            commercial=footprint.verdict(
-                UsageScope.COMMERCIAL, excluding=commercial_exclusions
-            ),
+            commercial=footprint.verdict(UsageScope.COMMERCIAL, excluding=commercial_exclusions),
             footprint=footprint,
             commercial_blockers=footprint.families_blocking(UsageScope.COMMERCIAL),
         )

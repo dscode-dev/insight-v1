@@ -435,9 +435,7 @@ class PostgresCanonicalBuildRunRepository:
                 uuid.UUID(run.quality_run_id),
                 run.build_policy_version.major,
                 run.build_policy_version.minor,
-                run.build_policy_fingerprint.value
-                if run.build_policy_fingerprint
-                else None,
+                run.build_policy_fingerprint.value if run.build_policy_fingerprint else None,
                 run.scope.value,
                 run.quality_policy_version.major,
                 run.quality_policy_version.minor,
@@ -449,16 +447,11 @@ class PostgresCanonicalBuildRunRepository:
             await conexao.executemany(
                 "INSERT INTO canonical_build_run_inputs (build_run_id, fusion_run_id) "
                 "VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                [
-                    (uuid.UUID(run.id), uuid.UUID(f))
-                    for f in run.input_fusion_run_ids
-                ],
+                [(uuid.UUID(run.id), uuid.UUID(f)) for f in run.input_fusion_run_ids],
             )
         return run
 
-    async def save_policy_snapshot(
-        self, run_id: str, policy: CanonicalBuildPolicy
-    ) -> None:
+    async def save_policy_snapshot(self, run_id: str, policy: CanonicalBuildPolicy) -> None:
         """Grava a política inteira dentro da execução (§18).
 
         CONDICIONAL A `RUNNING`: uma execução concluída não ganha snapshot
@@ -540,10 +533,7 @@ class PostgresCanonicalBuildRunRepository:
             por_execucao.setdefault(entrada["build_run_id"], []).append(
                 str(entrada["fusion_run_id"])
             )
-        return [
-            _para_build(linha, tuple(por_execucao.get(linha["id"], [])))
-            for linha in linhas
-        ]
+        return [_para_build(linha, tuple(por_execucao.get(linha["id"], []))) for linha in linhas]
 
 
 @final
@@ -617,14 +607,10 @@ class PostgresCanonicalBuildRecordRepository:
             )
         return [_para_registro_de_build(linha) for linha in linhas]
 
-    async def record_family_decisions(
-        self, run_id: str, decisions: Sequence[BuildDecision]
-    ) -> int:
+    async def record_family_decisions(self, run_id: str, decisions: Sequence[BuildDecision]) -> int:
         """Grava a decisão por família — o rastro do §20."""
         linhas = [
-            (decisao.match_id, familia)
-            for decisao in decisions
-            for familia in decisao.families
+            (decisao.match_id, familia) for decisao in decisions for familia in decisao.families
         ]
         if not linhas:
             return 0
@@ -648,9 +634,7 @@ class PostgresCanonicalBuildRecordRepository:
             )
         return len(linhas)
 
-    async def family_decisions_of(
-        self, run_id: str, match_id: MatchId
-    ) -> Sequence[FamilyDecision]:
+    async def family_decisions_of(self, run_id: str, match_id: MatchId) -> Sequence[FamilyDecision]:
         async with self._db.acquire() as conexao:
             linhas = await conexao.fetch(
                 "SELECT * FROM canonical_build_family_decisions "
@@ -662,13 +646,9 @@ class PostgresCanonicalBuildRecordRepository:
             FamilyDecision(
                 family=CoverageFamily(linha["family"]),
                 outcome=FamilyOutcome(linha["outcome"]),
-                reason=(
-                    FamilyExclusionReason(linha["reason"]) if linha["reason"] else None
-                ),
+                reason=(FamilyExclusionReason(linha["reason"]) if linha["reason"] else None),
                 license_class=(
-                    LicenseClass(linha["license_class"])
-                    if linha["license_class"]
-                    else None
+                    LicenseClass(linha["license_class"]) if linha["license_class"] else None
                 ),
             )
             for linha in linhas
@@ -704,16 +684,12 @@ def _resultado_equivalente(result: MatchResult, linha: Any) -> bool:
         and linha["regular_away"] == result.regular_time.away
         and linha["extra_home"] == (result.extra_time.home if result.extra_time else None)
         and linha["extra_away"] == (result.extra_time.away if result.extra_time else None)
-        and linha["penalties_home"]
-        == (result.penalties.home if result.penalties else None)
-        and linha["penalties_away"]
-        == (result.penalties.away if result.penalties else None)
+        and linha["penalties_home"] == (result.penalties.home if result.penalties else None)
+        and linha["penalties_away"] == (result.penalties.away if result.penalties else None)
     )
 
 
-def _desfecho_de_odd(
-    existente: Decimal | None, cotacao: Decimal
-) -> MatchWriteOutcome:
+def _desfecho_de_odd(existente: Decimal | None, cotacao: Decimal) -> MatchWriteOutcome:
     if existente is None:
         return MatchWriteOutcome.CONFLICT
     return (
@@ -733,9 +709,7 @@ _ORDEM_DE_DESFECHO: Final[dict[MatchWriteOutcome, int]] = {
 }
 
 
-def _pior_desfecho(
-    atual: MatchWriteOutcome | None, novo: MatchWriteOutcome
-) -> MatchWriteOutcome:
+def _pior_desfecho(atual: MatchWriteOutcome | None, novo: MatchWriteOutcome) -> MatchWriteOutcome:
     if atual is None:
         return novo
     return min(atual, novo, key=lambda d: _ORDEM_DE_DESFECHO[d])
@@ -763,9 +737,7 @@ def _para_identidade(linha: Any) -> MatchIdentityFacts:
         home_team_id=TeamId(linha["home_team_id"]),
         away_team_id=TeamId(linha["away_team_id"]),
         scheduled_kickoff=instant(linha["scheduled_kickoff"]),
-        actual_kickoff=(
-            instant(linha["actual_kickoff"]) if linha["actual_kickoff"] else None
-        ),
+        actual_kickoff=(instant(linha["actual_kickoff"]) if linha["actual_kickoff"] else None),
         venue=Venue(name=linha["venue_name"]) if linha["venue_name"] else None,
         neutral_venue=linha["neutral_venue"],
     )
@@ -790,9 +762,7 @@ def _para_build(linha: Any, fusion_run_ids: tuple[str, ...]) -> CanonicalBuildRu
         ),
         status=RunStatus(linha["status"]),
         started_at=instant(linha["started_at"]),
-        triggered_by=Actor(
-            id=linha["triggered_by"], kind=ActorKind(linha["triggered_by_kind"])
-        ),
+        triggered_by=Actor(id=linha["triggered_by"], kind=ActorKind(linha["triggered_by_kind"])),
         counts=BuildCounts(
             records_attempted=linha["records_attempted"],
             records_built=linha["records_built"],
@@ -805,9 +775,7 @@ def _para_build(linha: Any, fusion_run_ids: tuple[str, ...]) -> CanonicalBuildRu
         completed_at=instant(linha["completed_at"]) if linha["completed_at"] else None,
         failure_reason=linha["failure_reason"],
         output_fingerprint=(
-            ContentHash(linha["output_fingerprint"])
-            if linha["output_fingerprint"]
-            else None
+            ContentHash(linha["output_fingerprint"]) if linha["output_fingerprint"] else None
         ),
     )
 
@@ -822,12 +790,8 @@ def _para_registro_de_build(linha: Any) -> CanonicalBuildRecord:
         quality_assessment_id=str(linha["quality_assessment_id"]),
         status=BuildRecordStatus(linha["status"]),
         fact_id=linha["fact_id"],
-        included_families=tuple(
-            CoverageFamily(f) for f in linha["included_families"]
-        ),
-        excluded_families=tuple(
-            CoverageFamily(f) for f in linha["excluded_families"]
-        ),
+        included_families=tuple(CoverageFamily(f) for f in linha["included_families"]),
+        excluded_families=tuple(CoverageFamily(f) for f in linha["excluded_families"]),
         reason=linha["reason"],
     )
 

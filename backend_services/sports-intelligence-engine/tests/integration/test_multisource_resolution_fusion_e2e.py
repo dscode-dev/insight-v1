@@ -89,9 +89,7 @@ _REGIME_COPA = CompetitionRegime(
 
 
 def _time(nome: str, pais: str = "GB") -> Team:
-    return Team(
-        id=TeamId.derive("e2e", nome), canonical_name=nome, country=pais
-    )
+    return Team(id=TeamId.derive("e2e", nome), canonical_name=nome, country=pais)
 
 
 def _alias(entidade: TeamId, texto: str) -> EntityAlias:
@@ -463,8 +461,7 @@ class TestConvergenciaDeIdentidade:
         assert liga is not None, "a partida da liga não resolveu"
         assert na_copa is not None, "a partida da copa não resolveu"
         assert liga != na_copa, (
-            "a partida da liga e a da copa resolveram para o mesmo id — "
-            "dois jogos viraram um"
+            "a partida da liga e a da copa resolveram para o mesmo id — dois jogos viraram um"
         )
 
     async def test_homonimos_nao_se_fundem_contra_o_registro_real(
@@ -634,6 +631,7 @@ class TestFusaoMultiFonte:
         ]
         assert len(cotacoes) == 2
 
+
 class TestLinhagem:
     async def test_do_campo_fundido_ate_o_sha256_do_objeto_bruto(
         self, cenario: tuple[Pipeline, Any], database: Database
@@ -661,9 +659,7 @@ class TestLinhagem:
         for _campo, fonte in contribuicoes[:3]:
             referencia = fonte.record_ref
             dataset = next(d for d in datasets if d.id == referencia.dataset_id)
-            arquivo = next(
-                f for f in dataset.stored_files if str(f.id) == referencia.file_id
-            )
+            arquivo = next(f for f in dataset.stored_files if str(f.id) == referencia.file_id)
 
             # O ARQUIVO BRUTO, LIDO DO OBJECT STORE, E O HASH RECALCULADO.
             digestor = hashlib.sha256()
@@ -677,9 +673,9 @@ class TestLinhagem:
             # decisão: ela é o que liga a execução a ESTES bytes.
             manifesto = await pipeline.manifests.latest_for(dataset.id)
             assert manifesto is not None
-            assert any(
-                a.sha256 == arquivo.content_hash for a in manifesto.files
-            ), "o manifesto não contém o arquivo de onde o campo veio"
+            assert any(a.sha256 == arquivo.content_hash for a in manifesto.files), (
+                "o manifesto não contém o arquivo de onde o campo veio"
+            )
             assert referencia.record_number >= 1
             conferidos += 1
 

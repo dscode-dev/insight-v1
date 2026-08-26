@@ -204,9 +204,7 @@ class Cenario:
         return CandidateEvidence(
             candidate=self.candidate,
             group=self.group,
-            identity_confidences=dict(
-                confidences if confidences is not None else CONFIANCAS_BOAS
-            ),
+            identity_confidences=dict(confidences if confidences is not None else CONFIANCAS_BOAS),
             lineup_drafts=lineup_drafts,
         )
 
@@ -223,9 +221,7 @@ def cenario(
     alvo = registros[0].canonical_entity_id
     assert isinstance(alvo, MatchId)
     grupo = FusionGroup.of(alvo, tuple(registros), tuple(extras))
-    return Cenario(
-        group=grupo, candidate=FusionEngine(DEFAULT_FUSION_POLICY).fuse(grupo)
-    )
+    return Cenario(group=grupo, candidate=FusionEngine(DEFAULT_FUSION_POLICY).fuse(grupo))
 
 
 def cenario_publico_com_odds(n: int = 0) -> Cenario:
@@ -259,9 +255,7 @@ def grupos_e_candidatos(
 def registros_de(cenarios_: Sequence[Cenario]) -> tuple[ResolvedSourceRecord, ...]:
     """Todos os registros dos cenários, para reexecutar o agrupamento real."""
     return tuple(
-        registro
-        for c in cenarios_
-        for registro in (*c.group.records, *c.group.extra_observations)
+        registro for c in cenarios_ for registro in (*c.group.records, *c.group.extra_observations)
     )
 
 
@@ -426,9 +420,7 @@ def kickoff_em_conflito(n: int = 0) -> Cenario:
             SemanticRole.SEASON_LABEL: "2026",
             # TRÊS HORAS DE DIFERENÇA: não é arredondamento nem fuso mal lido
             # dentro da tolerância — é desacordo sobre quando o jogo foi.
-            SemanticRole.KICKOFF: instant(
-                datetime(2026, 3, 14, 22, 30, tzinfo=UTC)
-            ).isoformat(),
+            SemanticRole.KICKOFF: instant(datetime(2026, 3, 14, 22, 30, tzinfo=UTC)).isoformat(),
             SemanticRole.HOME_SCORE: "2",
             SemanticRole.AWAY_SCORE: "1",
         },

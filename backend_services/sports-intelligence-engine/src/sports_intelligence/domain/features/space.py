@@ -104,13 +104,9 @@ class CorpusRequirement:
         (PR-05.4 §3, §90). Emitir `[]` mudaria o hash de todo espaço já
         publicado por causa de um campo que ninguém usou.
         """
-        documento: dict[str, object] = {
-            "families": sorted(f.value for f in self.families)
-        }
+        documento: dict[str, object] = {"families": sorted(f.value for f in self.families)}
         if self.optional_families:
-            documento["optional_families"] = sorted(
-                f.value for f in self.optional_families
-            )
+            documento["optional_families"] = sorted(f.value for f in self.optional_families)
         return documento
 
 
@@ -171,9 +167,7 @@ class FeatureSpaceDefinition:
             )
         if self.live_comparable:
             pos_jogo = [
-                f.key
-                for f in self.features
-                if f.temporal_class is FeatureTemporalClass.POST_MATCH
+                f.key for f in self.features if f.temporal_class is FeatureTemporalClass.POST_MATCH
             ]
             if pos_jogo:
                 raise ValidationError(
@@ -232,8 +226,7 @@ class FeatureSpaceDefinition:
         if faltando:
             nomes = sorted(f.value for f in faltando)
             raise ValidationError(
-                f"o espaço {self.name} exige {nomes} e o corpus não publica essa(s) "
-                "família(s)",
+                f"o espaço {self.name} exige {nomes} e o corpus não publica essa(s) família(s)",
                 context={"space": self.name, "missing": ", ".join(nomes)},
             )
 

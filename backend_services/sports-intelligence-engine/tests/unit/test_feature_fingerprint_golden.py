@@ -42,19 +42,13 @@ from tests.support.feature_fixtures import (
 )
 
 #: `test_event_count@v1.0` com `window_minutes = 5`.
-DEFINICAO_DOURADA: Final[str] = (
-    "cbfbcfaf3619de52bd1d069de446da99127bd83cb52080c664874c042eff437e"
-)
+DEFINICAO_DOURADA: Final[str] = "cbfbcfaf3619de52bd1d069de446da99127bd83cb52080c664874c042eff437e"
 
 #: O espaço `test-space@v1.0` com aquela única feature, `live_comparable`.
-ESPACO_DOURADO: Final[str] = (
-    "559236b64aa7c9023fa22e2352f77fe55a8e2dc023f09070cc2eee994bda6ef7"
-)
+ESPACO_DOURADO: Final[str] = "559236b64aa7c9023fa22e2352f77fe55a8e2dc023f09070cc2eee994bda6ef7"
 
 #: A política temporal padrão da V1.
-POLITICA_DOURADA: Final[str] = (
-    "4fdb7c96c9980bf908281a1b8fd22796d033d2e0943fc2ae3dfc01f3fdd5e7fb"
-)
+POLITICA_DOURADA: Final[str] = "4fdb7c96c9980bf908281a1b8fd22796d033d2e0943fc2ae3dfc01f3fdd5e7fb"
 
 #: `competition_median_iqr@v1.0`.
 NORMALIZADOR_DOURADO: Final[str] = (
@@ -62,9 +56,7 @@ NORMALIZADOR_DOURADO: Final[str] = (
 )
 
 #: O snapshot do corte de 63' com `test_event_count = 4`.
-SNAPSHOT_DOURADO: Final[str] = (
-    "c3c0dfeaa2466866b6201c453f906f15942cacf4594a49ce94e7fa392f09a976"
-)
+SNAPSHOT_DOURADO: Final[str] = "c3c0dfeaa2466866b6201c453f906f15942cacf4594a49ce94e7fa392f09a976"
 
 _QUEBROU = (
     "a serialização canônica mudou. Se foi intencional, suba a versão do "

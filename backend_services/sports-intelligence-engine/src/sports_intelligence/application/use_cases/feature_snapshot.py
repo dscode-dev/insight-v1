@@ -226,9 +226,7 @@ class BuildHistoricalFeatureSnapshots:
                 if entrada is None:
                     continue
                 for corte in as_of_of(partida):
-                    build = construtor.build(
-                        entrada, as_of=corte, source=source_corpus
-                    )
+                    build = construtor.build(entrada, as_of=corte, source=source_corpus)
                     contexto = MatchFeatureExtractionContext.of(
                         build,
                         space=self.space,

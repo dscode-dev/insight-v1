@@ -161,9 +161,7 @@ class ClickHouseSettings(_Base):
 class RedisSettings(_Base):
     """Estado quente, janelas móveis, Streams e a inteligência materializada."""
 
-    model_config = SettingsConfigDict(
-        **{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}REDIS_"}
-    )
+    model_config = SettingsConfigDict(**{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}REDIS_"})
 
     host: str
     port: int = Field(default=6379, ge=1, le=65535)
@@ -213,8 +211,7 @@ class ObjectStoreSettings(_Base):
         texto = valor.strip().lower()
         if not 3 <= len(texto) <= 63 or not texto.replace("-", "").replace(".", "").isalnum():
             raise ValueError(
-                f"bucket {valor!r} inválido: 3 a 63 caracteres, minúsculas, dígitos, "
-                "hífen e ponto"
+                f"bucket {valor!r} inválido: 3 a 63 caracteres, minúsculas, dígitos, hífen e ponto"
             )
         return texto
 
@@ -262,9 +259,7 @@ class IntakeSettings(_Base):
 
 
 class ObservabilitySettings(_Base):
-    model_config = SettingsConfigDict(
-        **{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}OTEL_"}
-    )
+    model_config = SettingsConfigDict(**{**_Base.model_config, "env_prefix": f"{ENV_PREFIX}OTEL_"})
 
     #: Sem endpoint, o motor não exporta traços e diz isso no `doctor` — em
     #: vez de tentar exportar para lugar nenhum e engolir o erro por tick.
@@ -295,9 +290,7 @@ class SecuritySettings(_Base):
         return valor
 
 
-def assert_object_store_is_durable(
-    store: ObjectStoreSettings, environment: Environment
-) -> None:
+def assert_object_store_is_durable(store: ObjectStoreSettings, environment: Environment) -> None:
     """Recusa um arquivo bruto que não sobrevive ao contêiner.
 
     A CHECAGEM MORA NUMA FUNÇÃO E NÃO NUM VALIDADOR porque ela cruza dois

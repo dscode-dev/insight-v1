@@ -144,9 +144,7 @@ class TestQualityRun:
     def test_conclusao_deriva_o_status_das_contagens(self) -> None:
         """`REVIEW_REQUIRED` leva a `COMPLETED_WITH_REVIEW`, e não a
         `COMPLETED`: os dois são sucesso, e o segundo diz «nada a fazer»."""
-        limpa = _execucao().complete(
-            counts=QualityCounts(records_examined=2, eligible=2), at=AGORA
-        )
+        limpa = _execucao().complete(counts=QualityCounts(records_examined=2, eligible=2), at=AGORA)
         com_revisao = _execucao().complete(
             counts=QualityCounts(records_examined=2, eligible=1, review_required=1),
             at=AGORA,
@@ -242,12 +240,8 @@ class TestAvaliacaoDeCandidatoReal:
     def test_a_licenca_e_por_familia_e_nao_global(self) -> None:
         """§19, o cenário central: núcleo público, odds `RESEARCH_ONLY`."""
         pegada = _avaliar(cenario_publico_com_odds()).assessment.usage.footprint
-        assert pegada.by_family[CoverageFamily.MATCH] == frozenset(
-            {LicenseClass.PUBLIC_DOMAIN}
-        )
-        assert pegada.by_family[CoverageFamily.ODDS] == frozenset(
-            {LicenseClass.RESEARCH_ONLY}
-        )
+        assert pegada.by_family[CoverageFamily.MATCH] == frozenset({LicenseClass.PUBLIC_DOMAIN})
+        assert pegada.by_family[CoverageFamily.ODDS] == frozenset({LicenseClass.RESEARCH_ONLY})
 
     def test_licenca_restrita_nao_reprova_a_qualidade_tecnica(self) -> None:
         """§84. A partida continua tecnicamente elegível; o que muda é o
@@ -262,23 +256,17 @@ class TestAvaliacaoDeCandidatoReal:
         a política de qualidade declara ODDS descartável, e o veredito
         comercial considera o candidato SEM ela."""
         avaliacao = _avaliar(cenario_publico_com_odds()).assessment
-        assert DEFAULT_QUALITY_POLICY.commercially_droppable == frozenset(
-            {CoverageFamily.ODDS}
-        )
+        assert DEFAULT_QUALITY_POLICY.commercially_droppable == frozenset({CoverageFamily.ODDS})
         assert avaliacao.usage.commercial is UsageEligibility.ELIGIBLE
 
     def test_licenca_restrita_vira_problema_INFO_e_nao_defeito(self) -> None:
         """§16, §30: o problema aparece no MESMO relatório e sua dimensão de
         qualidade é `None` — é assim que o tipo diz que não é qualidade."""
         avaliacao = _avaliar(cenario_publico_com_odds()).assessment
-        restricoes = [
-            p for p in avaliacao.issues if p.code is IssueCode.LICENSE_RESTRICTED
-        ]
+        restricoes = [p for p in avaliacao.issues if p.code is IssueCode.LICENSE_RESTRICTED]
         assert restricoes
         assert all(p.dimension is None for p in restricoes)
-        assert DEFAULT_QUALITY_POLICY.severity_of(IssueCode.LICENSE_RESTRICTED) is (
-            Severity.INFO
-        )
+        assert DEFAULT_QUALITY_POLICY.severity_of(IssueCode.LICENSE_RESTRICTED) is (Severity.INFO)
 
     def test_placar_ausente_nao_vira_zero_e_nao_reprova(self) -> None:
         """§44 e §89. Ausência é ausência: ela vira `MISSING_RESULT`, que a
@@ -341,9 +329,7 @@ class TestAvaliacaoDeCandidatoReal:
         }
         registro = _avaliar(cenario_publico_com_odds(), confidences=parcial)
         assert registro.eligibility is BuildEligibility.INELIGIBLE
-        assert IssueCode.MISSING_REQUIRED_IDENTITY in {
-            p.code for p in registro.assessment.issues
-        }
+        assert IssueCode.MISSING_REQUIRED_IDENTITY in {p.code for p in registro.assessment.issues}
 
     def test_o_vetor_e_medido_e_nao_arbitrado(self) -> None:
         """Cada eixo sai de uma contagem sobre o candidato — a fração de
@@ -497,9 +483,7 @@ class TestRunHistoricalQualityAssessment:
             raise RuntimeError("terceiro lote quebrou")
 
         with pytest.raises(RuntimeError):
-            await caso.execute(
-                actor=ATOR, fusion_run_ids=[fusao.id], batches=explode()
-            )
+            await caso.execute(actor=ATOR, fusion_run_ids=[fusao.id], batches=explode())
 
         gravada = next(iter(execucoes.runs.values()))
         assert gravada.status is RunStatus.FAILED
@@ -532,9 +516,7 @@ class TestRunHistoricalQualityAssessment:
             clock=FrozenClock(AGORA),
             audit=FakeAudit(),
             policy=DEFAULT_QUALITY_POLICY,
-        ).execute(
-            actor=ATOR, fusion_run_ids=[fusao.id], batches=um_lote([cena.evidence()])
-        )
+        ).execute(actor=ATOR, fusion_run_ids=[fusao.id], batches=um_lote([cena.evidence()]))
         segundo = await RunHistoricalQualityAssessment(
             fusion_runs=FakeFusionRunRepository(fusao),
             quality_runs=execucoes,
@@ -542,9 +524,7 @@ class TestRunHistoricalQualityAssessment:
             clock=FrozenClock(AGORA),
             audit=FakeAudit(),
             policy=exigente,
-        ).execute(
-            actor=ATOR, fusion_run_ids=[fusao.id], batches=um_lote([cena.evidence()])
-        )
+        ).execute(actor=ATOR, fusion_run_ids=[fusao.id], batches=um_lote([cena.evidence()]))
 
         assert primeiro.run.id != segundo.run.id
         assert execucoes.runs[primeiro.run.id].policy_version == PolicyVersion(1, 0)
@@ -606,9 +586,7 @@ class TestConsultas:
                 ]
             ),
         )
-        listar = ListQualityAssessments(
-            quality_runs=execucoes, assessments=avaliacoes
-        )
+        listar = ListQualityAssessments(quality_runs=execucoes, assessments=avaliacoes)
         elegiveis, total_elegiveis = await listar.execute(
             saida.run.id, eligibility=BuildEligibility.ELIGIBLE
         )

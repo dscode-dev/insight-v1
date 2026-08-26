@@ -371,8 +371,7 @@ class BuildCorpusVersion:
         ausentes = [b for b in inputs.event_build_run_ids if b not in escopos]
         if ausentes:
             raise NotFoundError(
-                f"execução(ões) de canonicalização de evento não encontrada(s): "
-                f"{sorted(ausentes)}"
+                f"execução(ões) de canonicalização de evento não encontrada(s): {sorted(ausentes)}"
             )
         divergentes = {b: e for b, e in escopos.items() if e is not usage}
         if divergentes:

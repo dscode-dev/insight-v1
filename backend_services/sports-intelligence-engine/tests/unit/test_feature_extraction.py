@@ -88,10 +88,7 @@ class TestAsFronteirasDaJanela:
         com_primeiro_tempo = extrair()
         so_segundo = extrair(entrada(eventos=segundo_tempo_ate_o_corte()))
         for chave in ("shots_home_10m", "xg_home_10m", "shots_on_target_home_10m"):
-            assert (
-                com_primeiro_tempo.value_of(chave).numeric
-                == so_segundo.value_of(chave).numeric
-            )
+            assert com_primeiro_tempo.value_of(chave).numeric == so_segundo.value_of(chave).numeric
 
     def test_um_corte_no_primeiro_tempo_ve_o_primeiro_tempo(self) -> None:
         """A recíproca: os eventos existem, e a janela certa os enxerga."""
@@ -211,10 +208,7 @@ class TestRollingAvailability:
     def test_na_disputa_de_penaltis_a_janela_nao_se_aplica(self) -> None:
         """§122 — a disputa fica fora das famílias móveis da V1."""
         snapshot = extrair(as_of=FeatureAsOf.at(PARTIDA, Period.PENALTY_SHOOTOUT))
-        assert (
-            snapshot.value_of("goals_home_1m").availability
-            is FeatureAvailability.NOT_APPLICABLE
-        )
+        assert snapshot.value_of("goals_home_1m").availability is FeatureAvailability.NOT_APPLICABLE
 
     def test_no_pre_jogo_a_janela_vale_zero(self) -> None:
         """§123 — antes do apito, «nenhum chute» é observável e é um fato."""
@@ -346,9 +340,9 @@ class TestGoalsECorners:
 
     def test_o_gol_nao_conta_como_finalizacao(self) -> None:
         """A decisão do catálogo, provada: `shots_*` conta `EventType.SHOT`."""
-        snapshot = extrair(entrada(eventos=(evento(
-            "st-gol-62", tipo=EventType.GOAL, minuto=62, sequencia=61
-        ),)))
+        snapshot = extrair(
+            entrada(eventos=(evento("st-gol-62", tipo=EventType.GOAL, minuto=62, sequencia=61),))
+        )
         assert snapshot.value_of("goals_home_3m").numeric == 1
         assert snapshot.value_of("shots_home_3m").numeric == 0
 
@@ -417,9 +411,7 @@ class TestOContextoDeExtracao:
     """§6, §7 — não se combinam artefatos de execuções diferentes."""
 
     def _build(self, as_of: FeatureAsOf | None = None) -> object:
-        return HistoricalMatchStateBuilder(
-            policy=TemporalAvailabilityPolicy.default()
-        ).build(
+        return HistoricalMatchStateBuilder(policy=TemporalAvailabilityPolicy.default()).build(
             entrada(),
             as_of=as_of or corte(),
             source=origem(families=TODAS_AS_FAMILIAS),
@@ -499,10 +491,7 @@ class TestOTimeIrresoluvel:
         )
         snapshot = extrair(entrada(eventos=(*segundo_tempo_ate_o_corte(), estranho)))
         for chave in ("shots_home_3m", "shots_away_3m", "shots_diff_3m"):
-            assert (
-                snapshot.value_of(chave).availability
-                is FeatureAvailability.PARTIAL_INPUT
-            ), chave
+            assert snapshot.value_of(chave).availability is FeatureAvailability.PARTIAL_INPUT, chave
 
     def test_as_outras_familias_continuam_afirmaveis(self) -> None:
         intruso = TeamId.derive("pr053", "time-intruso")
@@ -538,9 +527,7 @@ class TestOSnapshot:
         snapshot = extrair(entrada(families=sem_evento), families=sem_evento)
         assert not snapshot.is_complete
         assert snapshot.mask.state_of("clock_minute") is FeatureAvailability.AVAILABLE
-        assert (
-            snapshot.mask.state_of("shots_home_5m") is FeatureAvailability.NOT_DECLARED
-        )
+        assert snapshot.mask.state_of("shots_home_5m") is FeatureAvailability.NOT_DECLARED
 
     def test_o_snapshot_carrega_a_identidade_do_espaco_e_do_corpus(self) -> None:
         snapshot = extrair()
@@ -551,7 +538,5 @@ class TestOSnapshot:
     def test_o_historico_completo_e_o_recortado_dao_o_mesmo_snapshot(self) -> None:
         """A história do corpus traz o futuro; o snapshot não pode vê-lo."""
         completo = extrair(entrada(eventos=historia()))
-        recortado = extrair(
-            entrada(eventos=(*primeiro_tempo(), *segundo_tempo_ate_o_corte()))
-        )
+        recortado = extrair(entrada(eventos=(*primeiro_tempo(), *segundo_tempo_ate_o_corte())))
         assert completo.fingerprint == recortado.fingerprint

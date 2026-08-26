@@ -300,9 +300,7 @@ class Page:
 
     def __post_init__(self) -> None:
         if not 1 <= self.limit <= Page.MAX_LIMIT:
-            raise ValidationError(
-                f"limit={self.limit} fora de [1, {Page.MAX_LIMIT}]"
-            )
+            raise ValidationError(f"limit={self.limit} fora de [1, {Page.MAX_LIMIT}]")
         if self.offset < 0:
             raise ValidationError(f"offset negativo: {self.offset}")
 

@@ -194,11 +194,7 @@ class RollingFamily(StrEnum):
 
     @property
     def output_type(self) -> FeatureOutputType:
-        return (
-            FeatureOutputType.FLOAT
-            if self is RollingFamily.XG
-            else FeatureOutputType.INTEGER
-        )
+        return FeatureOutputType.FLOAT if self is RollingFamily.XG else FeatureOutputType.INTEGER
 
     @property
     def unit(self) -> str:
@@ -306,9 +302,7 @@ def rolling_definition(
     chave = f"{family.prefix}_{side.suffix}_{window.label}"
     agregacao = "SUM" if family is RollingFamily.XG else "COUNT"
     if side is FeatureSide.DIFFERENCE:
-        dependencias = tuple(
-            f"{family.prefix}_{lado.suffix}_{window.label}" for lado in LADOS
-        )
+        dependencias = tuple(f"{family.prefix}_{lado.suffix}_{window.label}" for lado in LADOS)
         descricao = (
             f"Diferença mandante menos visitante de {family.prefix} na janela "
             f"{window.label}, medida em tempo efetivo local ao período"
@@ -400,9 +394,7 @@ def _specs_de_estado() -> tuple[StateFeatureSpec, ...]:
     for tipo, chave, descricao, unidade in relogio:
         specs.append(
             StateFeatureSpec(
-                definition=_state_definition(
-                    key=chave, description=descricao, unit=unidade
-                ),
+                definition=_state_definition(key=chave, description=descricao, unit=unidade),
                 kind=tipo,
             )
         )
@@ -500,9 +492,7 @@ def _specs_moveis() -> tuple[RollingFeatureSpec, ...]:
             for lado in (*LADOS, FeatureSide.DIFFERENCE):
                 specs.append(
                     RollingFeatureSpec(
-                        definition=rolling_definition(
-                            family=familia, side=lado, window=janela
-                        ),
+                        definition=rolling_definition(family=familia, side=lado, window=janela),
                         family=familia,
                         side=lado,
                         window=janela,
@@ -529,9 +519,7 @@ class ProductionFeatureCatalog:
         chaves = [s.definition.key for s in self.specs]
         if len(set(chaves)) != len(chaves):
             repetidas = sorted({k for k in chaves if chaves.count(k) > 1})
-            raise ValidationError(
-                f"catálogo de produção com chave repetida: {repetidas}"
-            )
+            raise ValidationError(f"catálogo de produção com chave repetida: {repetidas}")
 
     @property
     def definitions(self) -> tuple[FeatureDefinition, ...]:

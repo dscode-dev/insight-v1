@@ -84,9 +84,7 @@ class TestAPolitica:
         )
 
     def test_a_impressao_e_estavel(self) -> None:
-        assert (
-            HistoricalContextPolicy().fingerprint == HistoricalContextPolicy().fingerprint
-        )
+        assert HistoricalContextPolicy().fingerprint == HistoricalContextPolicy().fingerprint
 
     def test_o_maior_retrospecto_orienta_a_leitura(self) -> None:
         assert DEFAULT_CONTEXT_POLICY.max_lookback_days == 30
@@ -146,9 +144,7 @@ class TestOsInsumos:
         assert len(historico.matches) == 2
         # O desempate é o TEXTO do id: estável entre execuções, e sem
         # significado esportivo nenhum.
-        assert [m.match_id for m in historico.matches] == sorted(
-            (MATCH_A, MATCH_C), key=str
-        )
+        assert [m.match_id for m in historico.matches] == sorted((MATCH_A, MATCH_C), key=str)
 
     def test_uma_partida_futura_no_contexto_e_recusada(self) -> None:
         """§29, §164 — ela produziria carga que ninguém tinha no apito."""
@@ -172,9 +168,7 @@ class TestOsInsumos:
                 match_id=PARTIDA,
                 competition_id=COMPETICAO,
                 kickoff=KICKOFF_ATUAL,
-                home=team_prior_matches(
-                    CASA, [PriorMatchRef(kickoff=KICKOFF_A, match_id=PARTIDA)]
-                ),
+                home=team_prior_matches(CASA, [PriorMatchRef(kickoff=KICKOFF_A, match_id=PARTIDA)]),
                 away=team_prior_matches(FORA, []),
                 coverage=cobertura(),
             )
@@ -282,9 +276,7 @@ class TestAsFeaturesDeContexto:
 
     def test_sem_cobertura_a_contagem_nao_e_zero(self) -> None:
         """§32, §33, §34 — o corpus começa depois do início da janela."""
-        snapshot = extrair_v2(
-            contexto=contexto_de_partida(coverage=cobertura(alcanca=KICKOFF_C))
-        )
+        snapshot = extrair_v2(contexto=contexto_de_partida(coverage=cobertura(alcanca=KICKOFF_C)))
         computada = snapshot.value_of("ctx_same_comp_matches_30d_home")
         assert not computada.is_available
         assert computada.availability is FeatureAvailability.INSUFFICIENT_COVERAGE
@@ -300,9 +292,7 @@ class TestAsFeaturesDeContexto:
     def test_sem_anterior_e_sem_cobertura_o_motivo_e_a_cobertura(self) -> None:
         """§33 — a borda do corpus é diagnóstico diferente do calendário."""
         snapshot = extrair_v2(
-            contexto=contexto_de_partida(
-                casa=(), fora=(), coverage=cobertura(alcanca=None)
-            )
+            contexto=contexto_de_partida(casa=(), fora=(), coverage=cobertura(alcanca=None))
         )
         computada = snapshot.value_of("ctx_same_comp_prev_gap_hours_home")
         assert computada.availability is FeatureAvailability.INSUFFICIENT_COVERAGE
@@ -344,9 +334,7 @@ class TestAsFeaturesDeContexto:
     def test_o_intervalo_e_decimal_e_nao_acumula_erro(self) -> None:
         """§24 — horas exatas, e não float incidental."""
         meia_hora = KICKOFF_ATUAL - timedelta(minutes=30)
-        snapshot = extrair_v2(
-            contexto=contexto_de_partida(casa=((meia_hora, MATCH_A),))
-        )
+        snapshot = extrair_v2(contexto=contexto_de_partida(casa=((meia_hora, MATCH_A),)))
         assert snapshot.value_of("ctx_same_comp_prev_gap_hours_home").numeric == 0.5
 
     def test_as_features_de_contexto_sao_pre_jogo(self) -> None:
@@ -380,9 +368,7 @@ class TestAsFeaturesDeContexto:
         outra = context_definition(
             kind=ContextFeatureKind.MATCHES_IN_WINDOW,
             side=FeatureSide.HOME,
-            policy=HistoricalContextPolicy(
-                eligibility=PriorMatchEligibility.KICKOFF_BEFORE
-            ),
+            policy=HistoricalContextPolicy(eligibility=PriorMatchEligibility.KICKOFF_BEFORE),
             lookback_days=14,
         )
         assert padrao.key == outra.key
@@ -403,9 +389,7 @@ class TestOIntervaloEmHoras:
     )
     def test_o_intervalo_e_o_esperado(self, delta: timedelta, esperado: str) -> None:
         anterior = KICKOFF_ATUAL - delta
-        snapshot = extrair_v2(
-            contexto=contexto_de_partida(casa=((anterior, MATCH_A),))
+        snapshot = extrair_v2(contexto=contexto_de_partida(casa=((anterior, MATCH_A),)))
+        assert snapshot.value_of("ctx_same_comp_prev_gap_hours_home").numeric == float(
+            Decimal(esperado)
         )
-        assert snapshot.value_of(
-            "ctx_same_comp_prev_gap_hours_home"
-        ).numeric == float(Decimal(esperado))

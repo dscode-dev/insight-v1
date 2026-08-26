@@ -162,9 +162,7 @@ class SourceBatch:
         empatados, e o reprocessamento precisa ser reproduzível (§33).
         """
         vistos = {
-            texto
-            for registro in self.records
-            if (texto := registro.text_of(role)) is not None
+            texto for registro in self.records if (texto := registro.text_of(role)) is not None
         }
         return tuple(sorted(vistos))
 

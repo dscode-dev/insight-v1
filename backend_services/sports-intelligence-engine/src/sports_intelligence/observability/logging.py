@@ -42,13 +42,24 @@ _CONTEXTO: ContextVar[dict[str, str] | None] = ContextVar("log_context", default
 def _contexto_atual() -> dict[str, str]:
     return _CONTEXTO.get() or {}
 
+
 #: Campos redigidos, por nome. Comparação por substring e minúsculas: cobre
 #: `api_key`, `X-API-KEY` e `provider_api_key` com uma entrada só.
 _SENSIVEIS: Final = frozenset(
     {
-        "password", "passwd", "secret", "token", "api_key", "apikey",
-        "authorization", "credential", "private_key", "access_key",
-        "session", "cookie", "bearer",
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "credential",
+        "private_key",
+        "access_key",
+        "session",
+        "cookie",
+        "bearer",
     }
 )
 
@@ -58,10 +69,27 @@ _REDIGIDO: Final = "***"
 #: que `extra` não os duplique no JSON.
 _PADRAO_LOGRECORD: Final = frozenset(
     {
-        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-        "created", "msecs", "relativeCreated", "thread", "threadName",
-        "processName", "process", "taskName",
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "taskName",
     }
 )
 

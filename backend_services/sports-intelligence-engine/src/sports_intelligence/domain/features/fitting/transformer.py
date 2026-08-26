@@ -192,9 +192,7 @@ class RobustNormalizerTransformer:
 
         assert self.artifact.median is not None
         assert self.artifact.iqr is not None
-        escalado = (
-            (raw - self.artifact.median) / self.artifact.iqr
-        ).quantize(_QUANTUM).normalize()
+        escalado = ((raw - self.artifact.median) / self.artifact.iqr).quantize(_QUANTUM).normalize()
         return NormalizedFeatureValue(
             feature_key=feature_key,
             feature_fingerprint=feature_fingerprint,

@@ -159,9 +159,7 @@ async def pilha(database: Database, object_store: Any, prefixo_unico: str) -> Pi
 
 
 class TestMigrations:
-    async def test_schema_esta_aplicado_e_o_checksum_confere(
-        self, database: Database
-    ) -> None:
+    async def test_schema_esta_aplicado_e_o_checksum_confere(self, database: Database) -> None:
         import sports_intelligence.adapters.postgres.migrations as migrations
         from tests.integration.conftest import MIGRATIONS
 
@@ -176,9 +174,7 @@ class TestMigrations:
 
         assert await migrations.migrate(database, MIGRATIONS) == ()
 
-    async def test_migration_modificada_e_recusada(
-        self, database: Database, tmp_path: Any
-    ) -> None:
+    async def test_migration_modificada_e_recusada(self, database: Database, tmp_path: Any) -> None:
         """O banco e o repositório discordando é silencioso até a primeira
         consulta usar o que ninguém criou."""
         import sports_intelligence.adapters.postgres.migrations as migrations
@@ -259,9 +255,7 @@ class TestFluxoCompletoValido:
         assert por_impressao.files == manifesto.files
         assert por_impressao.canonical_bytes() == manifesto.canonical_bytes()
 
-    async def test_contagem_de_linhas_da_inspecao_vai_para_o_banco(
-        self, pilha: Pilha
-    ) -> None:
+    async def test_contagem_de_linhas_da_inspecao_vai_para_o_banco(self, pilha: Pilha) -> None:
         dataset, _ = await pilha.registrar()
         await pilha.attach.execute(
             actor=ATOR,
@@ -335,17 +329,13 @@ class TestFluxoInvalido:
         assert atual.lifecycle is DatasetLifecycle.INVALID
 
         with pytest.raises(ConflictError):
-            await pilha.stage.execute(
-                actor=ATOR, dataset_id=dataset.id, reason="quero mesmo assim"
-            )
+            await pilha.stage.execute(actor=ATOR, dataset_id=dataset.id, reason="quero mesmo assim")
 
         depois = await pilha.datasets.by_id(dataset.id)
         assert depois is not None
         assert depois.lifecycle is DatasetLifecycle.INVALID
 
-    async def test_issues_sao_persistidas_com_severidade_e_local(
-        self, pilha: Pilha
-    ) -> None:
+    async def test_issues_sao_persistidas_com_severidade_e_local(self, pilha: Pilha) -> None:
         dataset, _ = await pilha.registrar()
         await pilha.attach.execute(
             actor=ATOR,
@@ -371,9 +361,7 @@ class TestIdempotenciaImpostaPeloBanco:
         assert criado1
         assert not criado2
         assert primeiro.id == segundo.id
-        _, total = await pilha.listing.execute(
-            filters=DatasetFilter(), page=Page(limit=50)
-        )
+        _, total = await pilha.listing.execute(filters=DatasetFilter(), page=Page(limit=50))
         assert total == 1
 
     async def test_mesmo_conteudo_nao_cria_dois_arquivos(self, pilha: Pilha) -> None:
@@ -388,9 +376,7 @@ class TestIdempotenciaImpostaPeloBanco:
             "dataset_id": dataset.id,
             "file_format": DatasetFormat.CSV,
         }
-        a = await pilha.attach.execute(
-            **argumentos, filename="E0.csv", stream=stream(CSV_BOM)
-        )
+        a = await pilha.attach.execute(**argumentos, filename="E0.csv", stream=stream(CSV_BOM))
         b = await pilha.attach.execute(
             **argumentos, filename="premier_2019.csv", stream=stream(CSV_BOM)
         )
@@ -398,9 +384,7 @@ class TestIdempotenciaImpostaPeloBanco:
         assert a.file.id == b.file.id
         assert len(await pilha.files.by_dataset(dataset.id)) == 1
 
-    async def test_conteudo_diferente_com_o_mesmo_nome_sao_dois(
-        self, pilha: Pilha
-    ) -> None:
+    async def test_conteudo_diferente_com_o_mesmo_nome_sao_dois(self, pilha: Pilha) -> None:
         dataset, _ = await pilha.registrar()
         argumentos: dict[str, Any] = {
             "actor": ATOR,
@@ -493,9 +477,7 @@ class TestTransacao:
     async def test_excecao_dentro_do_escopo_reverte(self, database: Database) -> None:
         """O que os duplos não conseguem provar: a transação de fato reverte."""
         async with database.acquire() as conexao:
-            await conexao.execute(
-                "CREATE TABLE IF NOT EXISTS _teste_uow (id integer PRIMARY KEY)"
-            )
+            await conexao.execute("CREATE TABLE IF NOT EXISTS _teste_uow (id integer PRIMARY KEY)")
             await conexao.execute("TRUNCATE _teste_uow")
 
         async def _escrever_e_falhar() -> None:
@@ -511,9 +493,7 @@ class TestTransacao:
 
     async def test_saida_normal_commita(self, database: Database) -> None:
         async with database.acquire() as conexao:
-            await conexao.execute(
-                "CREATE TABLE IF NOT EXISTS _teste_uow (id integer PRIMARY KEY)"
-            )
+            await conexao.execute("CREATE TABLE IF NOT EXISTS _teste_uow (id integer PRIMARY KEY)")
             await conexao.execute("TRUNCATE _teste_uow")
 
         async with PostgresUnitOfWork(database), database.acquire() as conexao:
@@ -532,9 +512,7 @@ class TestTransacao:
 
 
 class TestFalhaDeInfraestrutura:
-    async def test_falha_ao_gravar_nao_deixa_o_dataset_avancar(
-        self, pilha: Pilha
-    ) -> None:
+    async def test_falha_ao_gravar_nao_deixa_o_dataset_avancar(self, pilha: Pilha) -> None:
         """`ObjectStore` falha no meio do upload.
 
         O que precisa acontecer: a linha do arquivo fica em `FAILED`, o
@@ -598,9 +576,7 @@ class TestFalhaDeInfraestrutura:
 
 
 class TestObjectStoreReal:
-    async def test_grava_le_e_lista_no_minio(
-        self, minio_only: Any, prefixo_unico: str
-    ) -> None:
+    async def test_grava_le_e_lista_no_minio(self, minio_only: Any, prefixo_unico: str) -> None:
         """O que só o MinIO prova: checksum do S3, leitura em blocos e
         paginação da listagem."""
         chave = f"datasets/raw/dataset=teste-{prefixo_unico}/version=v1.0/sha256=x/e0.csv"

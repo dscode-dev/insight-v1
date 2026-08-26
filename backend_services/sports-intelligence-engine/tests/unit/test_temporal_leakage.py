@@ -72,9 +72,7 @@ class TestOEventoNoTempo:
     """§69, §70, §71."""
 
     def test_evento_do_futuro_e_negado(self) -> None:
-        decisao = _guarda().evaluate(
-            FactTiming.event(_ponto(64)), corte(63)
-        )
+        decisao = _guarda().evaluate(FactTiming.event(_ponto(64)), corte(63))
         assert decisao.verdict is LeakageVerdict.DENIED
         assert decisao.reason is LeakageReason.EFFECTIVE_TIME_AFTER_CUTOFF
 
@@ -96,18 +94,14 @@ class TestOEventoNoTempo:
     def test_acrescimo_nao_e_achatado_no_minuto(self) -> None:
         """§9. `45+3` não vira `48`: um corte no minuto 45 do primeiro tempo
         SEM acréscimo não inclui o que aconteceu em `45+3`."""
-        no_acrescimo = FactTiming.event(
-            MatchTimePoint.of(Period.FIRST_HALF, 45, 3)
-        )
+        no_acrescimo = FactTiming.event(MatchTimePoint.of(Period.FIRST_HALF, 45, 3))
         no_minuto = corte(45, periodo=Period.FIRST_HALF)
         assert not _guarda().evaluate(no_acrescimo, no_minuto).admits
 
     def test_o_desempate_por_sequencia_decide_o_empate_de_relogio(self) -> None:
         """§71. Dois eventos no mesmo relógio: só os de sequência anterior ao
         corte entram, quando o corte declara sequência."""
-        corte_sensivel = FeatureAsOf.at(
-            PARTIDA, Period.SECOND_HALF, 63, sequence=5
-        )
+        corte_sensivel = FeatureAsOf.at(PARTIDA, Period.SECOND_HALF, 63, sequence=5)
         antes = FactTiming.event(_ponto(63, seq=4))
         depois = FactTiming.event(_ponto(63, seq=6))
         assert _guarda().evaluate(antes, corte_sensivel).admits
@@ -142,9 +136,9 @@ class TestOResultadoEOAgregado:
         """§28. `CANONICAL_FINAL` dispensa prova de conhecimento, e não
         transforma um número do fim do jogo em estado do minuto 63."""
         retrospectivo = corte(63, mode=TemporalMode.CANONICAL_FINAL)
-        assert not _guarda().evaluate(
-            FactTiming(kind=FactKind.FINAL_AGGREGATE), retrospectivo
-        ).admits
+        assert (
+            not _guarda().evaluate(FactTiming(kind=FactKind.FINAL_AGGREGATE), retrospectivo).admits
+        )
 
     def test_o_contexto_nao_entrega_o_resultado_intra_jogo(self) -> None:
         """§14. E a distinção entre «não existe» e «existe e é do futuro»
@@ -163,15 +157,11 @@ class TestAsOdds:
     """§17, §18, §75."""
 
     def test_cotacao_anterior_ao_corte_e_permitida(self) -> None:
-        timing = FactTiming(
-            kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(62.9)
-        )
+        timing = FactTiming(kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(62.9))
         assert _guarda().evaluate(timing, corte(63, conhecimento=63)).admits
 
     def test_cotacao_posterior_ao_corte_e_negada(self) -> None:
-        timing = FactTiming(
-            kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(63.1)
-        )
+        timing = FactTiming(kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(63.1))
         decisao = _guarda().evaluate(timing, corte(63, conhecimento=63))
         assert decisao.reason is LeakageReason.KNOWLEDGE_TIME_AFTER_CUTOFF
 
@@ -185,9 +175,7 @@ class TestAsOdds:
 
     def test_cotacao_com_carimbo_e_corte_sem_conhecimento_fica_desconhecida(self) -> None:
         """Fail-closed dos dois lados: sem os dois carimbos não há comparação."""
-        timing = FactTiming(
-            kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(10)
-        )
+        timing = FactTiming(kind=FactKind.ODDS_OBSERVATION, knowledge=relogio_de_parede(10))
         decisao = _guarda().evaluate(timing, corte(63))
         assert decisao.verdict is LeakageVerdict.UNKNOWN
         assert decisao.reason is LeakageReason.MISSING_KNOWLEDGE_CUTOFF
@@ -317,13 +305,11 @@ class TestAProjecao:
 
         from sports_intelligence.domain.shared.identity import MatchId
 
-        estranho = replace(
-            evento("estranho", minuto=5), match_id=MatchId.derive("pr051", "outra")
-        )
+        estranho = replace(evento("estranho", minuto=5), match_id=MatchId.derive("pr051", "outra"))
         with pytest.raises(ValidationError, match="outra partida"):
-            EffectiveEventProjection.with_policy(
-                TemporalAvailabilityPolicy.default()
-            ).project((estranho,), as_of=corte(63))
+            EffectiveEventProjection.with_policy(TemporalAvailabilityPolicy.default()).project(
+                (estranho,), as_of=corte(63)
+            )
 
     def test_o_cancelado_nao_entra_na_visao_efetiva(self) -> None:
         """Um gol anulado não faz parte do estado — e continua no corpus."""
@@ -336,9 +322,7 @@ class TestAProjecao:
         assert projecao.size == 0
 
     def test_a_projecao_e_pura_e_repetivel(self) -> None:
-        projecao = EffectiveEventProjection.with_policy(
-            TemporalAvailabilityPolicy.default()
-        )
+        projecao = EffectiveEventProjection.with_policy(TemporalAvailabilityPolicy.default())
         primeira = projecao.project(historia(), as_of=corte(63))
         segunda = projecao.project(historia(), as_of=corte(63))
         assert primeira.ids() == segunda.ids()

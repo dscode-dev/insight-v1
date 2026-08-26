@@ -121,14 +121,9 @@ class TestOSnapshotSaiDoCorpus:
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("clock_minute").numeric == 60
         assert snapshot.value_of("clock_stoppage").numeric == 0
-        assert (
-            snapshot.value_of("clock_period_order").numeric
-            == Period.SECOND_HALF.order
-        )
+        assert snapshot.value_of("clock_period_order").numeric == Period.SECOND_HALF.order
 
-    async def test_o_placar_vem_do_estado_reconstruido(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_placar_vem_do_estado_reconstruido(self, publicado: dict[str, Any]) -> None:
         """§36 — o estado já reduziu os gols; a feature não os reconta."""
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("score_home").numeric == 1
@@ -140,9 +135,7 @@ class TestOSnapshotSaiDoCorpus:
         assert snapshot.value_of("yellow_cards_home").numeric == 1
         assert snapshot.value_of("dismissals_away").numeric == 1
 
-    async def test_as_janelas_contam_os_eventos_do_corpus(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_as_janelas_contam_os_eventos_do_corpus(self, publicado: dict[str, Any]) -> None:
         """O cenário do PR-05.2 só tem gols e cartões — e é isso que aparece.
 
         O corpus daquele PR não publica finalização nem escanteio: as famílias
@@ -175,18 +168,14 @@ class TestOSnapshotSaiDoCorpus:
         assert snapshot.value_of("score_home").numeric == 1
         assert snapshot.value_of("goals_home_10m").numeric == 0
 
-    async def test_o_corte_pos_jogo_ve_a_partida_inteira(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_corte_pos_jogo_ve_a_partida_inteira(self, publicado: dict[str, Any]) -> None:
         resultado = await _caso(publicado).execute(
             source_corpus=_origem(publicado),
             as_of=FeatureAsOf.at(publicado["match_id"], Period.FULL_TIME, 90),
         )
         assert resultado.snapshot.value_of("score_home").numeric == 2
 
-    async def test_uma_partida_fora_da_versao_e_recusada(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_uma_partida_fora_da_versao_e_recusada(self, publicado: dict[str, Any]) -> None:
         outra = MatchId.derive("pr053e2e", "partida-de-outro-corpus")
         with pytest.raises(NotFoundError):
             await _caso(publicado).execute(
@@ -198,9 +187,7 @@ class TestOSnapshotSaiDoCorpus:
 class TestACorrecaoAtravessaTresPRs:
     """§174 — gravada no PR-04.4.1, projetada no PR-05.1, contada aqui."""
 
-    async def test_o_gol_corrigido_conta_uma_vez_no_placar(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_gol_corrigido_conta_uma_vez_no_placar(self, publicado: dict[str, Any]) -> None:
         snapshot = await _snapshot(publicado, 60)
         assert snapshot.value_of("score_home").numeric == 1
 
@@ -214,9 +201,7 @@ class TestACorrecaoAtravessaTresPRs:
 class TestAParcialidadeContraOBanco:
     """§127 — o cenário não publica escalação, e o snapshot o declara."""
 
-    async def test_as_features_de_elenco_sao_indisponiveis(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_as_features_de_elenco_sao_indisponiveis(self, publicado: dict[str, Any]) -> None:
         snapshot = await _snapshot(publicado)
         for chave in (
             "players_on_field_home",
@@ -227,25 +212,18 @@ class TestAParcialidadeContraOBanco:
             assert not computada.is_available, chave
             assert computada.numeric is None, chave
 
-    async def test_o_resto_do_snapshot_sobrevive(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_resto_do_snapshot_sobrevive(self, publicado: dict[str, Any]) -> None:
         """§158 — a degradação é da família, e não do snapshot."""
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("score_home").is_available
         assert snapshot.value_of("shots_home_5m").is_available
         assert not snapshot.is_complete
 
-    async def test_a_mascara_diz_quantas_dimensoes_existem(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_mascara_diz_quantas_dimensoes_existem(self, publicado: dict[str, Any]) -> None:
         snapshot = await _snapshot(publicado)
         assert snapshot.mask.keys == match_state_raw_space_v1().keys
         assert snapshot.mask.available_count == 72
-        assert (
-            snapshot.mask.state_of("players_on_field_home")
-            is FeatureAvailability.NOT_DECLARED
-        )
+        assert snapshot.mask.state_of("players_on_field_home") is FeatureAvailability.NOT_DECLARED
 
 
 class TestDuasMascarasSobreOMesmoEspaco:
@@ -297,9 +275,7 @@ class TestDuasMascarasSobreOMesmoEspaco:
         snapshot = await _snapshot(sem_eventos)
         assert not snapshot.value_of("score_home").is_available
 
-    async def test_o_relogio_continua_disponivel(
-        self, sem_eventos: dict[str, Any]
-    ) -> None:
+    async def test_o_relogio_continua_disponivel(self, sem_eventos: dict[str, Any]) -> None:
         """O corte é dado de entrada: ele não depende de cobertura nenhuma."""
         snapshot = await _snapshot(sem_eventos)
         assert snapshot.value_of("clock_minute").is_available
@@ -408,9 +384,7 @@ class TestOLote:
         )
         assert saida.feature_values == 75
         assert saida.available_values == 72
-        assert saida.unavailable_by_reason == {
-            FeatureAvailability.NOT_DECLARED.value: 3
-        }
+        assert saida.unavailable_by_reason == {FeatureAvailability.NOT_DECLARED.value: 3}
 
 
 class TestReprodutibilidadeContraOBanco:
@@ -419,9 +393,7 @@ class TestReprodutibilidadeContraOBanco:
     async def test_duas_execucoes_produzem_a_mesma_impressao(
         self, publicado: dict[str, Any]
     ) -> None:
-        assert (await _snapshot(publicado)).fingerprint == (
-            await _snapshot(publicado)
-        ).fingerprint
+        assert (await _snapshot(publicado)).fingerprint == (await _snapshot(publicado)).fingerprint
 
     async def test_cortes_diferentes_produzem_impressoes_diferentes(
         self, publicado: dict[str, Any]
@@ -430,18 +402,14 @@ class TestReprodutibilidadeContraOBanco:
             await _snapshot(publicado, 60)
         ).fingerprint
 
-    async def test_a_politica_entra_na_impressao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_politica_entra_na_impressao(self, publicado: dict[str, Any]) -> None:
         estrita = await BuildHistoricalFeatureSnapshot(
             source=PostgresHistoricalMatchStateSource(publicado["database"]),
             policy=TemporalAvailabilityPolicy.strict_observed(),
         ).execute(source_corpus=_origem(publicado), as_of=_corte(publicado))
         assert estrita.snapshot.fingerprint != (await _snapshot(publicado)).fingerprint
 
-    async def test_o_catalogo_de_producao_e_o_usado(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_catalogo_de_producao_e_o_usado(self, publicado: dict[str, Any]) -> None:
         """O caso de uso não monta um espaço próprio: usa o de produção."""
         snapshot = await _snapshot(publicado)
         assert tuple(f.definition_key for f in snapshot.features) == tuple(

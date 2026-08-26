@@ -72,17 +72,13 @@ class FakeFusionRunRepository:
         return self.runs.get(run_id)
 
     async def recent(self, *, limit: int = 20) -> Sequence[FusionRun]:
-        return sorted(self.runs.values(), key=lambda r: r.started_at, reverse=True)[
-            :limit
-        ]
+        return sorted(self.runs.values(), key=lambda r: r.started_at, reverse=True)[:limit]
 
     async def save_groups(self, run_id: str, groups: Sequence[FusionGroup]) -> int:
         self.groups.setdefault(run_id, []).extend(groups)
         return len(groups)
 
-    async def save_candidates(
-        self, run_id: str, candidates: Sequence[FusedMatchCandidate]
-    ) -> int:
+    async def save_candidates(self, run_id: str, candidates: Sequence[FusedMatchCandidate]) -> int:
         self.candidates.setdefault(run_id, []).extend(candidates)
         return len(candidates)
 
@@ -93,9 +89,7 @@ class FakeFusionRunRepository:
         return [c.as_canonical() for c in todos[offset : offset + limit]], len(todos)
 
     async def group_ids_of(self, run_id: str) -> dict[str, str]:
-        return {
-            str(g.canonical_match_id): g.id for g in self.groups.get(run_id, [])
-        }
+        return {str(g.canonical_match_id): g.id for g in self.groups.get(run_id, [])}
 
     async def conflicts_of(
         self, run_id: str, *, limit: int = 100
@@ -117,9 +111,7 @@ class FakeQualityRunRepository:
         self.runs[run.id] = run
         return run
 
-    async def save_policy_snapshot(
-        self, run_id: str, policy: HistoricalQualityPolicy
-    ) -> None:
+    async def save_policy_snapshot(self, run_id: str, policy: HistoricalQualityPolicy) -> None:
         self.snapshots[run_id] = policy
 
     async def finish(self, run: QualityRun) -> bool:
@@ -136,9 +128,7 @@ class FakeQualityRunRepository:
         return self.runs.get(run_id)
 
     async def recent(self, *, limit: int = 20) -> Sequence[QualityRun]:
-        return sorted(self.runs.values(), key=lambda r: r.started_at, reverse=True)[
-            :limit
-        ]
+        return sorted(self.runs.values(), key=lambda r: r.started_at, reverse=True)[:limit]
 
 
 @final
@@ -161,9 +151,9 @@ class FakeQualityAssessmentRepository:
                 continue
             self.records[chave] = registro
             for problema in registro.assessment.issues:
-                self.severities[f"{registro.id}:{problema.code.value}"] = (
-                    policy.severity_of(problema.code).name
-                )
+                self.severities[f"{registro.id}:{problema.code.value}"] = policy.severity_of(
+                    problema.code
+                ).name
             gravados += 1
         return gravados
 
@@ -182,9 +172,7 @@ class FakeQualityAssessmentRepository:
         offset: int = 0,
     ) -> tuple[Sequence[MatchQualityRecord], int]:
         todos = [
-            r
-            for r in self._do_run(run_id)
-            if eligibility is None or r.eligibility is eligibility
+            r for r in self._do_run(run_id) if eligibility is None or r.eligibility is eligibility
         ]
         return todos[offset : offset + limit], len(todos)
 
@@ -307,9 +295,7 @@ class FakeCanonicalBuildRunRepository:
         self.runs[run.id] = run
         return run
 
-    async def save_policy_snapshot(
-        self, run_id: str, policy: CanonicalBuildPolicy
-    ) -> None:
+    async def save_policy_snapshot(self, run_id: str, policy: CanonicalBuildPolicy) -> None:
         self.snapshots[run_id] = policy
 
     async def finish(self, run: CanonicalBuildRun) -> bool:
@@ -325,9 +311,7 @@ class FakeCanonicalBuildRunRepository:
     async def for_quality_run(
         self, quality_run_id: str, *, limit: int = 20
     ) -> Sequence[CanonicalBuildRun]:
-        return [r for r in self.runs.values() if r.quality_run_id == quality_run_id][
-            :limit
-        ]
+        return [r for r in self.runs.values() if r.quality_run_id == quality_run_id][:limit]
 
 
 @final
@@ -338,11 +322,7 @@ class FakeCanonicalBuildRecordRepository:
 
     async def append_many(self, records: Sequence[CanonicalBuildRecord]) -> int:
         vistos = {(r.build_run_id, str(r.match_id), r.fact_type) for r in self.records}
-        novos = [
-            r
-            for r in records
-            if (r.build_run_id, str(r.match_id), r.fact_type) not in vistos
-        ]
+        novos = [r for r in records if (r.build_run_id, str(r.match_id), r.fact_type) not in vistos]
         self.records.extend(novos)
         return len(novos)
 
@@ -355,18 +335,14 @@ class FakeCanonicalBuildRecordRepository:
     async def for_match(self, match_id: MatchId) -> Sequence[CanonicalBuildRecord]:
         return [r for r in self.records if r.match_id == match_id]
 
-    async def record_family_decisions(
-        self, run_id: str, decisions: Sequence[BuildDecision]
-    ) -> int:
+    async def record_family_decisions(self, run_id: str, decisions: Sequence[BuildDecision]) -> int:
         total = 0
         for decisao in decisions:
             self.families[run_id, str(decisao.match_id)] = list(decisao.families)
             total += len(decisao.families)
         return total
 
-    async def family_decisions_of(
-        self, run_id: str, match_id: MatchId
-    ) -> Sequence[FamilyDecision]:
+    async def family_decisions_of(self, run_id: str, match_id: MatchId) -> Sequence[FamilyDecision]:
         return self.families.get((run_id, str(match_id)), [])
 
 

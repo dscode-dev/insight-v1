@@ -87,9 +87,7 @@ async def publicado(database: Database, object_store: Any) -> dict[str, Any]:
     return {**base, **anteriores}
 
 
-async def _semear_anteriores(
-    database: Database, publicado: dict[str, Any]
-) -> dict[str, Any]:
+async def _semear_anteriores(database: Database, publicado: dict[str, Any]) -> dict[str, Any]:
     """Insere partidas ANTERIORES da mesma competição, e uma de outra.
 
     ELAS SÃO INSERIDAS DIRETO, e é o certo aqui: o que este teste prova é a
@@ -226,9 +224,7 @@ async def _snapshot(publicado: dict[str, Any], minuto: int = 60) -> Any:
 
 
 class TestOSnapshotV2:
-    async def test_o_espaco_e_o_de_producao_estendido(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_espaco_e_o_de_producao_estendido(self, publicado: dict[str, Any]) -> None:
         snapshot = await _snapshot(publicado)
         assert snapshot.space.name == MATCH_STATE_RAW_V2_NAME
         assert len(snapshot.features) == 105
@@ -265,34 +261,26 @@ class TestOSnapshotV2:
 class TestOContextoVemDoBanco:
     """§187 — a sequência A, B, C e a partida atual."""
 
-    async def test_o_intervalo_ate_a_anterior_e_o_esperado(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_intervalo_ate_a_anterior_e_o_esperado(self, publicado: dict[str, Any]) -> None:
         """A mais recente está a 7 dias — 168 horas."""
         snapshot = await _snapshot(publicado)
         computada = snapshot.value_of("ctx_same_comp_prev_gap_hours_home")
         assert computada.is_available
         assert computada.numeric == 168.0
 
-    async def test_as_contagens_sao_as_esperadas(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_as_contagens_sao_as_esperadas(self, publicado: dict[str, Any]) -> None:
         """[T-14d, T) contém só a de 7 dias; [T-30d, T) contém as três."""
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("ctx_same_comp_matches_14d_home").numeric == 1
         assert snapshot.value_of("ctx_same_comp_matches_30d_home").numeric == 3
 
-    async def test_o_visitante_tem_o_mesmo_calendario(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_visitante_tem_o_mesmo_calendario(self, publicado: dict[str, Any]) -> None:
         """As anteriores foram semeadas com os dois times da partida atual."""
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("ctx_same_comp_matches_30d_away").numeric == 3
         assert snapshot.value_of("ctx_same_comp_matches_30d_diff").numeric == 0
 
-    async def test_a_partida_de_outra_competicao_nao_conta(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_partida_de_outra_competicao_nao_conta(self, publicado: dict[str, Any]) -> None:
         """§15, §168 — ela está a 3 dias e não aparece em janela nenhuma."""
         snapshot = await _snapshot(publicado)
         assert snapshot.value_of("ctx_same_comp_matches_14d_home").numeric == 1
@@ -307,9 +295,7 @@ class TestOContextoVemDoBanco:
         assert procedencia.count == 3
         assert {c.kind for c in procedencia.sample} == {"MATCH"}
 
-    async def test_o_contexto_nao_muda_com_o_corte(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_o_contexto_nao_muda_com_o_corte(self, publicado: dict[str, Any]) -> None:
         """§159."""
         cedo = await _snapshot(publicado, 10)
         tarde = await _snapshot(publicado, 80)
@@ -430,9 +416,7 @@ class TestAsConsultas:
         assert so_v1.total == 5
         assert com_v2.total == 8, com_v2.por_alvo
 
-    async def test_varios_cortes_reusam_o_contexto(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_varios_cortes_reusam_o_contexto(self, publicado: dict[str, Any]) -> None:
         """§159 — o contexto é por PARTIDA, e não por corte."""
         cortes = tuple(
             FeatureAsOf.at(publicado["match_id"], Period.SECOND_HALF, m)
@@ -498,20 +482,13 @@ class TestOLoteV2:
 
 
 class TestAReprodutibilidade:
-    async def test_duas_execucoes_dao_a_mesma_impressao(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_duas_execucoes_dao_a_mesma_impressao(self, publicado: dict[str, Any]) -> None:
         """§176."""
-        assert (await _snapshot(publicado)).fingerprint == (
-            await _snapshot(publicado)
-        ).fingerprint
+        assert (await _snapshot(publicado)).fingerprint == (await _snapshot(publicado)).fingerprint
 
-    async def test_a_politica_padrao_e_a_declarada(
-        self, publicado: dict[str, Any]
-    ) -> None:
+    async def test_a_politica_padrao_e_a_declarada(self, publicado: dict[str, Any]) -> None:
         snapshot = await _snapshot(publicado)
         definicao = snapshot.space.definition_of("ctx_same_comp_matches_14d_home")
         assert (
-            definicao.parameters["context_policy_fingerprint"]
-            == DEFAULT_CONTEXT_POLICY.fingerprint
+            definicao.parameters["context_policy_fingerprint"] == DEFAULT_CONTEXT_POLICY.fingerprint
         )

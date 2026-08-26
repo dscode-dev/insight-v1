@@ -72,9 +72,7 @@ class TestFusaoEmVolume:
         contagens = saida_da_fusao.run.counts
         candidatos = saida_da_fusao.candidates
         campos = sum(len(c.fields) for c in candidatos)
-        observacoes = sum(
-            len(o.observations) for c in candidatos for o in c.observation_sets
-        )
+        observacoes = sum(len(o.observations) for c in candidatos for o in c.observation_sets)
 
         _relatar(
             f"fusão · {len(FONTES)} fontes x {POR_FONTE:_} registros",
@@ -89,10 +87,8 @@ class TestFusaoEmVolume:
                 "",
                 f"grupos           {contagens.groups:_}",
                 f"candidatos       {len(candidatos):_}",
-                f"descartados      {saida_da_fusao.discarded:_} "
-                "(duplicata interna de uma fonte)",
-                f"campos           {campos:_} "
-                f"({campos / fusao.segundos:.0f} campos/s)",
+                f"descartados      {saida_da_fusao.discarded:_} (duplicata interna de uma fonte)",
+                f"campos           {campos:_} ({campos / fusao.segundos:.0f} campos/s)",
                 f"observações      {observacoes:_} em {contagens.observation_sets:_} conjuntos",
                 "",
                 f"grupos multi     {contagens.multi_source_groups:_}",

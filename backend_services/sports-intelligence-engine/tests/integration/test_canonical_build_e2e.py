@@ -275,9 +275,7 @@ async def cenario(database: Database, object_store: Any) -> dict[str, Any]:
 
 async def _limpar(database: Database) -> None:
     async with database.acquire() as conexao:
-        await conexao.execute(
-            f"TRUNCATE {', '.join(TABELAS_DO_BUILD)} RESTART IDENTITY CASCADE"
-        )
+        await conexao.execute(f"TRUNCATE {', '.join(TABELAS_DO_BUILD)} RESTART IDENTITY CASCADE")
 
 
 async def _avaliar(cenario: dict[str, Any]) -> Any:
@@ -303,10 +301,14 @@ async def _avaliar(cenario: dict[str, Any]) -> Any:
 
 
 async def _construir(cenario: dict[str, Any], quality_run_id: str, policy: Any) -> Any:
-    return await cenario["container"].build_for(policy).execute(
-        actor=CONSTRUTOR,
-        quality_run_id=quality_run_id,
-        batches=candidate_batches(candidates=cenario["candidatos"]),
+    return (
+        await cenario["container"]
+        .build_for(policy)
+        .execute(
+            actor=CONSTRUTOR,
+            quality_run_id=quality_run_id,
+            batches=candidate_batches(candidates=cenario["candidatos"]),
+        )
     )
 
 
@@ -314,9 +316,7 @@ async def _construir(cenario: dict[str, Any], quality_run_id: str, policy: Any) 
 
 
 class TestQualidadePersistida:
-    async def test_a_execucao_e_os_vereditos_chegam_ao_banco(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_a_execucao_e_os_vereditos_chegam_ao_banco(self, cenario: dict[str, Any]) -> None:
         saida = await _avaliar(cenario)
         assert saida.run.status is RunStatus.COMPLETED
         assert saida.run.counts.records_examined >= 1
@@ -357,9 +357,7 @@ class TestQualidadePersistida:
         cobertura de eventos» sobre uma fonte que nunca prometeu eventos.
         """
         saida = await _avaliar(cenario)
-        registros, _ = await cenario["container"].list_assessments.execute(
-            saida.run.id, limit=10
-        )
+        registros, _ = await cenario["container"].list_assessments.execute(saida.run.id, limit=10)
         assert registros
 
         cobertura = registros[0].assessment.coverage
@@ -392,9 +390,7 @@ class TestQualidadePersistida:
             )
         assert esperado is None
 
-    async def test_a_licenca_por_familia_faz_o_round_trip(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_a_licenca_por_familia_faz_o_round_trip(self, cenario: dict[str, Any]) -> None:
         """§59, §35. Com uma licença global, «e se as odds saírem?» não teria
         resposta — e é a pergunta do build comercial.
 
@@ -403,9 +399,7 @@ class TestQualidadePersistida:
         que a política de build consome.
         """
         saida = await _avaliar(cenario)
-        registros, _ = await cenario["container"].list_assessments.execute(
-            saida.run.id, limit=10
-        )
+        registros, _ = await cenario["container"].list_assessments.execute(saida.run.id, limit=10)
         pegada = registros[0].assessment.usage.footprint
 
         # AS DUAS FONTES AFIRMAM O NÚCLEO: a pública traz o placar, e a
@@ -416,17 +410,11 @@ class TestQualidadePersistida:
         )
         # E A PÚBLICA SUSTENTA O NÚCLEO SOZINHA (§42): as duas concordam
         # exatamente, então o valor seria idêntico sem a restrita.
-        assert LicenseClass.PUBLIC_DOMAIN in pegada.independent_support[
-            CoverageFamily.MATCH
-        ]
-        assert pegada.by_family[CoverageFamily.ODDS] == frozenset(
-            {LicenseClass.RESEARCH_ONLY}
-        )
+        assert LicenseClass.PUBLIC_DOMAIN in pegada.independent_support[CoverageFamily.MATCH]
+        assert pegada.by_family[CoverageFamily.ODDS] == frozenset({LicenseClass.RESEARCH_ONLY})
         assert registros[0].assessment.usage.research is UsageEligibility.ELIGIBLE
 
-    async def test_o_suporte_independente_sobrevive_ao_banco(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_suporte_independente_sobrevive_ao_banco(self, cenario: dict[str, Any]) -> None:
         """§35, §42. A coluna `independent` é o que separa CONFIRMAÇÃO de
         DERIVAÇÃO — e se ela não fizesse o round-trip, a política de build
         decidiria diferente depois de reler."""
@@ -449,12 +437,13 @@ class TestQualidadePersistida:
         }
         assert do_nucleo["PUBLIC_DOMAIN"] is True
         # E o veredito comercial do núcleo continua elegível por causa dela.
-        registros, _ = await cenario["container"].list_assessments.execute(
-            saida.run.id, limit=10
+        registros, _ = await cenario["container"].list_assessments.execute(saida.run.id, limit=10)
+        assert (
+            registros[0].assessment.usage.footprint.family_verdict(
+                CoverageFamily.MATCH, UsageScope.COMMERCIAL
+            )
+            is UsageEligibility.ELIGIBLE
         )
-        assert registros[0].assessment.usage.footprint.family_verdict(
-            CoverageFamily.MATCH, UsageScope.COMMERCIAL
-        ) is UsageEligibility.ELIGIBLE
 
     async def test_a_severidade_da_politica_e_gravada_junto_do_problema(
         self, cenario: dict[str, Any]
@@ -488,12 +477,8 @@ class TestConstrucaoCanonica:
     ) -> None:
         """§19, §86, §103 — o cenário central, ponta a ponta e no banco."""
         avaliacao = await _avaliar(cenario)
-        pesquisa = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
-        comercial = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY
-        )
+        pesquisa = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
+        comercial = await _construir(cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY)
 
         assert pesquisa.run.scope is UsageScope.RESEARCH
         assert comercial.run.scope is UsageScope.COMMERCIAL
@@ -515,9 +500,7 @@ class TestConstrucaoCanonica:
         """§20. «ODDS excluída» não responde nada; com motivo e licença,
         responde tudo — e é a pergunta de uma auditoria jurídica."""
         avaliacao = await _avaliar(cenario)
-        comercial = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY
-        )
+        comercial = await _construir(cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY)
         async with cenario["database"].acquire() as conexao:
             linha = await conexao.fetchrow(
                 """
@@ -533,9 +516,7 @@ class TestConstrucaoCanonica:
         assert linha["reason"] == "LICENSE_POLICY"
         assert linha["license_class"] == "RESEARCH_ONLY"
 
-    async def test_o_primeiro_write_canonico_real(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_primeiro_write_canonico_real(self, cenario: dict[str, Any]) -> None:
         """§9 do relatório: o resultado e as odds NASCEM aqui.
 
         A partida já existia (a resolução casa contra o registro), então ela é
@@ -577,9 +558,7 @@ class TestConstrucaoCanonica:
         # O INSTANTE DESCONHECIDO FICA NULO (§44).
         assert all(linha["observed_at"] is None for linha in cotacoes)
 
-    async def test_o_match_persistido_continua_sem_placar(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_match_persistido_continua_sem_placar(self, cenario: dict[str, Any]) -> None:
         """§32, §88, no banco: `matches` não tem coluna de resultado, e o
         placar vive na tabela ao lado."""
         avaliacao = await _avaliar(cenario)
@@ -604,9 +583,7 @@ class TestConstrucaoCanonica:
                 "desfaria a decisão central do PR-01 (ADR-0007)"
             )
 
-    async def test_o_comercial_nao_grava_as_odds(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_o_comercial_nao_grava_as_odds(self, cenario: dict[str, Any]) -> None:
         avaliacao = await _avaliar(cenario)
         await _construir(cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY)
         async with cenario["database"].acquire() as conexao:
@@ -621,12 +598,8 @@ class TestConstrucaoCanonica:
         linha) — e o instante não entra nela, então reler o arquivo não cria
         uma segunda observação."""
         avaliacao = await _avaliar(cenario)
-        primeiro = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
-        segundo = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        primeiro = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
+        segundo = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
 
         async with cenario["database"].acquire() as conexao:
             partidas = await conexao.fetchval(
@@ -653,12 +626,8 @@ class TestConstrucaoCanonica:
     ) -> None:
         """§53. Mesma entrada, mesmas políticas, mesmo estado do registro."""
         avaliacao = await _avaliar(cenario)
-        primeiro = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
-        segundo = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        primeiro = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
+        segundo = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
         assert primeiro.run.output_fingerprint is not None
         # A SEGUNDA REUSA em vez de inserir, então o ESTADO dos registros
         # muda — e a impressão precisa refletir isso, senão ela mentiria
@@ -671,9 +640,7 @@ class TestConstrucaoCanonica:
     ) -> None:
         """§22, §51 — e no banco: o `UPDATE` é condicional a `RUNNING`."""
         avaliacao = await _avaliar(cenario)
-        saida = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        saida = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
         concluida = await cenario["container"].get_build_run.execute(saida.run.id)
         gravou = await cenario["container"].build_runs.finish(concluida)
         assert gravou is False
@@ -705,23 +672,18 @@ class TestLinhagemAteOByte:
 
         # 1. O fato canônico existe.
         async with cenario["database"].acquire() as conexao:
-            partida = await conexao.fetchrow(
-                "SELECT id FROM matches WHERE id = $1", alvo.value
-            )
+            partida = await conexao.fetchrow("SELECT id FROM matches WHERE id = $1", alvo.value)
         assert partida is not None
 
         # 2. → o registro de construção que o produziu.
         linhagem = await cenario["container"].get_lineage.execute(alvo)
-        do_match = next(
-            r for r in linhagem if r.fact_type is CanonicalFactType.MATCH
-        )
+        do_match = next(r for r in linhagem if r.fact_type is CanonicalFactType.MATCH)
         assert do_match.status in (BuildRecordStatus.BUILT, BuildRecordStatus.REUSED)
 
         # 3. → a avaliação que o autorizou (§50).
         async with cenario["database"].acquire() as conexao:
             veredito = await conexao.fetchrow(
-                "SELECT eligibility, fusion_group_id FROM match_quality_assessments "
-                "WHERE id = $1",
+                "SELECT eligibility, fusion_group_id FROM match_quality_assessments WHERE id = $1",
                 _uuid.UUID(do_match.quality_assessment_id),
             )
         assert veredito is not None
@@ -740,9 +702,7 @@ class TestLinhagemAteOByte:
         referencia = DatasetRecordRef.parse(refs[0]["record_ref"])
         dataset = await pipeline.datasets.by_id(referencia.dataset_id)
         assert dataset is not None
-        arquivo = next(
-            f for f in dataset.stored_files if str(f.id) == referencia.file_id
-        )
+        arquivo = next(f for f in dataset.stored_files if str(f.id) == referencia.file_id)
         assert arquivo.content_hash is not None
 
         # 6. E o objeto está DE FATO no object store, com aquele conteúdo.
@@ -756,9 +716,7 @@ class TestLinhagemAteOByte:
     ) -> None:
         """§47, §50. Sem os dois, o fato é uma linha sem pai."""
         avaliacao = await _avaliar(cenario)
-        saida = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
+        saida = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
         registros, total = await cenario["container"].build_records.by_run(saida.run.id)
         assert total >= 1
         for registro in registros:
@@ -792,15 +750,11 @@ class TestReprocessamento:
             )
         assert quantas >= 2
 
-    async def test_dois_builds_da_mesma_avaliacao_coexistem(
-        self, cenario: dict[str, Any]
-    ) -> None:
+    async def test_dois_builds_da_mesma_avaliacao_coexistem(self, cenario: dict[str, Any]) -> None:
         avaliacao = await _avaliar(cenario)
         await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
         await _construir(cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY)
-        execucoes = await cenario["container"].build_runs.for_quality_run(
-            avaliacao.run.id
-        )
+        execucoes = await cenario["container"].build_runs.for_quality_run(avaliacao.run.id)
         assert len(execucoes) == 2
         assert {e.scope for e in execucoes} == {
             UsageScope.RESEARCH,
@@ -812,9 +766,7 @@ class TestReprocessamento:
 
 
 class TestMigrations:
-    async def test_a_0005_esta_aplicada_e_com_checksum_conferido(
-        self, database: Database
-    ) -> None:
+    async def test_a_0005_esta_aplicada_e_com_checksum_conferido(self, database: Database) -> None:
         """§105. As migrations rodam da 0001 à nova contra banco limpo, e o
         aplicador recusa se um arquivo já aplicado tiver mudado."""
         import sports_intelligence.adapters.postgres.migrations as migrations
@@ -851,8 +803,7 @@ class TestMigrations:
             existentes = {
                 linha["table_name"]
                 for linha in await conexao.fetch(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = 'public'"
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
                 )
             }
         assert esperadas <= existentes, sorted(esperadas - existentes)
@@ -870,12 +821,8 @@ class TestIdentidadeDeConfiguracao:
         from sports_intelligence.domain.shared.fingerprint import policy_fingerprint
 
         avaliacao = await _avaliar(cenario)
-        pesquisa = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY
-        )
-        comercial = await _construir(
-            cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY
-        )
+        pesquisa = await _construir(cenario, avaliacao.run.id, DEFAULT_RESEARCH_BUILD_POLICY)
+        comercial = await _construir(cenario, avaliacao.run.id, DEFAULT_COMMERCIAL_BUILD_POLICY)
 
         async with cenario["database"].acquire() as conexao:
             impressoes = {
@@ -886,12 +833,13 @@ class TestIdentidadeDeConfiguracao:
                     [_uuid.UUID(pesquisa.run.id), _uuid.UUID(comercial.run.id)],
                 )
             }
-        assert impressoes[pesquisa.run.id] == policy_fingerprint(
-            DEFAULT_RESEARCH_BUILD_POLICY
-        ).value
-        assert impressoes[comercial.run.id] == policy_fingerprint(
-            DEFAULT_COMMERCIAL_BUILD_POLICY
-        ).value
+        assert (
+            impressoes[pesquisa.run.id] == policy_fingerprint(DEFAULT_RESEARCH_BUILD_POLICY).value
+        )
+        assert (
+            impressoes[comercial.run.id]
+            == policy_fingerprint(DEFAULT_COMMERCIAL_BUILD_POLICY).value
+        )
         # MESMA VERSÃO, IMPRESSÕES DIFERENTES: é o par que identifica a
         # configuração, e a versão sozinha não distinguiria os dois corpus.
         assert impressoes[pesquisa.run.id] != impressoes[comercial.run.id]
@@ -923,9 +871,7 @@ class TestIdentidadeDeConfiguracao:
             )
         )
         concluida = execucao.complete(
-            counts=QualityCounts(
-                records_examined=3, eligible=1, review_required=1, ineligible=1
-            ),
+            counts=QualityCounts(records_examined=3, eligible=1, review_required=1, ineligible=1),
             at=cenario["pipeline"].clock.now(),
         )
         assert concluida.status is RunStatus.COMPLETED_WITH_REVIEW

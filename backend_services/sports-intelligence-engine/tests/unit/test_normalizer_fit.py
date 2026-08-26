@@ -127,12 +127,8 @@ class TestAPopulacao:
 
     def test_corpus_diferente_muda_o_digest(self) -> None:
         """§105 — o mesmo jogo pode ter outro valor noutro corpus."""
-        a = FeaturePopulation.of(
-            COMPETICAO, "shots_home_5m", [observacao(1, "1", corpus="a" * 64)]
-        )
-        b = FeaturePopulation.of(
-            COMPETICAO, "shots_home_5m", [observacao(1, "1", corpus="c" * 64)]
-        )
+        a = FeaturePopulation.of(COMPETICAO, "shots_home_5m", [observacao(1, "1", corpus="a" * 64)])
+        b = FeaturePopulation.of(COMPETICAO, "shots_home_5m", [observacao(1, "1", corpus="c" * 64)])
         assert a.digest != b.digest
 
 
@@ -176,9 +172,7 @@ class TestOAjuste:
 
     def test_o_minimo_padrao_e_o_declarado(self) -> None:
         assert (
-            RobustNormalizerFitter(
-                definition=DEFAULT_V1_NORMALIZER
-            ).minimum_available_samples
+            RobustNormalizerFitter(definition=DEFAULT_V1_NORMALIZER).minimum_available_samples
             == DEFAULT_MINIMUM_AVAILABLE_SAMPLES
             == 30
         )
@@ -219,9 +213,7 @@ class TestOAjuste:
         with pytest.raises(ValidationError, match="população de"):
             fitter.fit(
                 populacao(valores_de_zero_a(30), feature_key="xg_home_5m"),
-                feature=production_feature_catalog()
-                .spec_of("shots_home_5m")
-                .definition,
+                feature=production_feature_catalog().spec_of("shots_home_5m").definition,
                 source_corpus_fingerprint=CORPUS,
                 source_space_fingerprint=ESPACO,
             )
@@ -246,8 +238,7 @@ class TestAImpressaoDoArtefato:
     def test_a_mesma_populacao_da_a_mesma_impressao(self) -> None:
         """§142."""
         assert (
-            ajustar(valores_de_zero_a(30)).fingerprint
-            == ajustar(valores_de_zero_a(30)).fingerprint
+            ajustar(valores_de_zero_a(30)).fingerprint == ajustar(valores_de_zero_a(30)).fingerprint
         )
 
     def test_um_valor_diferente_muda_a_impressao(self) -> None:
@@ -259,8 +250,7 @@ class TestAImpressaoDoArtefato:
     def test_um_membro_a_mais_muda_a_impressao(self) -> None:
         """§144."""
         assert (
-            ajustar(valores_de_zero_a(30)).fingerprint
-            != ajustar(valores_de_zero_a(31)).fingerprint
+            ajustar(valores_de_zero_a(30)).fingerprint != ajustar(valores_de_zero_a(31)).fingerprint
         )
 
     def test_competicao_diferente_muda_a_impressao(self) -> None:
@@ -334,9 +324,7 @@ class TestATransformacao:
     def _transformador(
         self, valores: list[str | None] | None = None
     ) -> RobustNormalizerTransformer:
-        return RobustNormalizerTransformer(
-            artifact=ajustar(valores or valores_de_zero_a(30))
-        )
+        return RobustNormalizerTransformer(artifact=ajustar(valores or valores_de_zero_a(30)))
 
     def test_o_valor_na_mediana_vira_zero(self) -> None:
         """§148."""
@@ -479,9 +467,7 @@ class TestATransformacao:
         from tests.support.snapshot_fixtures import extrair
 
         computada = extrair().value_of("shots_home_5m")
-        resultado = self._transformador().transform_computed(
-            computada, competition_id=COMPETICAO
-        )
+        resultado = self._transformador().transform_computed(computada, competition_id=COMPETICAO)
         assert resultado.raw == Decimal("3")
         assert resultado.is_available
 

@@ -175,27 +175,19 @@ class TestMatchResult:
 
     def test_prorrogacao_com_menos_gols_e_coluna_trocada(self) -> None:
         with pytest.raises(ValueError, match="acumulado"):
-            MatchResult(
-                regular_time=Score(home=2, away=1), extra_time=Score(home=1, away=1)
-            )
+            MatchResult(regular_time=Score(home=2, away=1), extra_time=Score(home=1, away=1))
 
     def test_prorrogacao_so_existe_apos_empate(self) -> None:
         with pytest.raises(ValueError, match="tempo normal"):
-            MatchResult(
-                regular_time=Score(home=2, away=1), extra_time=Score(home=3, away=1)
-            )
+            MatchResult(regular_time=Score(home=2, away=1), extra_time=Score(home=3, away=1))
 
     def test_penaltis_so_decidem_empate(self) -> None:
         with pytest.raises(ValueError, match="só decidem empate"):
-            MatchResult(
-                regular_time=Score(home=2, away=1), penalties=Score(home=4, away=2)
-            )
+            MatchResult(regular_time=Score(home=2, away=1), penalties=Score(home=4, away=2))
 
     def test_penaltis_empatados_nao_decidem_nada(self) -> None:
         with pytest.raises(ValueError, match="existe para decidir"):
-            MatchResult(
-                regular_time=Score(home=1, away=1), penalties=Score(home=3, away=3)
-            )
+            MatchResult(regular_time=Score(home=1, away=1), penalties=Score(home=3, away=3))
 
 
 def _entry(status: LineupStatus = LineupStatus.STARTER, **campos: object) -> LineupEntry:

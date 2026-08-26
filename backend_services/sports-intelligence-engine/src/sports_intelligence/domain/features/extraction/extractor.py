@@ -80,9 +80,7 @@ _LIMITES: Final[tuple[int, ...]] = tuple(j.seconds for j in WINDOWS_V1)
 #: Os tipos canônicos que alimentam alguma família móvel. Um evento fora desta
 #: lista não entra em balde nenhum — e não é erro: um passe é fato do jogo que
 #: nenhuma feature desta fase conta (§55).
-_TIPOS_DE_INTERESSE: Final[frozenset[EventType]] = frozenset(
-    f.event_type for f in FAMILIAS_MOVEIS
-)
+_TIPOS_DE_INTERESSE: Final[frozenset[EventType]] = frozenset(f.event_type for f in FAMILIAS_MOVEIS)
 
 
 @final
@@ -146,9 +144,7 @@ class MatchStateFeatureExtractor:
     estava; ele estava vazio.
     """
 
-    def compute_values(
-        self, context: MatchFeatureExtractionContext
-    ) -> tuple[ComputedFeature, ...]:
+    def compute_values(self, context: MatchFeatureExtractionContext) -> tuple[ComputedFeature, ...]:
         """Os valores das features do catálogo, NA ORDEM — sem o snapshot.
 
         ELA EXISTE PARA QUE A V2 REUSE A V1 (PR-05.4 §156, §157). O espaço
@@ -227,9 +223,7 @@ def _indexar(context: MatchFeatureExtractionContext) -> _Indice:
     return indice
 
 
-def _lado_de(
-    team_id: TeamId | None, *, casa: TeamId, fora: TeamId
-) -> FeatureSide | None:
+def _lado_de(team_id: TeamId | None, *, casa: TeamId, fora: TeamId) -> FeatureSide | None:
     if team_id is None:
         return None
     if team_id == casa:
@@ -298,12 +292,8 @@ def _do_estado(
                 estado.score.availability,
                 estado.score.detail,
             )
-        valor = (
-            estado.score.home if tipo is StateFeatureKind.SCORE_HOME else estado.score.away
-        )
-        return _disponivel(
-            spec.definition, context, valor, estado.provenance.score.sample
-        )
+        valor = estado.score.home if tipo is StateFeatureKind.SCORE_HOME else estado.score.away
+        return _disponivel(spec.definition, context, valor, estado.provenance.score.sample)
 
     if tipo in (
         StateFeatureKind.PLAYERS_ON_FIELD_HOME,
@@ -316,12 +306,8 @@ def _do_estado(
         )
         if not lado.is_available:
             # §32 — sem escalação NÃO se assume onze.
-            return _indisponivel(
-                spec.definition, context, lado.availability, lado.detail
-            )
-        return _disponivel(
-            spec.definition, context, lado.size, estado.provenance.on_field.sample
-        )
+            return _indisponivel(spec.definition, context, lado.availability, lado.detail)
+        return _disponivel(spec.definition, context, lado.size, estado.provenance.on_field.sample)
 
     if tipo in (
         StateFeatureKind.YELLOW_CARDS_HOME,
@@ -331,8 +317,7 @@ def _do_estado(
     ):
         do_time = (
             estado.discipline.home
-            if tipo
-            in (StateFeatureKind.YELLOW_CARDS_HOME, StateFeatureKind.DISMISSALS_HOME)
+            if tipo in (StateFeatureKind.YELLOW_CARDS_HOME, StateFeatureKind.DISMISSALS_HOME)
             else estado.discipline.away
         )
         if not do_time.is_available:
@@ -345,13 +330,10 @@ def _do_estado(
         # §34 — zero cartão com EVENT publicado é um FATO, e é AVAILABLE.
         valor = (
             do_time.yellow_cards
-            if tipo
-            in (StateFeatureKind.YELLOW_CARDS_HOME, StateFeatureKind.YELLOW_CARDS_AWAY)
+            if tipo in (StateFeatureKind.YELLOW_CARDS_HOME, StateFeatureKind.YELLOW_CARDS_AWAY)
             else do_time.dismissals
         )
-        return _disponivel(
-            spec.definition, context, valor, estado.provenance.discipline.sample
-        )
+        return _disponivel(spec.definition, context, valor, estado.provenance.discipline.sample)
 
     if tipo in (
         StateFeatureKind.SUBSTITUTIONS_HOME,
@@ -374,10 +356,7 @@ def _do_estado(
             spec.definition,
             context,
             len(aplicadas),
-            tuple(
-                FeatureContribution(kind="EVENT", reference=str(s.event_id))
-                for s in aplicadas
-            ),
+            tuple(FeatureContribution(kind="EVENT", reference=str(s.event_id)) for s in aplicadas),
         )
 
     return _diferenca(spec.definition, context, calculadas)
@@ -441,9 +420,7 @@ def _da_janela(
         spec.definition,
         context,
         float(total),
-        tuple(
-            FeatureContribution(kind="EVENT", reference=r) for r in balde.xg_shots
-        ),
+        tuple(FeatureContribution(kind="EVENT", reference=r) for r in balde.xg_shots),
     )
 
 
@@ -527,9 +504,7 @@ def _diferenca(
         # que somam 0,83 e 0,21 não subtraem 0,62 em binário, e a diferença
         # entraria na impressão da feature.
         diferenca = float(
-            (Decimal(str(valor_casa)) - Decimal(str(valor_fora)))
-            .quantize(_XG_QUANTUM)
-            .normalize()
+            (Decimal(str(valor_casa)) - Decimal(str(valor_fora))).quantize(_XG_QUANTUM).normalize()
         )
     return _disponivel(
         definition,

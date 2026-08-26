@@ -1000,7 +1000,7 @@ async def lineups_of(conexao: Any, match_ids: Sequence[Any]) -> dict[Any, tuple[
     divergiriam no dia em que uma ganhasse uma coluna.
     """
     linhas = await conexao.fetch(
-            """
+        """
         SELECT l.match_id, l.team_id, l.formation, e.player_id, e.status,
                e.shirt_number, e.position, e.captain
         FROM lineups l
@@ -1029,6 +1029,7 @@ async def lineups_of(conexao: Any, match_ids: Sequence[Any]) -> dict[Any, tuple[
             )
         )
     return {partida: tuple(v) for partida, v in por_partida.items()}
+
 
 async def odds_of(
     conexao: Any, match_ids: Sequence[Any]
@@ -1418,9 +1419,7 @@ class PostgresCorpusEventReader:
     def __init__(self, database: Database) -> None:
         self._db = database
 
-    async def usage_scopes_of(
-        self, event_build_run_ids: Sequence[str]
-    ) -> Mapping[str, UsageScope]:
+    async def usage_scopes_of(self, event_build_run_ids: Sequence[str]) -> Mapping[str, UsageScope]:
         if not event_build_run_ids:
             return {}
         async with self._db.acquire() as conexao:

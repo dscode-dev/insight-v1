@@ -91,9 +91,7 @@ async def _publicar(cenario: dict[str, Any]) -> tuple[Any, Any]:  # noqa: F811
         audit=pipeline.audit,
         store=cenario["store"],
     )
-    versao = await contêiner.publish_version.execute(
-        actor=PUBLICADOR, version_id=saida.version.id
-    )
+    versao = await contêiner.publish_version.execute(actor=PUBLICADOR, version_id=saida.version.id)
     assert versao.status is DatasetVersionStatus.READY
     return versao, saida.manifest
 
@@ -158,9 +156,7 @@ class TestAV2EmVolume:
                     source=estado,
                     policy=TemporalAvailabilityPolicy.default(),
                     batch_size=LOTE,
-                ).execute(
-                    source_corpus=origem, match_ids=partidas, as_of_of=_um_corte
-                )
+                ).execute(source_corpus=origem, match_ids=partidas, as_of_of=_um_corte)
 
         lotes = -(-len(partidas) // LOTE)
         esperadas_v1 = lotes * 5
@@ -226,6 +222,4 @@ class TestAV2EmVolume:
 
         # O pico não segue o corpus: a V2 carrega trinta dimensões a mais por
         # snapshot, e um snapshot vivo por vez.
-        assert v2.pico_mb < v1.pico_mb * 3, (
-            f"V1 {v1.pico_mb:.0f} MB contra V2 {v2.pico_mb:.0f} MB"
-        )
+        assert v2.pico_mb < v1.pico_mb * 3, f"V1 {v1.pico_mb:.0f} MB contra V2 {v2.pico_mb:.0f} MB"

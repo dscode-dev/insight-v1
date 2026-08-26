@@ -239,9 +239,7 @@ class TestRegistro:
         )
         assert competicao.name == "LaLiga"
 
-    async def test_temporada_exige_competicao_registrada(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_temporada_exige_competicao_registrada(self, contexto: dict[str, object]) -> None:
         with pytest.raises(NotFoundError):
             await RegisterSeason(
                 contexto["competicoes"],  # type: ignore[arg-type]
@@ -254,18 +252,14 @@ class TestRegistro:
                 regime=REGIME,
             )
 
-    async def test_partida_publica_evento_de_dominio(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_partida_publica_evento_de_dominio(self, contexto: dict[str, object]) -> None:
         partida = await _partida(contexto)
         publisher = contexto["publisher"]
         assert isinstance(publisher, PublicadorEmMemoria)
         assert "match.registered" in publisher.tipos
         assert publisher.publicados[-1].match_id == partida.id
 
-    async def test_partida_fora_da_temporada_e_recusada(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_partida_fora_da_temporada_e_recusada(self, contexto: dict[str, object]) -> None:
         """Quase sempre temporada errada — e ela contaminaria a tabela de uma
         edição que não a teve."""
         temporada, casa, fora = await _montar(contexto)
@@ -320,9 +314,7 @@ class TestLifecycle:
                 match_id=partida.id, target=MatchLifecycle.LIVE, reason="pulando etapa"
             )
 
-    async def test_transicao_valida_persiste_e_publica(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_transicao_valida_persiste_e_publica(self, contexto: dict[str, object]) -> None:
         partida = await _partida(contexto)
         atualizada = await ChangeMatchLifecycle(
             contexto["partidas"],  # type: ignore[arg-type]
@@ -341,9 +333,7 @@ class TestLifecycle:
 
 
 class TestConfirmLineup:
-    async def test_a_checagem_cruzada_e_o_ponto(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_a_checagem_cruzada_e_o_ponto(self, contexto: dict[str, object]) -> None:
         """Sozinha, uma escalação é válida. O erro caro — o mesmo jogador nos
         dois times, vindo de resolução que fundiu homônimos — só aparece ao
         confrontar as duas."""
@@ -359,9 +349,7 @@ class TestConfirmLineup:
             Lineup(
                 match_id=partida.id,
                 team_id=partida.home_team_id,
-                entries=(
-                    LineupEntry(player_id=comum, status=LineupStatus.STARTER),
-                ),
+                entries=(LineupEntry(player_id=comum, status=LineupStatus.STARTER),),
             )
         )
         with pytest.raises(ValueError, match="nos dois times"):
@@ -369,9 +357,7 @@ class TestConfirmLineup:
                 Lineup(
                     match_id=partida.id,
                     team_id=partida.away_team_id,
-                    entries=(
-                        LineupEntry(player_id=comum, status=LineupStatus.STARTER),
-                    ),
+                    entries=(LineupEntry(player_id=comum, status=LineupStatus.STARTER),),
                 )
             )
 
@@ -389,9 +375,7 @@ class TestConfirmLineup:
                 Lineup(
                     match_id=partida.id,
                     team_id=TeamId.new(),
-                    entries=(
-                        LineupEntry(player_id=PlayerId.new(), status=LineupStatus.STARTER),
-                    ),
+                    entries=(LineupEntry(player_id=PlayerId.new(), status=LineupStatus.STARTER),),
                 )
             )
 
@@ -429,9 +413,7 @@ class TestGravacaoDeFatos:
                 contexto["eventos"],  # type: ignore[arg-type]
             ).execute(eventos)
 
-    async def test_a_gravacao_devolve_quantos_entraram(
-        self, contexto: dict[str, object]
-    ) -> None:
+    async def test_a_gravacao_devolve_quantos_entraram(self, contexto: dict[str, object]) -> None:
         """'Gravado com sucesso' sem contagem é afirmação sem medida."""
         partida = await _partida(contexto)
         quantos = await RecordOddsQuotes(

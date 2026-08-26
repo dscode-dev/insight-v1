@@ -82,9 +82,7 @@ async def create_dataset(
         description=corpo.description,
         correlation_id=request.headers.get(_CORRELACAO),
     )
-    resposta.status_code = (
-        status.HTTP_201_CREATED if criado else status.HTTP_200_OK
-    )
+    resposta.status_code = status.HTTP_201_CREATED if criado else status.HTTP_200_OK
     return DatasetOut.of(dataset)
 
 
@@ -122,16 +120,12 @@ async def list_datasets(
 
 
 @router.get("/{dataset_id}", response_model=DatasetOut)
-async def get_dataset(
-    dataset_id: str, contêiner: ContainerDep, _: ActorDep
-) -> DatasetOut:
+async def get_dataset(dataset_id: str, contêiner: ContainerDep, _: ActorDep) -> DatasetOut:
     return DatasetOut.of(await contêiner.get.execute(_id(dataset_id)))
 
 
 @router.get("/{dataset_id}/files", response_model=list[FileOut])
-async def list_files(
-    dataset_id: str, contêiner: ContainerDep, _: ActorDep
-) -> list[FileOut]:
+async def list_files(dataset_id: str, contêiner: ContainerDep, _: ActorDep) -> list[FileOut]:
     dataset = await contêiner.get.execute(_id(dataset_id))
     return DatasetOut.of(dataset).files
 
@@ -169,9 +163,7 @@ async def upload_file(
         correlation_id=request.headers.get(_CORRELACAO),
     )
     atual = await contêiner.get.execute(_id(dataset_id))
-    saida = next(
-        f for f in DatasetOut.of(atual).files if f.id == str(resultado.file.id)
-    )
+    saida = next(f for f in DatasetOut.of(atual).files if f.id == str(resultado.file.id))
     # 200 E NÃO 201 NO REENVIO: nada foi criado, e dizer que foi levaria um
     # cliente a contar como novo o arquivo que ele já tinha mandado.
     resposta.status_code = (
@@ -221,9 +213,7 @@ async def get_validation(
 
 
 @router.get("/{dataset_id}/manifest", response_model=ManifestOut)
-async def get_manifest(
-    dataset_id: str, contêiner: ContainerDep, _: ActorDep
-) -> ManifestOut:
+async def get_manifest(dataset_id: str, contêiner: ContainerDep, _: ActorDep) -> ManifestOut:
     """O manifesto congelado: qual entrada exata foi validada."""
     return ManifestOut.of(await contêiner.manifest.execute(_id(dataset_id)))
 

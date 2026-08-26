@@ -304,9 +304,7 @@ class PostgresDatasetRepository:
                 "WHERE dataset_id = $1 ORDER BY at, id",
                 dataset_id.value,
             )
-        return [
-            (r["from_state"], r["to_state"], r["reason"], r["at"].isoformat()) for r in linhas
-        ]
+        return [(r["from_state"], r["to_state"], r["reason"], r["at"].isoformat()) for r in linhas]
 
 
 @final
@@ -397,9 +395,7 @@ class PostgresDatasetFileRepository:
             )
         return _para_arquivo(linha) if linha is not None else None
 
-    async def record_inspection(
-        self, file_id: str, *, row_count: int, column_count: int
-    ) -> None:
+    async def record_inspection(self, file_id: str, *, row_count: int, column_count: int) -> None:
         """O que a inspeção mediu. NÃO toca em hash, tamanho nem chave.
 
         A ausência de um `update` genérico é o contrato: as três colunas que
@@ -523,8 +519,7 @@ class PostgresDatasetValidationRepository:
                 min(limit, 50),
             )
             return [
-                _para_relatorio(linha, await self._issues(conexao, linha["id"]))
-                for linha in linhas
+                _para_relatorio(linha, await self._issues(conexao, linha["id"])) for linha in linhas
             ]
 
     @staticmethod
@@ -624,9 +619,7 @@ def _para_dataset(linha: Any, arquivos: tuple[DatasetFile, ...]) -> Dataset:
             provider_id=ProviderId(linha["provider_id"]) if linha["provider_id"] else None,
             notes=linha["notes"],
         ),
-        declared_competitions=frozenset(
-            CompetitionCode(c) for c in linha["declared_competitions"]
-        ),
+        declared_competitions=frozenset(CompetitionCode(c) for c in linha["declared_competitions"]),
         declared_seasons=tuple(linha["declared_seasons"] or ()),
         lifecycle=DatasetLifecycle(linha["lifecycle"]),
         created_at=instant(linha["created_at"]),
@@ -648,9 +641,7 @@ def _para_resumo(linha: Any) -> DatasetSummary:
         source_name=linha["source_name"],
         source_type=linha["source_type"],
         license_class=linha["license_class"],
-        declared_competitions=frozenset(
-            CompetitionCode(c) for c in linha["declared_competitions"]
-        ),
+        declared_competitions=frozenset(CompetitionCode(c) for c in linha["declared_competitions"]),
         file_count=int(linha["file_count"]),
         total_bytes=int(linha["total_bytes"]),
         created_at=instant(linha["created_at"]),
@@ -661,9 +652,7 @@ def _para_arquivo(linha: Any) -> DatasetFile:
     return DatasetFile(
         id=DatasetFileId(linha["id"]),
         dataset_id=DatasetId(linha["dataset_id"]),
-        dataset_version=DatasetVersion(
-            major=linha["version_major"], minor=linha["version_minor"]
-        ),
+        dataset_version=DatasetVersion(major=linha["version_major"], minor=linha["version_minor"]),
         original_filename=linha["original_filename"],
         safe_filename=linha["safe_filename"],
         media_type=linha["media_type"],
@@ -680,9 +669,7 @@ def _para_arquivo(linha: Any) -> DatasetFile:
     )
 
 
-def _para_relatorio(
-    linha: Any, issues: list[DatasetValidationIssue]
-) -> DatasetValidationReport:
+def _para_relatorio(linha: Any, issues: list[DatasetValidationIssue]) -> DatasetValidationReport:
     """Reconstrói o relatório. `status` NÃO vem da coluna.
 
     A coluna existe para consulta e filtro; o valor autoritativo é derivado
@@ -693,9 +680,7 @@ def _para_relatorio(
     return DatasetValidationReport(
         id=str(linha["id"]),
         dataset_id=DatasetId(linha["dataset_id"]),
-        dataset_version=DatasetVersion(
-            major=linha["version_major"], minor=linha["version_minor"]
-        ),
+        dataset_version=DatasetVersion(major=linha["version_major"], minor=linha["version_minor"]),
         validator_version=ValidatorVersion(
             major=linha["validator_major"], minor=linha["validator_minor"]
         ),
@@ -853,4 +838,3 @@ def _para_manifesto(bruto: str | dict[str, Any]) -> DatasetManifest:
         created_at=parse_instant(dados["created_at"]),
         schema_version=dados["schema_version"],
     )
-

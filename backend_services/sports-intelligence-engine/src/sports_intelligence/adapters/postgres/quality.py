@@ -110,9 +110,7 @@ class PostgresQualityRunRepository:
             )
         return run
 
-    async def save_policy_snapshot(
-        self, run_id: str, policy: HistoricalQualityPolicy
-    ) -> None:
+    async def save_policy_snapshot(self, run_id: str, policy: HistoricalQualityPolicy) -> None:
         """Grava a forma canônica da política DENTRO da execução (§9).
 
         SEPARADO DO `create` porque a política é um objeto de domínio e o
@@ -125,8 +123,7 @@ class PostgresQualityRunRepository:
         """
         async with self._db.acquire() as conexao:
             await conexao.execute(
-                "UPDATE quality_runs SET policy_snapshot = $2 "
-                "WHERE id = $1 AND status = 'RUNNING'",
+                "UPDATE quality_runs SET policy_snapshot = $2 WHERE id = $1 AND status = 'RUNNING'",
                 uuid.UUID(run_id),
                 json.dumps(policy.as_canonical()),
             )
@@ -192,9 +189,7 @@ class PostgresQualityRunRepository:
         por_execucao: dict[Any, list[Any]] = {}
         for entrada in entradas:
             por_execucao.setdefault(entrada["quality_run_id"], []).append(entrada)
-        return [
-            _para_execucao(linha, por_execucao.get(linha["id"], [])) for linha in linhas
-        ]
+        return [_para_execucao(linha, por_execucao.get(linha["id"], [])) for linha in linhas]
 
 
 @final
@@ -378,9 +373,7 @@ class PostgresQualityAssessmentRepository:
             return await self._hidratar(conexao, linhas)
 
     @staticmethod
-    async def _hidratar(
-        conexao: Any, linhas: Sequence[Any]
-    ) -> Sequence[MatchQualityRecord]:
+    async def _hidratar(conexao: Any, linhas: Sequence[Any]) -> Sequence[MatchQualityRecord]:
         """Reconstrói os vereditos em QUATRO consultas, não em quatro por linha.
 
         É o mesmo desenho do carregamento de evidências do PR-03: uma consulta
@@ -422,11 +415,7 @@ class PostgresQualityAssessmentRepository:
 
 
 async def _gravar_cobertura(conexao: Any, records: Sequence[MatchQualityRecord]) -> None:
-    linhas = [
-        (uuid.UUID(r.id), c)
-        for r in records
-        for c in r.assessment.coverage.families
-    ]
+    linhas = [(uuid.UUID(r.id), c) for r in records for c in r.assessment.coverage.families]
     if not linhas:
         return
     await conexao.execute(
@@ -563,29 +552,21 @@ def _para_execucao(linha: Any, entradas: Sequence[Any]) -> QualityRun:
             )
             for e in entradas
         ),
-        policy_version=PolicyVersion(
-            major=linha["policy_major"], minor=linha["policy_minor"]
-        ),
+        policy_version=PolicyVersion(major=linha["policy_major"], minor=linha["policy_minor"]),
         policy_fingerprint=ContentHash(linha["policy_fingerprint"]),
         status=RunStatus(linha["status"]),
         started_at=instant(linha["started_at"]),
-        triggered_by=Actor(
-            id=linha["triggered_by"], kind=ActorKind(linha["triggered_by_kind"])
-        ),
+        triggered_by=Actor(id=linha["triggered_by"], kind=ActorKind(linha["triggered_by_kind"])),
         counts=QualityCounts(
             records_examined=linha["records_examined"],
             eligible=linha["eligible_count"],
             review_required=linha["review_required_count"],
             ineligible=linha["ineligible_count"],
         ),
-        completed_at=(
-            instant(linha["completed_at"]) if linha["completed_at"] else None
-        ),
+        completed_at=(instant(linha["completed_at"]) if linha["completed_at"] else None),
         failure_reason=linha["failure_reason"],
         output_fingerprint=(
-            ContentHash(linha["output_fingerprint"])
-            if linha["output_fingerprint"]
-            else None
+            ContentHash(linha["output_fingerprint"]) if linha["output_fingerprint"] else None
         ),
     )
 
@@ -620,9 +601,7 @@ def _para_registro(
             )
         ),
         identity=IdentityConfidences(
-            by_subject={
-                SubjectType(i["subject_type"]): i["confidence"] for i in identidades
-            }
+            by_subject={SubjectType(i["subject_type"]): i["confidence"] for i in identidades}
         ),
         usage=UsageVerdict(
             research=UsageEligibility(linha["usage_research"]),
@@ -645,9 +624,7 @@ def _para_registro(
         quality_run_id=str(linha["quality_run_id"]),
         fusion_group_id=str(linha["fusion_group_id"]),
         assessment=avaliacao,
-        families_in_conflict=tuple(
-            CoverageFamily(f) for f in linha["families_in_conflict"]
-        ),
+        families_in_conflict=tuple(CoverageFamily(f) for f in linha["families_in_conflict"]),
         families_unresolved_identity=tuple(
             CoverageFamily(f) for f in linha["families_unresolved_identity"]
         ),

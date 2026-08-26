@@ -187,10 +187,7 @@ class OddsQuote:
     def __str__(self) -> str:
         linha = f" @{self.line}" if self.line is not None else ""
         marca = " [suspenso]" if self.suspended else ""
-        return (
-            f"{self.bookmaker} {self.market}{linha} {self.selection}={self.decimal_odds}"
-            f"{marca}"
-        )
+        return f"{self.bookmaker} {self.market}{linha} {self.selection}={self.decimal_odds}{marca}"
 
 
 @final
@@ -283,6 +280,5 @@ class CanonicalOddsObservation:
             else "instante não declarado"
         )
         return (
-            f"{self.bookmaker} {self.market}{linha} {self.selection}="
-            f"{self.decimal_odds} ({quando})"
+            f"{self.bookmaker} {self.market}{linha} {self.selection}={self.decimal_odds} ({quando})"
         )

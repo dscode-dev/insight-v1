@@ -290,9 +290,7 @@ class ObservationSet:
         em toda execução, para que o reprocessamento reproduza (§33).
         """
         por_chave: dict[str, Observation] = {}
-        for observacao in sorted(
-            observations, key=lambda o: (o.discriminator, str(o.provider_id))
-        ):
+        for observacao in sorted(observations, key=lambda o: (o.discriminator, str(o.provider_id))):
             por_chave.setdefault(observacao.discriminator, observacao)
         return cls(kind=kind, observations=tuple(por_chave.values()))
 
@@ -553,4 +551,3 @@ def _casas_decimais(valor: str) -> int | None:
         return None
     expoente = decimal.as_tuple().exponent
     return -int(expoente) if isinstance(expoente, int) and expoente < 0 else 0
-

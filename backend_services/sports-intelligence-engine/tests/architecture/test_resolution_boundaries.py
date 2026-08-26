@@ -113,9 +113,8 @@ class TestNadaDeAprendizadoDeMaquina:
             files_in("domain", "ingestion", "application", "adapters", "ports"),
             BIBLIOTECAS_DE_APRENDIZADO,
         )
-        assert not violacoes, (
-            "aprendizado de máquina na resolução de identidade:\n"
-            + "\n".join(map(str, violacoes))
+        assert not violacoes, "aprendizado de máquina na resolução de identidade:\n" + "\n".join(
+            map(str, violacoes)
         )
 
 
@@ -207,9 +206,7 @@ class TestAppendOnly:
     teste de interface e quebra a regra inteira. Este teste lê o SQL.
     """
 
-    ADAPTER = (
-        RAIZ / "src/sports_intelligence/adapters/postgres/resolution.py"
-    )
+    ADAPTER = RAIZ / "src/sports_intelligence/adapters/postgres/resolution.py"
 
     @pytest.mark.parametrize(
         "tabela",

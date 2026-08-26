@@ -133,9 +133,7 @@ class TestRelatorio:
     def test_status_e_derivado_e_nunca_informado(self) -> None:
         assert _relatorio().status is ValidationStatus.PASSED
         assert (
-            _relatorio(
-                DatasetValidationIssue.of(IssueCode.UNEXPECTED_COLUMN, "x")
-            ).status
+            _relatorio(DatasetValidationIssue.of(IssueCode.UNEXPECTED_COLUMN, "x")).status
             is ValidationStatus.PASSED_WITH_WARNINGS
         )
         assert (
@@ -176,15 +174,11 @@ class TestRelatorio:
 
     def test_contagem_total_nunca_e_menor_que_a_amostra(self) -> None:
         with pytest.raises(ValidationError, match="menor que as issues guardadas"):
-            _relatorio(
-                DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x"), issue_count=0
-            )
+            _relatorio(DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x"), issue_count=0)
 
     def test_truncado_sem_ter_perdido_nada_e_recusado(self) -> None:
         with pytest.raises(ValidationError, match="truncado"):
-            _relatorio(
-                DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x"), truncated=True
-            )
+            _relatorio(DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x"), truncated=True)
 
     def test_relatorio_gerado_antes_de_comecar_e_recusado(self) -> None:
         with pytest.raises(ValidationError, match="antes de começar"):
@@ -199,9 +193,7 @@ class TestRelatorio:
         assert _relatorio().validator_version == CURRENT_VALIDATOR_VERSION
 
     def test_contagem_por_severidade_soma_ocorrencias(self) -> None:
-        r = _relatorio(
-            DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x", occurrences=40)
-        )
+        r = _relatorio(DatasetValidationIssue.of(IssueCode.MALFORMED_ROW, "x", occurrences=40))
         assert r.count_by_severity()[IssueSeverity.ERROR] == 40
 
 
@@ -336,9 +328,7 @@ class TestManifesto:
 
     def test_impressao_e_estavel_para_o_mesmo_conteudo(self) -> None:
         r = _relatorio(dataset_id=_dataset().id)
-        d = _dataset(
-            (_arquivo(b"a").with_inspection(row_count=10, column_count=3),)
-        )
+        d = _dataset((_arquivo(b"a").with_inspection(row_count=10, column_count=3),))
         primeiro = DatasetManifest.build(dataset=d, report=r, created_at=AGORA)
         segundo = DatasetManifest.build(dataset=d, report=r, created_at=DEPOIS)
         # `created_at` FICA DE FORA DA IMPRESSÃO, e é o ponto: incluí-lo faria
@@ -378,9 +368,7 @@ class TestManifesto:
         )
         confirmado = _arquivo(b"ok").with_inspection(row_count=1, column_count=1)
         d = _dataset((pendente, confirmado))
-        m = DatasetManifest.build(
-            dataset=d, report=_relatorio(dataset_id=d.id), created_at=AGORA
-        )
+        m = DatasetManifest.build(dataset=d, report=_relatorio(dataset_id=d.id), created_at=AGORA)
         assert len(m.files) == 1
         assert m.files[0].sha256 == confirmado.content_hash
 

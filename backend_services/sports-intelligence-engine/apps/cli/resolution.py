@@ -40,9 +40,7 @@ app = typer.Typer(
     help="Resolução de identidade sobre datasets STAGED.",
     no_args_is_help=True,
 )
-fusion_app = typer.Typer(
-    name="fusion", help="Fusão de fontes já resolvidas.", no_args_is_help=True
-)
+fusion_app = typer.Typer(name="fusion", help="Fusão de fontes já resolvidas.", no_args_is_help=True)
 console = Console()
 
 
@@ -270,9 +268,7 @@ def resolver_item(
     console.print(f"[green]resolvido[/green] {decisao.source_value.raw!r} → {entity_id}")
     console.print(f"  decisão   {decisao.id}")
     console.print(f"  método    {decisao.method.value}")
-    console.print(
-        "\n[dim]O alias foi gravado: a próxima execução resolve este nome sozinha.[/dim]"
-    )
+    console.print("\n[dim]O alias foi gravado: a próxima execução resolve este nome sozinha.[/dim]")
 
 
 @review_app.command("reject")
@@ -335,9 +331,7 @@ def mostrar_fusao(run_id: str) -> None:
 
 
 @fusion_app.command("conflicts")
-def conflitos(
-    run_id: str, limit: Annotated[int, typer.Option(min=1, max=500)] = 50
-) -> None:
+def conflitos(run_id: str, limit: Annotated[int, typer.Option(min=1, max=500)] = 50) -> None:
     """Os conflitos não resolvidos.
 
     UM CONFLITO PRESERVADO NÃO É FALHA. É o resultado desejável quando a
@@ -398,9 +392,7 @@ def _imprimir_fusao(run: Any) -> None:
     console.print(f"\n[{cor}]{run.status.value}[/{cor}]  [dim]{run.id}[/dim]")
     console.print(f"política   {run.policy_version}")
     console.print(f"entradas   {', '.join(r[:8] for r in run.input_resolution_run_ids)}")
-    console.print(
-        f"grupos     {run.counts.groups} ({run.counts.multi_source_groups} multi-fonte)"
-    )
+    console.print(f"grupos     {run.counts.groups} ({run.counts.multi_source_groups} multi-fonte)")
     console.print(f"campos     {run.counts.fields_selected}")
     console.print(
         f"conflitos  {run.counts.conflicts} "

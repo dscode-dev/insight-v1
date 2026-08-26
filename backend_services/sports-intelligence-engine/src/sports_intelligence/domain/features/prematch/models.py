@@ -87,9 +87,7 @@ class TeamPriorMatches:
             )
         ids = [m.match_id for m in self.matches]
         if len(set(ids)) != len(ids):
-            raise ValidationError(
-                f"partida anterior repetida para o time {self.team_id}"
-            )
+            raise ValidationError(f"partida anterior repetida para o time {self.team_id}")
 
     @property
     def latest(self) -> PriorMatchRef | None:
@@ -172,9 +170,7 @@ class MatchContextInput:
                 )
             proprias = [m for m in lado.matches if m.match_id == self.match_id]
             if proprias:
-                raise ValidationError(
-                    f"a partida {self.match_id} aparece no próprio contexto"
-                )
+                raise ValidationError(f"a partida {self.match_id} aparece no próprio contexto")
 
     def side(self, team_id: TeamId) -> TeamPriorMatches | None:
         if team_id == self.home.team_id:
@@ -184,14 +180,10 @@ class MatchContextInput:
         return None
 
 
-def team_prior_matches(
-    team_id: TeamId, refs: Sequence[PriorMatchRef]
-) -> TeamPriorMatches:
+def team_prior_matches(team_id: TeamId, refs: Sequence[PriorMatchRef]) -> TeamPriorMatches:
     """Constrói o histórico de um time ORDENANDO — a porta normal.
 
     O construtor direto RECUSA lista fora de ordem, e é assim que ele detecta
     quem montou o objeto sem passar por aqui. Esta função é a que ordena.
     """
-    return TeamPriorMatches(
-        team_id=team_id, matches=tuple(sorted(refs, key=lambda m: m.key))
-    )
+    return TeamPriorMatches(team_id=team_id, matches=tuple(sorted(refs, key=lambda m: m.key)))

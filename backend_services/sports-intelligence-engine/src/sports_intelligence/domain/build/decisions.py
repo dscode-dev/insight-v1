@@ -115,10 +115,7 @@ class FamilyDecision:
                 f"{self.family} em {self.outcome} sem motivo: uma família que some "
                 "sem explicação é indistinguível de uma que nunca existiu (§20)"
             )
-        if (
-            self.reason is FamilyExclusionReason.LICENSE_POLICY
-            and self.license_class is None
-        ):
+        if self.reason is FamilyExclusionReason.LICENSE_POLICY and self.license_class is None:
             raise ValidationError(
                 f"{self.family} excluída por licença e sem dizer QUAL — a exclusão "
                 "por licença é a que mais precisa de resposta numa auditoria"
@@ -153,9 +150,7 @@ class FamilyDecision:
 
     @classmethod
     def needs_review(cls, family: CoverageFamily, reason: FamilyExclusionReason) -> Self:
-        return cls(
-            family=family, outcome=FamilyOutcome.REVIEW_REQUIRED, reason=reason
-        )
+        return cls(family=family, outcome=FamilyOutcome.REVIEW_REQUIRED, reason=reason)
 
     def as_canonical(self) -> dict[str, str | None]:
         return {
@@ -208,15 +203,11 @@ class BuildDecision:
         nomes = [f.family for f in self.families]
         if len(set(nomes)) != len(nomes):
             repetidas = sorted({n.value for n in nomes if nomes.count(n) > 1})
-            raise ValidationError(
-                f"família decidida duas vezes na mesma partida: {repetidas}"
-            )
+            raise ValidationError(f"família decidida duas vezes na mesma partida: {repetidas}")
         if self.outcome is not BuildOutcome.BUILD and any(
             f.outcome.materializes for f in self.families
         ):
-            incluidas = sorted(
-                f.family.value for f in self.families if f.outcome.materializes
-            )
+            incluidas = sorted(f.family.value for f in self.families if f.outcome.materializes)
             raise ValidationError(
                 f"partida em {self.outcome} com família(s) incluída(s): {incluidas}. "
                 "Uma partida que não entra no corpus não pode ter família materializada "
@@ -279,9 +270,7 @@ class BuildDecision:
     def excluded_by_license(self) -> tuple[CoverageFamily, ...]:
         """As famílias que a LICENÇA tirou — a resposta do §19 e do §103."""
         return tuple(
-            f.family
-            for f in self.families
-            if f.reason is FamilyExclusionReason.LICENSE_POLICY
+            f.family for f in self.families if f.reason is FamilyExclusionReason.LICENSE_POLICY
         )
 
     def as_canonical(self) -> dict[str, object]:
@@ -295,9 +284,7 @@ class BuildDecision:
         }
 
     def __str__(self) -> str:
-        return f"{self.match_id} · {self.outcome}" + (
-            f" ({self.reason})" if self.reason else ""
-        )
+        return f"{self.match_id} · {self.outcome}" + (f" ({self.reason})" if self.reason else "")
 
 
 #: As famílias que a V1 do contrato fundido sabe materializar. `EVENT`,

@@ -163,18 +163,13 @@ class FeatureProvenance:
         }
 
     def __str__(self) -> str:
-        return (
-            f"{self.provenance_class.value}·{self.count}"
-            f"[{self.contribution_digest[:12] or '—'}]"
-        )
+        return f"{self.provenance_class.value}·{self.count}[{self.contribution_digest[:12] or '—'}]"
 
 
 def _digest(contributions: Sequence[FeatureContribution]) -> str:
     if not contributions:
         return ""
-    return hashlib.sha256(
-        canonical_json([c.as_canonical() for c in contributions])
-    ).hexdigest()
+    return hashlib.sha256(canonical_json([c.as_canonical() for c in contributions])).hexdigest()
 
 
 @final

@@ -136,13 +136,11 @@ class QualityIssue:
     def __post_init__(self) -> None:
         if not self.subject.strip():
             raise ValidationError(
-                f"{self.code} sem sujeito: um problema que não diz sobre o que é "
-                "não permite agir"
+                f"{self.code} sem sujeito: um problema que não diz sobre o que é não permite agir"
             )
         if len(self.context) > MAX_CONTEXT_KEYS:
             raise ValidationError(
-                f"{self.code}: contexto com {len(self.context)} chaves, acima de "
-                f"{MAX_CONTEXT_KEYS}"
+                f"{self.code}: contexto com {len(self.context)} chaves, acima de {MAX_CONTEXT_KEYS}"
             )
         for chave, valor in self.context.items():
             if len(valor) > MAX_CONTEXT_VALUE_LENGTH:

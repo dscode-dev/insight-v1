@@ -90,10 +90,5 @@ class TestEstabilidadeDoNamespace:
         """TRAVA DE MIGRAÇÃO. Mudar o namespace re-chaveia tudo que já foi
         derivado; este teste faz essa mudança aparecer como quebra, e não
         como um conjunto de linhas novas indistinguível do anterior."""
-        esperado = uuid.uuid5(
-            MatchId.NAMESPACE, "premier_league|2024-2025|arsenal|chelsea"
-        )
-        assert (
-            MatchId.derive("premier_league", "2024-2025", "arsenal", "chelsea").value
-            == esperado
-        )
+        esperado = uuid.uuid5(MatchId.NAMESPACE, "premier_league|2024-2025|arsenal|chelsea")
+        assert MatchId.derive("premier_league", "2024-2025", "arsenal", "chelsea").value == esperado

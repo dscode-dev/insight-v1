@@ -79,9 +79,7 @@ class TestCorrelacao:
         """É o que amarra o rastro através dos serviços do Insight."""
         import apps.query_api.main as modulo
 
-        resposta = _cliente(modulo).get(
-            "/version", headers={"X-Correlation-Id": "abc-123"}
-        )
+        resposta = _cliente(modulo).get("/version", headers={"X-Correlation-Id": "abc-123"})
         assert resposta.headers["X-Correlation-Id"] == "abc-123"
 
     def test_sem_id_do_cliente_um_e_gerado(self) -> None:
@@ -137,9 +135,9 @@ class TestCli:
         from apps.cli.main import app
 
         resultado = CliRunner().invoke(app, ["doctor"])
-        assert resultado.exception is None or isinstance(
-            resultado.exception, SystemExit
-        ), "o doctor levantou exceção em vez de relatar"
+        assert resultado.exception is None or isinstance(resultado.exception, SystemExit), (
+            "o doctor levantou exceção em vez de relatar"
+        )
         # A tabela inteira saiu: as sete dependências, não só a primeira que
         # falhou.
         for dependencia in (

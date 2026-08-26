@@ -119,9 +119,7 @@ class TestAAutoridadeDaEntrada:
 
     def test_a_extracao_nao_importa_odds(self) -> None:
         """§98, §99 — nenhuma feature de odds nesta fase."""
-        violacoes = internal_violations(
-            files_in(EXTRACAO), ("sports_intelligence.domain.odds",)
-        )
+        violacoes = internal_violations(files_in(EXTRACAO), ("sports_intelligence.domain.odds",))
         assert not violacoes, str(violacoes)
 
     def test_o_extrator_recebe_contexto_e_nada_mais(self) -> None:
@@ -153,9 +151,7 @@ class TestNadaDeNormalizacao:
     """§100 ao §105, §189, §190."""
 
     def test_nao_ha_normalizacao_executada(self) -> None:
-        assert not proibir(
-            ("def normalize", "z_score", "zscore", "standard_scaler", "def fit(")
-        )
+        assert not proibir(("def normalize", "z_score", "zscore", "standard_scaler", "def fit("))
 
     def test_nao_ha_estatistica_de_populacao(self) -> None:
         """Média, mediana e IQR sobre população são o ajuste do normalizador."""
@@ -181,9 +177,7 @@ class TestNadaDeVetorNemSimilaridade:
     """§2, §186, §187, §188."""
 
     def test_nao_importa_numpy_nem_dataframe(self) -> None:
-        assert not proibir(
-            ("import numpy", "from numpy", "import polars", "import pandas")
-        )
+        assert not proibir(("import numpy", "from numpy", "import polars", "import pandas"))
 
     def test_nao_ha_similaridade_nem_distancia(self) -> None:
         assert not proibir(
@@ -232,12 +226,22 @@ class TestNadaDePersistencia:
     def test_nao_ha_escrita_no_pacote_de_extracao(self) -> None:
         assert not proibir(("insert into", "def save", "def persist", "def store"))
 
-    def test_este_pr_nao_traz_migracao(self) -> None:
-        """§73, §147 — features são definidas em código, e não em tabela."""
-        migracoes = sorted(
-            p.name for p in (FONTE.parent.parent / "migrations").glob("*.sql")
-        )
-        assert migracoes[-1] == "0011_event_corpus_membership.sql", migracoes[-3:]
+    def test_nenhuma_migration_guarda_definicao_de_feature(self) -> None:
+        """§73, §147 — features são definidas em CÓDIGO, e não em tabela.
+
+        A GUARDA MUDOU DE FORMA NO PR-05.5.1, e não de sentido. Ela dizia «a
+        última migration é a 0011», que era um jeito indireto de dizer «o
+        PR-05.3 não trouxe migration» — e passou a acusar a `0012`, que é do
+        PR-05.5.1 e é legítima. O que ela sempre quis proteger é isto: nenhuma
+        tabela guarda a DEFINIÇÃO de uma feature. A 0012 guarda identidade de
+        dataset, políticas, contagens e ponteiros; o catálogo continua sendo
+        código.
+        """
+        proibidas = ("feature_definitions", "feature_catalog", "feature_space")
+        for arquivo in sorted((FONTE.parent.parent / "migrations").glob("*.sql")):
+            sql = arquivo.read_text(encoding="utf-8").lower()
+            for termo in proibidas:
+                assert f"create table {termo}" not in sql, f"{arquivo.name}: {termo}"
 
     def test_nao_ha_dataset_parquet_de_feature(self) -> None:
         """§184 — a materialização é fase posterior."""

@@ -78,9 +78,9 @@ class FusedMatchCandidate:
 
     @property
     def contributing_providers(self) -> tuple[ProviderId, ...]:
-        provedores = {
-            c.provider_id for campo in self.fields for c in campo.contributions
-        } | {o.provider_id for conjunto in self.observation_sets for o in conjunto.observations}
+        provedores = {c.provider_id for campo in self.fields for c in campo.contributions} | {
+            o.provider_id for conjunto in self.observation_sets for o in conjunto.observations
+        }
         return tuple(sorted(provedores, key=str))
 
     @property
@@ -93,9 +93,7 @@ class FusedMatchCandidate:
         restrita foi produzido usando-a — mesmo que o valor final tenha vindo
         de outra.
         """
-        das_escalares = frozenset(
-            lic for campo in self.fields for lic in campo.licenses
-        )
+        das_escalares = frozenset(lic for campo in self.fields for lic in campo.licenses)
         das_observacoes = frozenset(
             lic for conjunto in self.observation_sets for lic in conjunto.licenses
         )
@@ -241,9 +239,7 @@ class FusionRun:
 
     def __post_init__(self) -> None:
         if not self.input_resolution_run_ids:
-            raise ValidationError(
-                "execução de fusão sem entrada: ela funde o quê?"
-            )
+            raise ValidationError("execução de fusão sem entrada: ela funde o quê?")
         if len(set(self.input_resolution_run_ids)) != len(self.input_resolution_run_ids):
             raise ValidationError(
                 "a mesma execução de resolução listada duas vezes — os registros "
@@ -303,9 +299,7 @@ class FusionRun:
 
     def fail(self, *, reason: str, at: Instant) -> Self:
         self._assert_can_finish()
-        return replace(
-            self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500]
-        )
+        return replace(self, status=RunStatus.FAILED, completed_at=at, failure_reason=reason[:500])
 
     def _assert_can_finish(self) -> None:
         if self.status.is_terminal:

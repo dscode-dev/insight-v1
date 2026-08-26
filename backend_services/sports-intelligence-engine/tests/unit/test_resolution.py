@@ -220,9 +220,7 @@ class TestCompetitionResolution:
         )
         assert resultado.status is ResolutionStatus.REJECTED
         assert resultado.entity_id is None
-        assert any(
-            e.explanation is ExplanationCode.OUT_OF_CATALOG for e in resultado.evidence
-        )
+        assert any(e.explanation is ExplanationCode.OUT_OF_CATALOG for e in resultado.evidence)
 
 
 # ============================================================= temporada ====
@@ -233,9 +231,7 @@ class TestSeasonParsing:
         ("rotulo", "inicio", "fim"),
         [("2023/24", 2023, 2024), ("2023-24", 2023, 2024), ("2023-2024", 2023, 2024)],
     )
-    def test_formas_cruzadas_sao_equivalentes(
-        self, rotulo: str, inicio: int, fim: int
-    ) -> None:
+    def test_formas_cruzadas_sao_equivalentes(self, rotulo: str, inicio: int, fim: int) -> None:
         pista = parse_season_label(rotulo)
         assert (pista.start_year, pista.end_year) == (inicio, fim)
         assert not pista.ambiguous
@@ -405,9 +401,7 @@ class TestTeamResolution:
         )
         assert resultado.status is not ResolutionStatus.RESOLVED
 
-    def test_nome_proximo_de_pais_diferente_nao_resolve(
-        self, bundle: ResolverBundle
-    ) -> None:
+    def test_nome_proximo_de_pais_diferente_nao_resolve(self, bundle: ResolverBundle) -> None:
         mineiro = _time("Atletico Mineiro", pais="BR")
         madrid = _time("Atletico Madrid", pais="ES")
         resultado = bundle.team.resolve(
@@ -477,9 +471,7 @@ class TestPlayerResolution:
         )
         assert resultado.entity_id is None
 
-    def test_data_de_nascimento_diferente_nao_resolve(
-        self, bundle: ResolverBundle
-    ) -> None:
+    def test_data_de_nascimento_diferente_nao_resolve(self, bundle: ResolverBundle) -> None:
         """Duas pessoas com o mesmo nome e datas diferentes são duas pessoas."""
         jogador = self._joao(date(1994, 7, 12))
         resultado = bundle.player.resolve(
@@ -490,8 +482,7 @@ class TestPlayerResolution:
         )
         assert resultado.status is not ResolutionStatus.RESOLVED
         assert any(
-            e.kind is EvidenceKind.DATE_OF_BIRTH and e.contradicts
-            for e in resultado.evidence
+            e.kind is EvidenceKind.DATE_OF_BIRTH and e.contradicts for e in resultado.evidence
         )
 
     def test_clube_na_data_reduz_a_confianca(self, bundle: ResolverBundle) -> None:
@@ -510,9 +501,7 @@ class TestPlayerResolution:
             valid_from=instant(datetime(2022, 1, 1, tzinfo=UTC)),
             valid_to=instant(datetime(2024, 12, 31, tzinfo=UTC)),
         )
-        contexto = _contexto(
-            times=(flamengo, palmeiras), jogadores=(jogador,), vinculos=(vinculo,)
-        )
+        contexto = _contexto(times=(flamengo, palmeiras), jogadores=(jogador,), vinculos=(vinculo,))
         certo = bundle.player.resolve(
             bundle.normalized("Joao Silva"),
             context=contexto,

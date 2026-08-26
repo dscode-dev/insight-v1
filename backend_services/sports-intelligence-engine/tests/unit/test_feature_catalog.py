@@ -52,9 +52,7 @@ from sports_intelligence.domain.shared.errors import ValidationError
 #: A impressão DOURADA do espaço de produção (§165). Ela muda quando qualquer
 #: definição muda, quando a ORDEM muda, ou quando uma feature entra ou sai — e
 #: qualquer um dos três exige subir a versão do espaço.
-GOLDEN_SPACE: Final[str] = (
-    "384038f2b11a754873451361e49e76d0f999ca653d6ac744078da30670545172"
-)
+GOLDEN_SPACE: Final[str] = "384038f2b11a754873451361e49e76d0f999ca653d6ac744078da30670545172"
 
 #: As impressões douradas de definições REPRESENTATIVAS (§164): uma derivada
 #: do estado, uma diferença, uma contagem móvel, uma soma decimal móvel e uma
@@ -64,9 +62,7 @@ GOLDEN_FEATURES: Final[dict[str, str]] = {
     "score_difference": "5d01474f15818690ff9e3fcb747f09defdf9adf649147ee69532d74aaff9dc21",
     "shots_home_5m": "aaf71c363ab4366517cc3613a819b2bf40b42709d78841dba75b0297625472b5",
     "xg_away_10m": "2c71af02fad344b8907e32ce7c584c873199107a716e935f162d35caa5d69ff6",
-    "shots_on_target_diff_1m": (
-        "2ad8ef7ce3a055e62cac489a452fec56a82a613fb9f90c020e9467d14229ac49"
-    ),
+    "shots_on_target_diff_1m": ("2ad8ef7ce3a055e62cac489a452fec56a82a613fb9f90c020e9467d14229ac49"),
     "corners_home_3m": "d1a7fe40f73090a074124a5238dc2ec679c14a62f9682d44baef27f2eb5b0e03",
 }
 
@@ -88,24 +84,18 @@ class TestOCatalogo:
 
     def test_toda_definicao_declara_unidade(self) -> None:
         """§66 — a unidade nunca fica implícita."""
-        sem_unidade = [
-            d.key for d in production_feature_catalog().definitions if not d.unit
-        ]
+        sem_unidade = [d.key for d in production_feature_catalog().definitions if not d.unit]
         assert sem_unidade == []
 
     def test_toda_definicao_e_intra_jogo_causal(self) -> None:
         """§11 — o espaço promete ser comparável ao vivo, e cumpre."""
-        classes = {
-            d.temporal_class for d in production_feature_catalog().definitions
-        }
+        classes = {d.temporal_class for d in production_feature_catalog().definitions}
         assert classes == {FeatureTemporalClass.INTRA_MATCH_CAUSAL}
 
     def test_nenhuma_definicao_declara_normalizador(self) -> None:
         """§11, §100 — o espaço é CRU; nada aqui é normalizado."""
         com_normalizador = [
-            d.key
-            for d in production_feature_catalog().definitions
-            if d.normalizer_key is not None
+            d.key for d in production_feature_catalog().definitions if d.normalizer_key is not None
         ]
         assert com_normalizador == []
 
@@ -118,10 +108,7 @@ class TestOCatalogo:
     def test_o_xg_e_decimal_e_as_contagens_sao_inteiras(self) -> None:
         catalogo = production_feature_catalog()
         assert catalogo.spec_of("xg_home_5m").definition.output_type is FeatureOutputType.FLOAT
-        assert (
-            catalogo.spec_of("shots_home_5m").definition.output_type
-            is FeatureOutputType.INTEGER
-        )
+        assert catalogo.spec_of("shots_home_5m").definition.output_type is FeatureOutputType.INTEGER
 
     def test_o_catalogo_nao_tem_feature_de_passe_nem_de_evento_total(self) -> None:
         """§55, §56 — as duas ausências são decisões registradas."""
@@ -260,8 +247,7 @@ class TestOEspaco:
     def test_as_janelas_aparecem_agrupadas_e_em_ordem_crescente(self) -> None:
         chaves = match_state_raw_space_v1().keys
         posicoes = [
-            next(i for i, k in enumerate(chaves) if k.endswith(f"_{j.label}"))
-            for j in WINDOWS_V1
+            next(i for i, k in enumerate(chaves) if k.endswith(f"_{j.label}")) for j in WINDOWS_V1
         ]
         assert posicoes == sorted(posicoes)
 
@@ -280,9 +266,7 @@ class TestOsDourados:
         assert match_state_raw_space_v1().fingerprint == GOLDEN_SPACE
 
     @pytest.mark.parametrize(("chave", "esperada"), sorted(GOLDEN_FEATURES.items()))
-    def test_as_impressoes_representativas_sao_as_douradas(
-        self, chave: str, esperada: str
-    ) -> None:
+    def test_as_impressoes_representativas_sao_as_douradas(self, chave: str, esperada: str) -> None:
         assert production_feature_catalog().spec_of(chave).definition.fingerprint == esperada
 
     def test_a_impressao_e_estavel_entre_construcoes(self) -> None:

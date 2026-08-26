@@ -152,9 +152,7 @@ class CanonicalAssembler:
 
         anotacoes: dict[CanonicalFactType, str] = {}
         partida = self.matches.build(decision=decisao, identity=inputs.identity)
-        resultado = self.results.build(
-            decision=decisao, scores=read_score_facts(inputs.candidate)
-        )
+        resultado = self.results.build(decision=decisao, scores=read_score_facts(inputs.candidate))
         if resultado is None:
             anotacoes[CanonicalFactType.MATCH_RESULT] = (
                 "placar ausente ou em conflito não resolvido — a partida entra sem "
@@ -179,9 +177,7 @@ class CanonicalAssembler:
             notes=anotacoes,
         )
 
-    def _escalacoes(
-        self, decision: BuildDecision, inputs: MatchBuildInputs
-    ) -> tuple[Lineup, ...]:
+    def _escalacoes(self, decision: BuildDecision, inputs: MatchBuildInputs) -> tuple[Lineup, ...]:
         if not decision.includes(CoverageFamily.LINEUP):
             return ()
         return tuple(

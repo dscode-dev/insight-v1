@@ -69,9 +69,7 @@ class DataQuality:
         este mínimo sai. Enquanto isso, o mínimo é a escolha conservadora: ele
         nunca faz um dado ruim parecer bom.
         """
-        return min(
-            self.completeness, self.consistency, self.freshness, self.identity_confidence
-        )
+        return min(self.completeness, self.consistency, self.freshness, self.identity_confidence)
 
     @property
     def is_usable(self) -> bool:
@@ -87,9 +85,7 @@ class DataQuality:
     def perfect(cls) -> Self:
         """Tudo em 1,0. Só para dado nascido internamente e já validado —
         usá-lo em dado de provedor é afirmar o que não foi medido."""
-        return cls(
-            completeness=1.0, consistency=1.0, freshness=1.0, identity_confidence=1.0
-        )
+        return cls(completeness=1.0, consistency=1.0, freshness=1.0, identity_confidence=1.0)
 
     def with_issue(self, issue: QualityIssue) -> Self:
         return type(self)(

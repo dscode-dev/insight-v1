@@ -83,9 +83,7 @@ class BuildCandidateBatch:
     """
 
     candidates: tuple[FusedMatchCandidate, ...]
-    lineup_drafts: Mapping[MatchId, tuple[LineupDraft, ...]] = field(
-        default_factory=dict
-    )
+    lineup_drafts: Mapping[MatchId, tuple[LineupDraft, ...]] = field(default_factory=dict)
 
 
 @final
@@ -197,10 +195,7 @@ class RunCanonicalBuild:
             return (), ()
 
         ids = [c.canonical_match_id for c in batch.candidates]
-        vereditos = {
-            r.match_id: r
-            for r in await self.assessments.by_matches(quality_run_id, ids)
-        }
+        vereditos = {r.match_id: r for r in await self.assessments.by_matches(quality_run_id, ids)}
         identidades = await self.identities.identity_facts(ids)
         rascunhos = dict(batch.lineup_drafts)
 
@@ -234,9 +229,7 @@ class RunCanonicalBuild:
         a transação seguinte poderia não conseguir gravar.
         """
         partidas = [p.match for p in plans if p.match is not None]
-        resultados = [
-            (p.decision.match_id, p.result) for p in plans if p.result is not None
-        ]
+        resultados = [(p.decision.match_id, p.result) for p in plans if p.result is not None]
         escalacoes = [line for p in plans for line in p.lineups]
         cotacoes = [odd for p in plans for odd in p.odds]
 
@@ -247,9 +240,7 @@ class RunCanonicalBuild:
             # órfão — e a chave estrangeira o recusaria de qualquer forma, com
             # uma mensagem muito pior de investigar.
             gravaveis = {
-                m
-                for m, desfecho in desfechos_de_partida.items()
-                if not desfecho.is_conflict
+                m for m, desfecho in desfechos_de_partida.items() if not desfecho.is_conflict
             }
             desfechos_de_resultado = await self.registry.persist_results(
                 [(m, r) for m, r in resultados if m in gravaveis]
@@ -274,9 +265,7 @@ class RunCanonicalBuild:
                 )
             )
             await self.records.append_many(registros)
-            await self.records.record_family_decisions(
-                build_run_id, [p.decision for p in plans]
-            )
+            await self.records.record_family_decisions(build_run_id, [p.decision for p in plans])
         return registros
 
     # ----------------------------------------------------------- apoio ----
@@ -284,9 +273,7 @@ class RunCanonicalBuild:
     async def _validar_avaliacao(self, quality_run_id: str) -> QualityRun:
         execucao = await self.quality_runs.by_id(quality_run_id)
         if execucao is None:
-            raise NotFoundError(
-                f"execução de qualidade {quality_run_id} não encontrada"
-            )
+            raise NotFoundError(f"execução de qualidade {quality_run_id} não encontrada")
         assert_run_is_consumable(execucao)
         return execucao
 
@@ -419,6 +406,4 @@ def _acumular(digest: SetFingerprint, records: Sequence[CanonicalBuildRecord]) -
     coisa — o oposto do que ela existe para responder.
     """
     for registro in records:
-        digest.add(
-            f"{registro.match_id}|{registro.fact_type.value}", registro.as_canonical()
-        )
+        digest.add(f"{registro.match_id}|{registro.fact_type.value}", registro.as_canonical())

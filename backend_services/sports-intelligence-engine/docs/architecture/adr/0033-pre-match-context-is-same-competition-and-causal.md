@@ -96,9 +96,15 @@ físico e exigiria decidir a composição da carga por time, além de tornar o
 resultado dependente de quais torneios aquele corpus publica — dois times
 idênticos em ligas com cobertura diferente teriam contextos incomparáveis.
 
-**Medir de fim a início em vez de apito a apito.** Rejeitada: o corpus não
-publica quando a partida anterior terminou. Estimá-la somando noventa minutos
-mais acréscimos inventaria uma duração.
+**Medir de fim a início em vez de apito INICIAL a apito INICIAL.** Rejeitada:
+o corpus não publica quando a partida anterior terminou. Estimá-la somando
+noventa minutos mais acréscimos inventaria uma duração.
+
+> **Nota de terminologia (PR-05.5.1 §132).** A redação anterior dizia «de apito
+> a apito», que se lê com igual naturalidade como «do apito FINAL da anterior ao
+> apito inicial da atual» — que é justamente a medida rejeitada. A medida
+> implementada é **pontapé a pontapé**: `kickoff(atual) - kickoff(anterior)`. A
+> conta nunca mudou; o texto é que era ambíguo.
 
 **Contar `0` no começo do corpus.** Rejeitada — é o defeito central que a
 cobertura existe para impedir. O modelo aprenderia que quem joga a primeira

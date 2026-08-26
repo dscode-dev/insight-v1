@@ -86,10 +86,7 @@ class MatchStateProvenance:
             effective_events=_de_eventos(effective_events),
             odds=FeatureProvenance.of(
                 FeatureProvenanceClass.OBSERVED_INPUT,
-                (
-                    FeatureContribution(kind="ODDS", reference=r)
-                    for r in odds_references
-                ),
+                (FeatureContribution(kind="ODDS", reference=r) for r in odds_references),
             ),
             initial_lineup_teams=tuple(sorted(set(initial_lineup_teams))),
         )

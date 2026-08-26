@@ -169,9 +169,7 @@ class ComputedFeature:
             "availability": self.availability.value,
             "definition_fingerprint": self.definition_fingerprint,
             "definition_key": self.definition_key,
-            "leakage_reason": (
-                None if self.leakage_reason is None else self.leakage_reason.value
-            ),
+            "leakage_reason": (None if self.leakage_reason is None else self.leakage_reason.value),
             "provenance": self.provenance.as_canonical(),
             "value": _valor_canonico(self.numeric),
         }

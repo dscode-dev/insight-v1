@@ -151,8 +151,7 @@ class CanonicalFeatureContext:
     def __post_init__(self) -> None:
         if self.match.id != self.as_of.match_id:
             raise ValidationError(
-                f"contexto de {self.as_of.match_id} carregando a partida "
-                f"{self.match.id}"
+                f"contexto de {self.as_of.match_id} carregando a partida {self.match.id}"
             )
 
     @property

@@ -85,8 +85,7 @@ class IdentityConfidences:
         faltas = [
             (sujeito, valor, piso)
             for sujeito, valor in self.by_subject.items()
-            if (piso := policy.identity_minimum_for(sujeito)) is not None
-            and valor < piso
+            if (piso := policy.identity_minimum_for(sujeito)) is not None and valor < piso
         ]
         if not faltas:
             return None
@@ -160,8 +159,7 @@ class MatchQualityAssessment:
                 usage=usage,
                 issues=ordenados,
                 eligibility=BuildEligibility.INELIGIBLE,
-                reason=f"{len(bloqueantes)} problema(s) bloqueante(s): "
-                f"{bloqueantes[0].code}",
+                reason=f"{len(bloqueantes)} problema(s) bloqueante(s): {bloqueantes[0].code}",
             )
 
         # 2. PISO DE EIXO CRÍTICO. Elo mais fraco entre os CRÍTICOS — os
@@ -177,8 +175,7 @@ class MatchQualityAssessment:
                     usage=usage,
                     issues=ordenados,
                     eligibility=BuildEligibility.INELIGIBLE,
-                    reason=f"{dimensao} em {quality[dimensao]:.2f}, abaixo do piso "
-                    f"{piso:.2f}",
+                    reason=f"{dimensao} em {quality[dimensao]:.2f}, abaixo do piso {piso:.2f}",
                 )
 
         # 3. PISO DE IDENTIDADE, POR TIPO. Nunca pela média.
@@ -293,8 +290,7 @@ def aggregate_quality(
     if not assessments:
         return None
     piores = {
-        dimensao: min(a.quality[dimensao] for a in assessments)
-        for dimensao in QualityDimension
+        dimensao: min(a.quality[dimensao] for a in assessments) for dimensao in QualityDimension
     }
     return QualityVector(
         integrity=piores[QualityDimension.INTEGRITY],

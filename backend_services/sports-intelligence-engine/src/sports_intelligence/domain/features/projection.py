@@ -238,9 +238,7 @@ def _em_ordem(events: Iterable[CanonicalMatchEvent]) -> tuple[CanonicalMatchEven
     return tuple(sorted(events, key=lambda e: (_posicao(e), str(e.id))))
 
 
-def _recusar_partida_errada(
-    events: Sequence[CanonicalMatchEvent], as_of: FeatureAsOf
-) -> None:
+def _recusar_partida_errada(events: Sequence[CanonicalMatchEvent], as_of: FeatureAsOf) -> None:
     """Um evento de outra partida na projeção é defeito de quem chamou.
 
     ELE NÃO É FILTRADO EM SILÊNCIO. Filtrar esconderia o erro e produziria uma

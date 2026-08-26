@@ -98,9 +98,7 @@ class TestOContexto:
         assert not violacoes, str(violacoes)
 
     def test_nao_ha_io_no_dominio_do_contexto(self) -> None:
-        assert not proibir(
-            CONTEXTO, ("open(", "datetime.now", "time.time", "utcnow", "random.")
-        )
+        assert not proibir(CONTEXTO, ("open(", "datetime.now", "time.time", "utcnow", "random."))
 
     def test_o_dominio_do_contexto_nao_carrega_resultado(self) -> None:
         """§11, §166 — medimos calendário, e o tipo não tem por onde medir forma."""
@@ -122,11 +120,7 @@ class TestOContexto:
     def test_o_port_nao_vaza_tipo_de_banco(self) -> None:
         port = FONTE / "ports" / "repositories" / "feature_context.py"
         modulos = {imp.module for imp in imports_of(port)}
-        assert not {
-            m
-            for m in modulos
-            if m.startswith(("asyncpg", "sports_intelligence.adapters"))
-        }
+        assert not {m for m in modulos if m.startswith(("asyncpg", "sports_intelligence.adapters"))}
 
 
 class TestOMercado:
@@ -158,9 +152,7 @@ class TestOMercado:
 
     def test_nao_ha_probabilidade_implicita_nem_overround(self) -> None:
         """§74, §75."""
-        assert not proibir(
-            MERCADO, ("implied_prob", "overround", "def vig", "1 / odds", "1/odds")
-        )
+        assert not proibir(MERCADO, ("implied_prob", "overround", "def vig", "1 / odds", "1/odds"))
 
     def test_nao_ha_movimento_de_linha(self) -> None:
         """§76, §77 — exige quatro decisões que ninguém tomou."""
@@ -171,9 +163,7 @@ class TestOMercado:
 
     def test_nao_ha_peso_por_casa_de_aposta(self) -> None:
         """§73 — todas pesam 1 na V1."""
-        assert not proibir(
-            MERCADO, ("bookmaker_weight", "bookmaker_quality", "weighted_median")
-        )
+        assert not proibir(MERCADO, ("bookmaker_weight", "bookmaker_quality", "weighted_median"))
 
     def test_a_casa_de_aposta_nao_e_dimensao(self) -> None:
         """§45, §72 — a dimensão do espaço não pode seguir o provedor."""
@@ -219,9 +209,7 @@ class TestONormalizador:
 
     def test_nao_ha_epsilon_escondido(self) -> None:
         """§125 — `max(iqr, 1e-6)` inventaria uma escala."""
-        assert not proibir(
-            NORMALIZACAO, ("1e-6", "1e-9", "epsilon", "+ 1e", "max(iqr")
-        )
+        assert not proibir(NORMALIZACAO, ("1e-6", "1e-9", "epsilon", "+ 1e", "max(iqr"))
 
     def test_nao_ha_fallback_para_media_e_desvio(self) -> None:
         """§127 — trocar de método sem versionar seria outra escala."""
@@ -231,15 +219,11 @@ class TestONormalizador:
 
     def test_nao_ha_clipping_winsorizacao_nem_log(self) -> None:
         """§136, §137, §138."""
-        assert not proibir(
-            NORMALIZACAO, ("def clip", "winsor", "math.log", "log1p", "def clamp")
-        )
+        assert not proibir(NORMALIZACAO, ("def clip", "winsor", "math.log", "log1p", "def clamp"))
 
     def test_nao_ha_mediana_aproximada(self) -> None:
         """§183, §185 — o ajuste da V1 é EXATO."""
-        assert not proibir(
-            NORMALIZACAO, ("tdigest", "t_digest", "sketch", "approx", "reservoir")
-        )
+        assert not proibir(NORMALIZACAO, ("tdigest", "t_digest", "sketch", "approx", "reservoir"))
 
     def test_nao_ha_ml_nem_selecao_automatica(self) -> None:
         """§2 — nada de PCA, clustering ou pesos aprendidos."""
@@ -255,15 +239,11 @@ class TestONormalizador:
         )
 
     def test_nao_antecipa_vetor_nem_similaridade(self) -> None:
-        assert not proibir(
-            NORMALIZACAO, ("cosine", "euclidean", "knn", "hnsw", "def to_vector")
-        )
+        assert not proibir(NORMALIZACAO, ("cosine", "euclidean", "knn", "hnsw", "def to_vector"))
 
     def test_nao_ha_persistencia_de_artefato(self) -> None:
         """§200, §201 — a materialização é o PR-05.5."""
-        assert not proibir(
-            NORMALIZACAO, ("insert into", "def save", "def persist", "create table")
-        )
+        assert not proibir(NORMALIZACAO, ("insert into", "def save", "def persist", "create table"))
 
     def test_nao_antecipa_pgvector_clickhouse_nem_cache(self) -> None:
         violacoes = internal_violations(files_in(NORMALIZACAO), PACOTES_FUTUROS)
@@ -291,9 +271,7 @@ class TestAV1PermaneceImutavel:
     def test_o_extrator_da_v1_nao_importa_o_da_v2(self) -> None:
         v1 = FONTE / "domain" / "features" / "extraction" / "extractor.py"
         modulos = {imp.module for imp in imports_of(v1)}
-        assert (
-            "sports_intelligence.domain.features.extraction.extractor_v2" not in modulos
-        )
+        assert "sports_intelligence.domain.features.extraction.extractor_v2" not in modulos
 
     def test_a_v1_nao_conhece_contexto_nem_mercado(self) -> None:
         """As features novas são da V2; a V1 não pode passar a exigi-las."""
@@ -320,9 +298,7 @@ class TestAV2NaoAntecipa:
         )
 
         assert not [
-            d.key
-            for d in extended_feature_catalog().definitions
-            if d.normalizer_key is not None
+            d.key for d in extended_feature_catalog().definitions if d.normalizer_key is not None
         ]
 
     def test_nao_existe_espaco_normalizado_de_producao(self) -> None:
@@ -341,9 +317,23 @@ class TestAV2NaoAntecipa:
         assert "sports_intelligence.domain.features.fitting.transformer" not in modulos
         assert "sports_intelligence.domain.features.fitting.fitter" not in modulos
 
-    def test_este_pr_nao_traz_migracao(self) -> None:
-        """§200 — as partidas anteriores já existem no corpus."""
-        migracoes = sorted(
-            p.name for p in (FONTE.parent.parent / "migrations").glob("*.sql")
+    def test_nenhuma_migration_guarda_contexto_nem_artefato_de_escala(self) -> None:
+        """§200 — as partidas anteriores já existem no corpus, e o ajuste não
+        tem tabela.
+
+        A FORMA DA GUARDA MUDOU NO PR-05.5.1, e o sentido não. «A última
+        migration é a 0011» era um jeito indireto de dizer «o PR-05.4 não
+        trouxe migration»; a `0012` é do PR-05.5.1 e é legítima. O que se
+        protege é que o contexto continue sendo LIDO do corpus, e que nenhum
+        artefato de normalização tenha sido persistido por antecipação.
+        """
+        proibidas = (
+            "prior_matches",
+            "match_context",
+            "normalizer_artifacts",
+            "feature_normalizers",
         )
-        assert migracoes[-1] == "0011_event_corpus_membership.sql", migracoes[-3:]
+        for arquivo in sorted((FONTE.parent.parent / "migrations").glob("*.sql")):
+            sql = arquivo.read_text(encoding="utf-8").lower()
+            for termo in proibidas:
+                assert f"create table {termo}" not in sql, f"{arquivo.name}: {termo}"
