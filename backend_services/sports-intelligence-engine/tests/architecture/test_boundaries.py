@@ -137,6 +137,12 @@ class TestAppsNaoContornamAsCamadas:
                                              ajuste e do dataset normalizado,
                                              mais o LEITOR do cru e o
                                              materializador do normalizado
+            `apps/retrieval_composition.py`  a do PR-06.1 — dois repositórios
+                                             de metadado e o leitor do
+                                             normalizado. A ausência de
+                                             repositório de FATO canônico nessa
+                                             lista é a garantia de que a
+                                             recuperação não volta ao corpus
 
         Todo o resto pede pelo port e recebe o objeto já montado. Um nome novo
         nesta lista é sinal de que a composição vazou, e o sintoma prático de
@@ -151,6 +157,7 @@ class TestAppsNaoContornamAsCamadas:
             "corpus_composition.py",
             "feature_dataset_composition.py",
             "normalized_dataset_composition.py",
+            "retrieval_composition.py",
         }
         arquivos = [p for p in sorted(APPS.rglob("*.py")) if p.name not in excecoes]
         violacoes = _violacoes_internas(arquivos, ("sports_intelligence.adapters",))

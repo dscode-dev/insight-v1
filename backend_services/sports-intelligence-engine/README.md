@@ -235,7 +235,19 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
   avaliação: nada que a avaliação toca entra na identidade de artefato nenhum, e
   nada de outra competição entra na identidade do pacote de uma competição;
 - **ADR-0040** — a representação normalizada é uma PROJEÇÃO INDEPENDENTE e
-  imutável, com identidade própria e contrato 1:1 com o dataset cru.
+  imutável, com identidade própria e contrato 1:1 com o dataset cru;
+- **ADR-0041** — o universo de candidatos históricos é só REFERÊNCIA, da MESMA
+  competição e no MESMO instante de jogo, sem amostragem e sem filtro por
+  identidade ou por desfecho;
+- **ADR-0042** — o baseline de recuperação é EXATO, EXAUSTIVO e de CASO
+  COMPLETO: eixos robustos ajustados, L2 ao quadrado com pesos iguais, e
+  desempate canônico — um oráculo diagnóstico, e não a similaridade final;
+- **ADR-0043** — a elegibilidade é por COBERTURA COMPARTILHADA sobre o perfil
+  FIXO, com piso racional de `3/5` e mínimo absoluto de quatro eixos: o
+  denominador é o perfil, e nunca a interseção;
+- **ADR-0044** — a ausência é PENALIZADA em unidade de IQR² (`p = 1`) sobre
+  denominador fixo, e nunca preenchida: evidência real substitui incerteza, e
+  o resultado NÃO é uma métrica.
 
 Contratos de dados:
 
@@ -298,6 +310,21 @@ Ajuste causal e dataset normalizado (PR-05.5.2 — o fecho da linha PR-05):
 - [`docs/features/CAUSAL_NORMALIZER_FIT_V1.md`](docs/features/CAUSAL_NORMALIZER_FIT_V1.md)
 - [`docs/features/NORMALIZED_FEATURE_DATASET_V1.md`](docs/features/NORMALIZED_FEATURE_DATASET_V1.md)
 - [`docs/performance/PR05_NORMALIZED_DATASET_BASELINE.md`](docs/performance/PR05_NORMALIZED_DATASET_BASELINE.md)
+
+Recuperação histórica exata (PR-06.1 — o oráculo, sem ANN e sem inteligência):
+
+- [`docs/retrieval/HISTORICAL_RETRIEVAL_CONTRACT_V1.md`](docs/retrieval/HISTORICAL_RETRIEVAL_CONTRACT_V1.md)
+- [`docs/retrieval/CANDIDATE_UNIVERSE_V1.md`](docs/retrieval/CANDIDATE_UNIVERSE_V1.md)
+- [`docs/retrieval/EXACT_EXHAUSTIVE_BASELINE_V1.md`](docs/retrieval/EXACT_EXHAUSTIVE_BASELINE_V1.md)
+- [`docs/performance/PR06_EXACT_RETRIEVAL_BASELINE.md`](docs/performance/PR06_EXACT_RETRIEVAL_BASELINE.md)
+
+Recuperação ciente de disponibilidade (PR-06.2 — cobertura, penalidade e
+evidência; o oráculo do PR-06.1 continua executável ao lado):
+
+- [`docs/retrieval/COVERAGE_POLICY_V1.md`](docs/retrieval/COVERAGE_POLICY_V1.md)
+- [`docs/retrieval/AVAILABILITY_AWARE_DISTANCE_V1.md`](docs/retrieval/AVAILABILITY_AWARE_DISTANCE_V1.md)
+- [`docs/retrieval/NEIGHBOR_EVIDENCE_V1.md`](docs/retrieval/NEIGHBOR_EVIDENCE_V1.md)
+- [`docs/performance/PR06_AVAILABILITY_AWARE_BASELINE.md`](docs/performance/PR06_AVAILABILITY_AWARE_BASELINE.md)
 
 ---
 

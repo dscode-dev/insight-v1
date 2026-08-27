@@ -166,19 +166,51 @@ async def divisao_do_corpus(
     return FeatureDatasetSplitPolicy(reference_end_exclusive=instant(ultimo + timedelta(days=1)))
 
 
+async def divisao_na_mediana(
+    database: Database, publicado: dict[str, Any]
+) -> FeatureDatasetSplitPolicy:
+    """Uma fronteira na MEDIANA dos apitos: metade em cada lado.
+
+    ELA EXISTE PARA A RECUPERAÇÃO (PR-06.1), e não para a materialização. O
+    E2E do PR-05.5.1 põe tudo na referência de propósito — o que ele prova é a
+    MATERIALIZAÇÃO, e uma metade de avaliação com uma partida testaria a
+    divisão e nada mais.
+
+    A RECUPERAÇÃO PRECISA DAS DUAS METADES. A query vem da avaliação e os
+    candidatos da referência; sem as duas, não há o que consultar — e o teste
+    passaria vazio, que é a pior forma de passar.
+
+    A FRONTEIRA SAI DO BANCO pelo mesmo motivo da outra: uma data escrita à mão
+    passaria a estar fora do intervalo no dia em que o cenário mudasse de ano.
+    """
+    async with database.acquire() as conexao:
+        mediana = await conexao.fetchval(
+            """
+            SELECT percentile_disc(0.5) WITHIN GROUP (ORDER BY m.scheduled_kickoff)
+            FROM historical_canonical_members hcm
+            JOIN matches m ON m.id = hcm.match_id
+            WHERE hcm.version_id = $1
+            """,
+            _uuid.UUID(publicado["version"].id),
+        )
+    assert mediana is not None, "a versão publicada precisa ter partidas"
+    return FeatureDatasetSplitPolicy(reference_end_exclusive=instant(mediana))
+
+
 async def construir_versao(
     montagem: Montagem,
     publicado: dict[str, Any],
     *,
     version: DatasetVersion | None = None,
     dataset_name: str = NOME,
+    split: FeatureDatasetSplitPolicy | None = None,
 ) -> Any:
     origem = origem_publicada(publicado)
     versao = await montagem.criar.execute(
         dataset_name=dataset_name,
         version=version or DatasetVersion(major=1, minor=0),
         source_version_id=origem.version_id,
-        split=await divisao_do_corpus(montagem.database, publicado),
+        split=split or await divisao_do_corpus(montagem.database, publicado),
         grid=DEFAULT_SNAPSHOT_GRID,
         actor=ATOR,
         # A CONFERÊNCIA PRÉVIA É DISPENSADA AQUI, e o teste

@@ -122,6 +122,11 @@ pytestmark = pytest.mark.integration
 
 PUBLICA = ProviderId("fonte_publica")
 EVENTOS = ProviderId("fonte_de_eventos_do_estado")
+#: A FONTE DE COTACOES apareceu no PR-06.2. Ela e um provedor SEPARADO, e
+#: nao uma coluna a mais na fonte publica: e assim que a familia ODDS entra
+#: na cobertura do manifesto, e e a unica origem de ausencia POR PARTIDA
+#: que este corpus consegue produzir sem inventar caminho novo.
+ODDS = ProviderId("fonte_de_cotacoes_do_estado")
 
 AVALIADOR = Actor.service(QUALITY_ASSESSOR)
 CONSTRUTOR = Actor.service(CANONICAL_BUILDER)
@@ -166,6 +171,18 @@ CAMPOS_PUBLICOS: tuple[SourceFieldMapping, ...] = (
     SourceFieldMapping(column="Away", role=SemanticRole.AWAY_TEAM_NAME),
     SourceFieldMapping(column="HG", role=SemanticRole.HOME_SCORE),
     SourceFieldMapping(column="AG", role=SemanticRole.AWAY_SCORE),
+)
+
+CAMPOS_DE_ODDS: tuple[SourceFieldMapping, ...] = (
+    SourceFieldMapping(column="Competition", role=SemanticRole.COMPETITION_NAME),
+    SourceFieldMapping(column="Season", role=SemanticRole.SEASON_LABEL),
+    SourceFieldMapping(column="Kickoff", role=SemanticRole.KICKOFF),
+    SourceFieldMapping(column="Home", role=SemanticRole.HOME_TEAM_NAME),
+    SourceFieldMapping(column="Away", role=SemanticRole.AWAY_TEAM_NAME),
+    SourceFieldMapping(column="Book", role=SemanticRole.BOOKMAKER_NAME),
+    SourceFieldMapping(column="OddsH", role=SemanticRole.ODDS_HOME),
+    SourceFieldMapping(column="OddsD", role=SemanticRole.ODDS_DRAW),
+    SourceFieldMapping(column="OddsA", role=SemanticRole.ODDS_AWAY),
 )
 
 _CABECALHO = (
@@ -333,7 +350,18 @@ async def publicado(database: Database, object_store: Any) -> dict[str, Any]:
     return await montar_corpus_publicado(database, object_store)
 
 
-async def montar_corpus_publicado(database: Database, object_store: Any) -> dict[str, Any]:
+async def montar_corpus_publicado(
+    database: Database,
+    object_store: Any,
+    *,
+    cenario: Corpus | None = None,
+    fonte_publica: bytes = FONTE_PUBLICA,
+    fonte_de_eventos: bytes = FONTE_DE_EVENTOS,
+    traducoes: Any = None,
+    entradas_de_escopo: tuple[ScopeEntry, ...] | None = None,
+    tabela_de_tipos: EventTypeMapping | None = None,
+    fonte_de_odds: bytes | None = None,
+) -> dict[str, Any]:
     """Um corpus READY, construído pelo caminho inteiro do PR-04.
 
     ELA É FUNÇÃO, E NÃO SÓ FIXTURE. O E2E do PR-05.3 precisa do MESMO corpus, e
@@ -341,25 +369,53 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
     teste sombrear o símbolo importado — vinte e quatro avisos de linter sobre
     uma redefinição que é legítima. Uma função comum não tem esse problema, e o
     encaixe entre as fases continua sendo provado sobre o mesmo corpus.
+
+    OS PARÂMETROS SÃO OPCIONAIS E OS PADRÕES SÃO OS DE SEMPRE. Eles apareceram
+    no PR-06.1, e o motivo é estrutural: o cenário padrão tem UMA partida, e a
+    divisão é atômica por partida — logo ele nunca produz as duas metades. A
+    recuperação precisa das duas, e reescrever o cenário compartilhado mudaria
+    os goldens do PR-05. Um cenário próprio, pelo MESMO caminho, resolve os
+    dois lados.
     """
     async with database.acquire() as conexao:
         await conexao.execute(f"TRUNCATE {', '.join(TABELAS)} RESTART IDENTITY CASCADE")
     await limpar_execucoes(database)
-    corpus = _cenario()
+    corpus = cenario or _cenario()
     await seed_corpus(database, corpus)
-    await _semear_traducoes(database, corpus)
+    if traducoes is None:
+        await _semear_traducoes(database, corpus)
+    else:
+        await traducoes(database, corpus)
 
     pipeline = Pipeline(database, object_store, batch_size=200)
     publico = await pipeline.stage(
         name=f"estado-publico-{_uuid.uuid4().hex[:8]}",
-        content=FONTE_PUBLICA,
+        content=fonte_publica,
         provider=PUBLICA,
         source_type=SourceType.OPEN_DATA,
         license_class=LicenseClass.PUBLIC_DOMAIN,
     )
     await pipeline.map_source(publico, provider=PUBLICA, fields=CAMPOS_PUBLICOS)
-    resolucao = await pipeline.resolve(publico.id)
-    fusao = await pipeline.fuse([resolucao.run.id])
+    execucoes_de_resolucao = [(await pipeline.resolve(publico.id)).run.id]
+
+    # A COTACAO E UMA SEGUNDA FONTE, e nao uma coluna a mais. Ela apareceu no
+    # PR-06.2 porque o cenario precisava de AUSENCIA de verdade: publicar odds
+    # para PARTE das partidas produz celulas indisponiveis nos eixos de mercado
+    # sem que nada seja fabricado, e e a unica ausencia por partida que este
+    # corpus sabe gerar. Sem ela, todo candidato tem cobertura 100 % e o E2E
+    # do PR-06.2 passaria sem exercitar o piso.
+    if fonte_de_odds is not None:
+        cotacoes = await pipeline.stage(
+            name=f"estado-odds-{_uuid.uuid4().hex[:8]}",
+            content=fonte_de_odds,
+            provider=ODDS,
+            source_type=SourceType.OPEN_DATA,
+            license_class=LicenseClass.PUBLIC_DOMAIN,
+        )
+        await pipeline.map_source(cotacoes, provider=ODDS, fields=CAMPOS_DE_ODDS)
+        execucoes_de_resolucao.append((await pipeline.resolve(cotacoes.id)).run.id)
+
+    fusao = await pipeline.fuse(execucoes_de_resolucao)
 
     build_container = build_build_container(
         database=database,
@@ -371,7 +427,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
         resolution=pipeline.resolution,
         datasets=pipeline.datasets,
         archive=pipeline.archive,
-        resolution_run_ids=[resolucao.run.id],
+        resolution_run_ids=execucoes_de_resolucao,
         fusion_run_id=fusao.run.id,
     )
     qualidade = await build_container.run_quality.execute(
@@ -381,7 +437,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
             resolution=pipeline.resolution,
             groups=grupos,
             candidates=candidatos,
-            resolution_run_ids=[resolucao.run.id],
+            resolution_run_ids=execucoes_de_resolucao,
         ),
     )
     pesquisa = await build_container.build_for(DEFAULT_RESEARCH_BUILD_POLICY).execute(
@@ -392,7 +448,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
 
     arquivo = await pipeline.stage(
         name=f"estado-eventos-{_uuid.uuid4().hex[:8]}",
-        content=FONTE_DE_EVENTOS,
+        content=fonte_de_eventos,
         provider=EVENTOS,
         source_type=SourceType.OPEN_DATA,
         license_class=LicenseClass.PUBLIC_DOMAIN,
@@ -411,7 +467,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
         lineage=PostgresEventBuildRecordRepository(database),
         runs=PostgresCanonicalEventBuildRunRepository(database),
         clock=FrozenClock(pipeline.clock.now()),
-        types=_tabela_de_tipos(),
+        types=tabela_de_tipos or _tabela_de_tipos(),
         policy=EventEligibilityPolicy.research(),
         uow=PostgresUnitOfWork(database),
     ).execute(
@@ -419,7 +475,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
         dataset_id=arquivo.id,
         provider_id=EVENTOS,
         batches=lotes(),
-        eligible_matches=frozenset({corpus.matches[0].id}),
+        eligible_matches=frozenset(m.id for m in corpus.matches),
         license_class=LicenseClass.PUBLIC_DOMAIN,
     )
 
@@ -430,11 +486,16 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
         actor=PUBLICADOR, name=f"estado-historico-{_uuid.uuid4().hex[:6]}"
     )
     escopo = CorpusScope.of(
-        ScopeEntry(
-            competition=CompetitionCode.PREMIER_LEAGUE,
-            season_label="2024/25",
-            competition_id=corpus.competitions[0].id,
-            season_id=corpus.seasons[0].id,
+        *(
+            entradas_de_escopo
+            or (
+                ScopeEntry(
+                    competition=CompetitionCode.PREMIER_LEAGUE,
+                    season_label="2024/25",
+                    competition_id=corpus.competitions[0].id,
+                    season_id=corpus.seasons[0].id,
+                ),
+            )
         ),
         usage=UsageScope.RESEARCH,
     )
@@ -447,7 +508,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
             build_run_ids=(pesquisa.run.id,),
             quality_run_ids=(qualidade.run.id,),
             fusion_run_ids=(fusao.run.id,),
-            resolution_run_ids=(resolucao.run.id,),
+            resolution_run_ids=tuple(execucoes_de_resolucao),
             event_build_run_ids=(execucao.run.id,),
         ),
         quality_run_id=qualidade.run.id,
@@ -466,7 +527,7 @@ async def montar_corpus_publicado(database: Database, object_store: Any) -> dict
         "quality_run": qualidade.run,
         "research_build": pesquisa.run,
         "fusion_run_id": fusao.run.id,
-        "resolution_run_ids": [resolucao.run.id],
+        "resolution_run_ids": list(execucoes_de_resolucao),
         "scope": escopo,
         "clock": pipeline.clock,
         "audit": pipeline.audit,

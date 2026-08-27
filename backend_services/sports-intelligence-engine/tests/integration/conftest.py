@@ -245,3 +245,87 @@ async def normalizado(
         actor=ATOR,
     )
     return {**cru_publicado, "montagem_n": montagem, "ajuste": ajuste}
+
+
+# ================================ a recuperação (PR-06.1) ==
+
+
+@pytest.fixture
+async def publicado_multipartidas(database: Database, object_store: Any) -> dict[str, Any]:
+    """O corpus READY do cenário de DOZE partidas (PR-06.1).
+
+    ELE NÃO SUBSTITUI O `publicado`. O cenário de uma partida continua provando
+    a materialização do PR-05; este existe porque a divisão é atômica por
+    partida, e uma partida só nunca produz as duas metades que a recuperação
+    exige.
+    """
+    from tests.support.retrieval_e2e import montar_corpus_de_recuperacao
+
+    return await montar_corpus_de_recuperacao(database, object_store)
+
+
+@pytest.fixture
+async def construido_em_duas_metades(
+    database: Database, object_store: Any, publicado_multipartidas: dict[str, Any]
+) -> dict[str, Any]:
+    """Uma versão crua materializada com a fronteira na MEDIANA dos apitos.
+
+    ELA EXISTE PARA A RECUPERAÇÃO. O `construido` põe tudo na referência — o
+    E2E do PR-05.5.1 prova a materialização, e uma avaliação com uma partida
+    testaria a divisão e nada mais. A recuperação precisa das DUAS metades: a
+    query vem de uma, os candidatos da outra, e sem as duas o teste passaria
+    vazio.
+    """
+    from tests.support.dataset_e2e import (
+        Montagem,
+        construir_versao,
+        divisao_na_mediana,
+    )
+
+    montagem = Montagem(database, object_store)
+    saida = await construir_versao(
+        montagem,
+        publicado_multipartidas,
+        split=await divisao_na_mediana(database, publicado_multipartidas),
+    )
+    return {
+        "montagem": montagem,
+        "saida": saida,
+        "publicado": publicado_multipartidas,
+    }
+
+
+@pytest.fixture
+async def normalizado_publicado(
+    database: Database, object_store: Any, construido_em_duas_metades: dict[str, Any]
+) -> dict[str, Any]:
+    """O caminho inteiro até a versão normalizada `READY`, com as duas metades.
+
+    ELA EXISTE PORQUE A RECUPERAÇÃO RECUSA QUALQUER OUTRO ESTADO (§93). Um
+    dataset em `VALIDATING` ainda pode mudar, e vizinhos tirados dele não são
+    reproduzíveis — que é a única coisa que o oráculo entrega.
+    """
+    from tests.support.normalized_e2e import (
+        ATOR,
+        MontagemNormalizada,
+        publicar_versao_crua,
+    )
+    from tests.support.retrieval_e2e import publicar_versao_normalizada
+
+    crua = await publicar_versao_crua(construido_em_duas_metades)
+    montagem = MontagemNormalizada(
+        database,
+        object_store,
+        reference_end_exclusive=crua.spec.reference_end_exclusive,
+    )
+    ajuste = await montagem.ajustar.execute(
+        source_version_id=crua.id, raw_dataset_name="match-state-raw", actor=ATOR
+    )
+    return await publicar_versao_normalizada(
+        {
+            **construido_em_duas_metades,
+            "versao_crua": crua,
+            "montagem_n": montagem,
+            "ajuste": ajuste,
+        }
+    )

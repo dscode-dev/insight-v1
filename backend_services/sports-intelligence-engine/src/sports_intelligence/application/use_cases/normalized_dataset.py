@@ -140,10 +140,9 @@ BUILD_BATCH_ROWS: Final[int] = 2_000
 
 #: Quantas linhas cabem num `part-*.parquet` normalizado.
 #:
-#: MAIOR QUE O DO CRU (5.000), e o motivo é medido em bytes por linha em
-#: espera: uma `NormalizedFeatureRow` carrega cento e cinco `NormalizedCell`
-#: com um `float` e dois textos curtos cada — uma fração do que um
-#: `FeatureSnapshot` com cento e cinco `ComputedFeature` retém no dataset cru.
+#: MAIOR QUE O DO CRU (5.000), e a diferença é medida: uma
+#: `NormalizedFeatureRow` retém menos que um `FeatureSnapshot` com cento e
+#: cinco `ComputedFeature`, ainda que não muito menos — ver o teto abaixo.
 DEFAULT_PART_ROWS: Final[int] = 10_000
 
 #: O TETO GLOBAL de linhas em espera, somando TODAS as partições abertas.
@@ -152,7 +151,20 @@ DEFAULT_PART_ROWS: Final[int] = 10_000
 #: `(metade, competição, temporada)` aberta, e uma varredura que atravessa vinte
 #: partições mantém vinte buffers vivos. Sem o teto global, o pico deixa de
 #: seguir o lote e passa a seguir quantas partições o dataset tem.
-DEFAULT_MAX_PENDING_ROWS: Final[int] = 40_000
+#:
+#: O NÚMERO SAI DE MEDIÇÃO, e não de estimativa. A primeira versão trazia
+#: 40.000 por analogia com o dataset cru — e o benchmark mostrou o que uma
+#: linha normalizada de fato retém:
+#:
+#:     medido: ~25 KB por linha em espera — cento e cinco `NormalizedCell`,
+#:             cada uma com um objeto `float` próprio, mais o digesto memoizado
+#:     40.000 linhas ≈ 950 MB   (o pico observado foi 854 MB a 35.858 linhas)
+#:     15.000 linhas ≈ 360 MB   — o mesmo envelope do dataset cru (370 MB)
+#:
+#: QUINZE MIL, PORTANTO. O ganho de arquivo de um teto maior é nulo — o pedaço
+#: fecha em 10.000 de qualquer jeito —, e o custo é um pico três vezes maior
+#: que o da construção que produziu as linhas.
+DEFAULT_MAX_PENDING_ROWS: Final[int] = 15_000
 
 #: Teto de EXEMPLOS nomeados num relatório. Ele limita a LISTA, nunca a
 #: contagem: despejar um milhão de chaves divergentes transformaria o relatório
@@ -225,16 +237,15 @@ class FitNormalizerArtifactSet:
     ) -> NormalizerFitOutput:
         origem = await _versao_crua_legivel(self.raw_datasets, source_version_id)
         catalogo = catalog or extended_feature_catalog()
-        plano = plan_for(
-            reference_end_exclusive_normalizer=causal_dataset_normalizer(
-                reference_end_exclusive=origem.spec.reference_end_exclusive
-            ),
-            catalog=catalogo,
-        )
-        _conferir_espaco(plano, origem)
+        # UM NORMALIZADOR SÓ, e ele entra nos dois lugares. Construí-lo duas
+        # vezes produziria dois objetos iguais hoje e abriria a porta para dois
+        # cortes diferentes no dia em que a construção ganhasse um parâmetro —
+        # com o plano declarando um e o ajuste usando o outro.
         normalizador = causal_dataset_normalizer(
             reference_end_exclusive=origem.spec.reference_end_exclusive
         )
+        plano = plan_for(reference_end_exclusive_normalizer=normalizador, catalog=catalogo)
+        _conferir_espaco(plano, origem)
         # AS DUAS FRONTEIRAS SÃO INDEPENDENTES NO CÓDIGO e têm de ser a mesma no
         # domínio: um normalizador cortado depois da divisão traria partidas de
         # avaliação para dentro da escala sem que número nenhum denunciasse.

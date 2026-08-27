@@ -20,6 +20,7 @@ e para a próxima execução ter contra o que comparar.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -67,11 +68,30 @@ def _relatar(titulo: str, linhas: Sequence[str]) -> None:
     escrito pelo próprio teste entraria no `git` a cada execução com números
     diferentes, e o diff passaria a ser ruído permanente. O documento é
     escrito por gente, com o contexto de hardware junto.
+
+    A MOLDURA CAI PARA ASCII QUANDO O CONSOLE NÃO A ACEITA, e isso não é
+    preciosismo: no Windows, `stdout` redirecionado para arquivo usa
+    `cp1252`, e um caractere de desenho levanta `UnicodeEncodeError` DEPOIS
+    de o benchmark inteiro ter rodado. Um relatório de trinta minutos
+    perdido na última linha, por causa de uma moldura, é o pior jeito
+    possível de descobrir isso.
     """
-    print(f"\n┌─ {titulo}")
+    esquerda, meio, base = _moldura()
+    print()  # a linha em branco separa blocos consecutivos no relatório
+    print(f"{esquerda} {titulo}")
     for linha in linhas:
-        print(f"│  {linha}")
-    print("└" + "─" * (len(titulo) + 2))
+        print(f"{meio}  {linha}")
+    print(base + (base[-1] * (len(titulo) + 2)))
+
+
+def _moldura() -> tuple[str, str, str]:
+    """`(topo, lateral, base)` — em traço, ou em ASCII quando não couber."""
+    codificacao = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        "┌─│└".encode(codificacao)
+    except (UnicodeEncodeError, LookupError):
+        return ("+-", "|", "-")
+    return ("┌─", "│", "└─")
 
 
 async def _assinatura_da_execucao(

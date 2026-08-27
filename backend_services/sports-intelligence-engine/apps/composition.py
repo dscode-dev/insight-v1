@@ -48,6 +48,10 @@ from apps.resolution_composition import (
     resolved_match_map,
     to_resolved_records,
 )
+from apps.retrieval_composition import (
+    RetrievalContainer,
+    build_retrieval_container,
+)
 from sports_intelligence.adapters.event_bus import LoggingEventPublisher
 from sports_intelligence.adapters.postgres import migrations
 from sports_intelligence.adapters.postgres.audit import PostgresAuditLog
@@ -162,6 +166,19 @@ class Container:
     #: qual versão crua ela veio não pode exigir um plano — e o plano exige a
     #: fronteira, que é justamente o que se está tentando descobrir.
     normalized_versions: PostgresNormalizedFeatureDatasetRepository
+
+    def retrieval(self, *, reference_end_exclusive: Instant) -> RetrievalContainer:
+        """O grafo do PR-06.1, montado sob a fronteira daquela versão crua.
+
+        ELE NÃO É UM CAMPO pelo mesmo motivo do normalizado: o corte entra na
+        identidade do plano, e um contêiner montado no início do processo teria
+        de escolher uma fronteira antes de saber qual versão vai consultar.
+        """
+        return build_retrieval_container(
+            database=self.database,
+            store=self.object_store,
+            reference_end_exclusive=reference_end_exclusive,
+        )
 
     def normalized_dataset(self, *, reference_end_exclusive: Instant) -> NormalizedDatasetContainer:
         """O grafo do PR-05.5.2, montado sob a fronteira daquela versão crua.
