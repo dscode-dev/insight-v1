@@ -227,6 +227,12 @@ class TestAPoliticaDeCandidatos:
             # primeiro: o candidato compartilha eixos, e não tantos quanto o
             # piso de evidência exige. Ele NÃO é estrutural.
             "INSUFFICIENT_SHARED_COVERAGE",
+            # E O PR-06.3 ACRESCENTOU TRÊS, todos de TRAJETÓRIA. Um motivo só
+            # esconderia a diferença entre atrição de feature e começo de
+            # período, que são fenômenos distintos com causas distintas.
+            "INSUFFICIENT_SHARED_TRAJECTORY_CELLS",
+            "INSUFFICIENT_SHARED_HORIZONS",
+            "INSUFFICIENT_PER_HORIZON_COVERAGE",
             "SAME_MATCH",
             "REPRESENTATION_MISMATCH",
         }
@@ -236,6 +242,17 @@ class TestAPoliticaDeCandidatos:
         assert not IneligibilityReason.INCOMPLETE_PROFILE.is_structural
         assert IneligibilityReason.SAME_MATCH.is_structural
         assert IneligibilityReason.REPRESENTATION_MISMATCH.is_structural
+
+    def test_os_TRES_motivos_de_trajetoria_NAO_sao_estruturais(self) -> None:
+        """§19 do adendo — eles medem ausência de dado, como os irmãos.
+
+        UM CANDIDATO NO COMEÇO DO PERÍODO NÃO É UM DEFEITO DE DATASET. Contá-lo
+        entre os estruturais faria a atrição normal parecer corrupção, e é
+        exatamente a distinção que o §73 do PR-06.1 existe para preservar.
+        """
+        assert not IneligibilityReason.INSUFFICIENT_SHARED_TRAJECTORY_CELLS.is_structural
+        assert not IneligibilityReason.INSUFFICIENT_SHARED_HORIZONS.is_structural
+        assert not IneligibilityReason.INSUFFICIENT_PER_HORIZON_COVERAGE.is_structural
 
 
 class TestOAlinhamentoTemporal:

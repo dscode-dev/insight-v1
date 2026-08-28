@@ -156,6 +156,45 @@ class ParquetHistoricalCandidateSource:
                 if candidatos:
                     yield candidatos
 
+    async def stream_reference_rows(
+        self,
+        *,
+        dataset_name: str,
+        version: str,
+        feature_keys: Sequence[str],
+        competition: str | None = None,
+        batch_rows: int = 2_000,
+    ) -> AsyncIterator[Sequence[CandidateRow]]:
+        """TODAS as linhas de REFERÊNCIA, em qualquer instante — para o ÍNDICE.
+
+        ELA EXISTE PORQUE O CONSTRUTOR NÃO TEM UMA QUERY. `stream_candidates`
+        recebe uma `position` e descarta tudo que não se alinha a ela: é a
+        leitura de quem já sabe o minuto que procura. O construtor do índice
+        precisa do oposto — cada linha vira uma linha indexada, e o instante
+        dela vira as COLUNAS de filtro que o `WHERE` do ANN usará depois.
+
+        A PODA POR PREFIXO CONTINUA. `competition` restringe os objetos lidos, e
+        é assim que se constrói o índice de uma liga sem varrer as outras.
+        """
+        if batch_rows < 1:
+            raise ValidationError(f"lote de {batch_rows} linhas: ele precisa ser >= 1")
+        import pyarrow.parquet as pq
+
+        colunas = _projecao(feature_keys)
+        for chave in await self._objetos(
+            dataset_name=dataset_name,
+            version=version,
+            split=DatasetSplit.REFERENCE,
+            competition=competition,
+        ):
+            bruto = await self._baixar(chave)
+            arquivo = pq.ParquetFile(io.BytesIO(bruto))
+            presentes = _colunas_presentes(arquivo.schema_arrow.names, colunas)
+            for lote in arquivo.iter_batches(batch_size=batch_rows, columns=presentes):
+                linhas = _para_linhas_de_referencia(lote, feature_keys)
+                if linhas:
+                    yield linhas
+
     async def count_candidates(
         self,
         *,
@@ -320,6 +359,43 @@ def _para_candidatos(
         posicao = GridTimePoint.from_columns(period=str(fases[indice]), minute=int(minutos[indice]))
         if not posicao.aligns_with(position):
             continue
+        valores, mascaras = _valores_e_mascaras(colunas, feature_keys, indice)
+        linhas.append(
+            CandidateRow(
+                key=HistoricalFeatureSnapshotKey(
+                    match_key=str(colunas["match_id"][indice]),
+                    grid_index=int(colunas["grid_index"][indice]),
+                ),
+                split=DatasetSplit(colunas["split"][indice]),
+                match_id=str(colunas["match_id"][indice]),
+                competition=str(colunas["competition"][indice]),
+                season=str(colunas["season"][indice]),
+                position=posicao,
+                row_digest=str(colunas["row_digest"][indice]),
+                representation_fingerprint=str(colunas["representation_fingerprint"][indice]),
+                values=valores,
+                availabilities=mascaras,
+            )
+        )
+    return linhas
+
+
+def _para_linhas_de_referencia(lote: Any, feature_keys: Sequence[str]) -> list[CandidateRow]:
+    """O lote inteiro convertido, SEM filtro de instante.
+
+    SEM FILTRO PORQUE O ÍNDICE GUARDA TODOS OS INSTANTES. O que em
+    `_para_candidatos` é um descarte — «esta linha não é do minuto que pedi» —
+    aqui é justamente o dado: o minuto de cada linha vira coluna, e é ele que
+    o filtro do universo consultará na hora da busca.
+    """
+    colunas = _colunas(lote, _projecao(feature_keys))
+    fases = colunas.get("period", [])
+    minutos = colunas.get("minute", [])
+    linhas: list[CandidateRow] = []
+    for indice in range(lote.num_rows):
+        if str(colunas["split"][indice]) != DatasetSplit.REFERENCE.value:
+            continue
+        posicao = GridTimePoint.from_columns(period=str(fases[indice]), minute=int(minutos[indice]))
         valores, mascaras = _valores_e_mascaras(colunas, feature_keys, indice)
         linhas.append(
             CandidateRow(

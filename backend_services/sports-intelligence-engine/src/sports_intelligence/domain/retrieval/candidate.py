@@ -135,23 +135,32 @@ class CandidateUniverseAccumulator:
         self._vistos: set[str] = set()
 
     def admit(self, row: CandidateRow) -> None:
-        """Registra um candidato do universo.
+        """Registra um candidato do universo."""
+        self.admit_identity(row.semantic_identity, label=row.key.text)
+
+    def admit_identity(self, identity: str, *, label: str | None = None) -> None:
+        """Registra um candidato pela IDENTIDADE SEMÂNTICA.
+
+        ELE ACEITA A IDENTIDADE, E NÃO A LINHA, desde o PR-06.3. O universo é o
+        MESMO nos três caminhos — é o §6 do PR-06.3 —, e o candidato de
+        trajetória não é um `CandidateRow`: ele carrega a representação de
+        deslocamentos por cima da mesma linha-âncora. Uma segunda contagem de
+        universo, escrita à parte, é como as duas passam a divergir.
 
         A REPETIÇÃO É RECUSADA. A mesma linha entrando duas vezes apareceria
         duas vezes no top-K e mudaria a impressão do universo — e a causa mais
         provável seria uma partição lida em dobro, que é defeito de leitura e
         não do dado.
         """
-        identidade = row.semantic_identity
-        if identidade in self._vistos:
+        if identity in self._vistos:
             raise ValidationError(
-                f"candidato {row.key} admitido duas vezes no mesmo universo: ele "
-                "apareceria em dobro no top-K, e a causa mais provável é uma "
+                f"candidato {label or identity} admitido duas vezes no mesmo universo: "
+                "ele apareceria em dobro no top-K, e a causa mais provável é uma "
                 "partição lida duas vezes",
-                context={"key": row.key.text},
+                context={"key": label or identity},
             )
-        self._vistos.add(identidade)
-        self._identidades.append(identidade)
+        self._vistos.add(identity)
+        self._identidades.append(identity)
 
     def reject(self, reason: IneligibilityReason) -> None:
         """Conta um candidato do universo que não recebeu distância."""

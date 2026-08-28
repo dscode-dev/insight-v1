@@ -84,6 +84,29 @@ PROFILE_INSUFFICIENT_EVIDENCE_AXES: Final[str] = "PROFILE_INSUFFICIENT_EVIDENCE_
 QUERY_INSUFFICIENT_COVERAGE: Final[str] = "QUERY_INSUFFICIENT_COVERAGE"
 
 
+def ceil_div(numerator: int, denominator: int) -> int:
+    """`ceil(numerator / denominator)` em aritmética INTEIRA.
+
+    ELA NÃO CONVERTE PARA `float` EM MOMENTO NENHUM. `math.ceil(a / b)`
+    arredonda a divisão ANTES do teto, e para numeradores grandes os dois
+    resultados divergem: `ceil(10**17 / 3)` em ponto flutuante dá
+    `33333333333333332`, e o valor exato é `33333333333333334` — erra por DOIS.
+
+    NA FAIXA DE UM PERFIL DE FUTEBOL AS DUAS FORMAS CONCORDAM, e afirmar o
+    contrário seria falso. O motivo de usar esta aqui não é que o float falhe
+    na escala operacional: é que a policy representa uma RAZÃO MATEMÁTICA
+    EXATA, e a aritmética inteira a torna exata por construção — sem depender
+    de nenhuma hipótese sobre qual é a faixa segura de IEEE-754.
+
+    A forma `-((-a) // b)` usa a divisão que ARREDONDA PARA BAIXO do Python e
+    a espelha duas vezes; ela é exata para todo `int`, que é de precisão
+    arbitrária.
+    """
+    if denominator < 1:
+        raise ValidationError(f"divisão inteira com denominador {denominator}")
+    return -((-numerator) // denominator)
+
+
 @final
 @dataclass(frozen=True, slots=True)
 class RationalFloor:
@@ -108,6 +131,29 @@ class RationalFloor:
                 f"piso de {self.numerator}/{self.denominator}: acima de 1, nenhuma "
                 "cobertura o alcançaria e toda comparação seria recusada"
             )
+
+    def minimum_part(self, whole: int) -> int:
+        """O MENOR `part` inteiro que satisfaz o piso — `ceil(num*whole/den)`.
+
+        ELA EXISTE PARA QUE O PISO SEJA UM NÚMERO, e não só uma decisão. «Este
+        candidato foi recusado» é diferente de «este candidato foi recusado
+        porque precisava de onze células e tinha dez», e a segunda frase só é
+        dizível quando o piso pode ser calculado.
+
+        `ceil` INTEIRO, e nunca `math.ceil(0.6 * n)`: a divisão em ponto
+        flutuante introduziria um arredondamento antes do teto, e o piso de um
+        perfil grande passaria a depender dele.
+
+            ceil_div(a, b) = -((-a) // b)        exato em `int`
+
+        E ELA É EQUIVALENTE A `admits`, por construção: para `part` inteiro,
+        `den·part >= num·whole  <=>  part >= ceil(num·whole/den)`. Há teste de
+        propriedade sobre a equivalência, porque duas formas da mesma regra é
+        como uma delas passa a decidir sozinha.
+        """
+        if whole < 1:
+            return 0
+        return ceil_div(self.numerator * whole, self.denominator)
 
     def admits(self, *, part: int, whole: int) -> bool:
         """`part / whole >= numerador / denominador`, sem tocar em `float`.

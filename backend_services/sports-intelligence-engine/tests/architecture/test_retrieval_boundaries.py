@@ -187,6 +187,18 @@ class TestNaoEhInteligencia:
     """§2, §35, §88 — sem rótulo, sem resultado, sem tendência."""
 
     def test_sem_rotulo_nem_desfecho(self) -> None:
+        """Nenhum desfecho, em lugar nenhum do pacote.
+
+        `label` SOZINHO SAIU DA LISTA NO PR-06.3, e a troca é por PRECISÃO. O
+        que a guarda persegue é o RÓTULO DE DESFECHO — vitória, empate,
+        derrota —, e `label` cru também é o nome natural de uma legenda: o
+        acumulador de universo passou a receber `label=` para a mensagem de
+        erro, e a contribuição de trajetória tem `label` para o relatório.
+
+        Uma guarda que acusa uma legenda de ser um rótulo de desfecho produz
+        falso positivo, e uma guarda com falso positivo é desligada. Os nomes
+        abaixo só existem se alguém estiver mesmo trazendo o desfecho.
+        """
         proibidos = (
             "final_score",
             "match_result",
@@ -194,7 +206,9 @@ class TestNaoEhInteligencia:
             "next_goal",
             "winner",
             "outcome",
-            "label",
+            "outcome_label",
+            "class_label",
+            "target_label",
             "probability",
             "confidence",
             "trend",
@@ -337,14 +351,39 @@ class TestNaoImputaNemPondera:
 
 
 class TestNaoHaTrajetoria:
-    """§20, §120 — a query é UM snapshot."""
+    """§20, §120 — a query dos DOIS ORÁCULOS DE ESTADO é um snapshot."""
 
-    def test_sem_janela_nem_alinhamento_temporal_flexivel(self) -> None:
-        proibidos = ("trajectory", "dtw", "time_window", "tolerance", "t_minus")
+    def test_sem_tolerancia_temporal_em_lugar_nenhum(self) -> None:
+        """A parte que continua valendo para o pacote INTEIRO.
+
+        Deformação temporal, janela com tolerância e vizinho no tempo estão
+        proibidos em toda a recuperação — inclusive na trajetória, que olha
+        instantes EXATOS de lookback e nunca o mais próximo.
+        """
+        proibidos = ("dtw", "time_window", "tolerance", "t_minus", "warp")
         for arquivo in _alvos():
             corpo = code_only(arquivo).lower()
             for termo in proibidos:
                 assert termo not in corpo, f"{arquivo.name}: {termo}"
+
+    def test_os_oraculos_de_ESTADO_nao_conhecem_trajetoria(self) -> None:
+        """A guarda ficou mais ESTREITA no PR-06.3 e mais forte.
+
+        Antes ela dizia «o pacote não tem trajetória»; agora diz «os
+        recuperadores de ESTADO não têm» — e é essa a afirmação que precisa
+        continuar valendo, porque é ela que mantém `D` e `D_T` como dois
+        números que ninguém soma por acidente.
+        """
+        de_estado = [
+            *_alvos_do_caso_completo(),
+            FONTE / "domain/retrieval/availability_exact.py",
+            FONTE / "domain/retrieval/availability_distance.py",
+            FONTE / "domain/retrieval/availability_result.py",
+        ]
+        for arquivo in de_estado:
+            corpo = code_only(arquivo).lower()
+            assert "trajectory" not in corpo, f"{arquivo.name}: trajectory"
+            assert "displacement" not in corpo, f"{arquivo.name}: displacement"
 
     def test_o_catalogo_de_alinhamento_tem_um_membro(self) -> None:
         from sports_intelligence.domain.retrieval.timepoint import TimeAlignmentPolicy
@@ -402,12 +441,30 @@ class TestNaoVoltaAoCorpus:
 class TestNaoHaPersistenciaNova:
     """§79, §143 — recuperação é computação, e não estado."""
 
-    def test_nenhuma_migration_nova(self) -> None:
+    def test_a_migration_nova_e_a_da_PROJECAO_e_nao_de_resultado(self) -> None:
+        """A afirmação era FASE-LOCAL, e o invariante por trás dela não era.
+
+        O QUE ELA DIZIA: «não há migration depois da 0013». O que ela QUERIA
+        dizer é o que continua valendo: **o PR-06.1 não persiste resultado de
+        query**. A 0014 não persiste resultado nenhum — ela persiste a
+        PROJEÇÃO dos candidatos, que é insumo e não resposta.
+
+        A DISTINÇÃO É O TESTE. Guardar o top-K de uma query seria cache de
+        resultado, e mudaria o que a recuperação significa; guardar as
+        representações dos candidatos só muda DE ONDE elas vêm.
+        """
         nomes = sorted(m.name for m in (RAIZ / "migrations").glob("*.sql"))
-        assert nomes[-1] == "0013_normalized_feature_dataset.sql", (
-            "há uma migration depois da 0013: o PR-06.1 não persiste resultado de "
-            "query, e uma tabela nova precisa de justificativa arquitetural"
+        assert nomes[-1] == "0014_historical_retrieval_projection.sql", (
+            f"migration inesperada depois da projeção do PR-06.4: {nomes[-3:]}"
         )
+        corpo = (RAIZ / "migrations" / nomes[-1]).read_text(encoding="utf-8").lower()
+        # NENHUMA TABELA DE RESULTADO. A projeção guarda candidatos, e nunca
+        # vizinhos, distâncias ou top-K — isso seria cache de resposta.
+        for proibido in ("neighbor", "top_k", "topk", "distance", "ranking", "result_row"):
+            assert proibido not in corpo, (
+                f"a migration da projeção menciona {proibido!r}: ela guarda CANDIDATOS, "
+                "e persistir resultado de query é outra decisão arquitetural"
+            )
 
     def test_o_caso_de_uso_nao_escreve(self) -> None:
         corpo = code_only(FONTE / "application/use_cases/retrieval.py").lower()

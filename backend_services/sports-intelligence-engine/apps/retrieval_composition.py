@@ -1,4 +1,4 @@
-"""A composição da recuperação — o grafo do PR-06.1 e o do PR-06.2.
+"""A composição da recuperação — os grafos do PR-06.1, do PR-06.2 e do PR-06.3.
 
 POR QUE UM ARQUIVO À PARTE, pela sétima vez: cada fase monta o próprio grafo, e
 a separação mantém visível o que cada uma EXIGE. Aqui a exigência é curta e
@@ -34,6 +34,9 @@ from dataclasses import dataclass
 from typing import Any, final
 
 from sports_intelligence.adapters.postgres.database import Database
+from sports_intelligence.adapters.postgres.feature_dataset import (
+    PostgresHistoricalFeatureDatasetRepository,
+)
 from sports_intelligence.adapters.postgres.normalized_dataset import (
     PostgresNormalizedFeatureDatasetRepository,
 )
@@ -49,6 +52,11 @@ from sports_intelligence.application.use_cases.retrieval import (
     DescribeCandidateUniverse,
     RetrieveExactHistoricalNeighbors,
 )
+from sports_intelligence.application.use_cases.trajectory_retrieval import (
+    CompareStateAndTrajectory,
+    DescribeTrajectory,
+    RetrieveExactHistoricalTrajectories,
+)
 from sports_intelligence.domain.features.normalized.normalizer import (
     causal_dataset_normalizer,
 )
@@ -60,8 +68,15 @@ from sports_intelligence.domain.retrieval.coverage import (
     DEFAULT_COVERAGE_POLICY,
     AvailabilityCoveragePolicy,
 )
+from sports_intelligence.domain.retrieval.trajectory_coverage import (
+    DEFAULT_TRAJECTORY_COVERAGE,
+    TrajectoryCoveragePolicy,
+)
 from sports_intelligence.historical.retrieval.reader import (
     ParquetHistoricalCandidateSource,
+)
+from sports_intelligence.historical.retrieval.trajectory_reader import (
+    ParquetHistoricalTrajectorySource,
 )
 from sports_intelligence.ports.object_store import ObjectStorePort
 
@@ -86,11 +101,20 @@ class RetrievalContainer:
     #: diferentes, e os dois números pareceriam a mesma grandeza.
     coverage_policy: AvailabilityCoveragePolicy
 
+    #: A política de trajetória viaja no contêiner pelo mesmo motivo.
+    trajectory_coverage_policy: TrajectoryCoveragePolicy
+
     retrieve: RetrieveExactHistoricalNeighbors
     describe: DescribeCandidateUniverse
     #: O PR-06.2 — a mesma resolução e o mesmo universo, outra régua.
     retrieve_aware: RetrieveAvailabilityAwareHistoricalNeighbors
     compare: CompareExactRetrievalPolicies
+    #: O PR-06.3 — o mesmo universo, outra PERGUNTA.
+    raw_datasets: PostgresHistoricalFeatureDatasetRepository
+    trajectory_source: ParquetHistoricalTrajectorySource
+    retrieve_trajectory: RetrieveExactHistoricalTrajectories
+    describe_trajectory: DescribeTrajectory
+    compare_state_trajectory: CompareStateAndTrajectory
 
 
 def build_retrieval_container(
@@ -100,6 +124,7 @@ def build_retrieval_container(
     reference_end_exclusive: Any,
     batch_rows: int = DEFAULT_CANDIDATE_BATCH_ROWS,
     coverage_policy: AvailabilityCoveragePolicy = DEFAULT_COVERAGE_POLICY,
+    trajectory_coverage_policy: TrajectoryCoveragePolicy = DEFAULT_TRAJECTORY_COVERAGE,
 ) -> RetrievalContainer:
     """Monta a recuperação sobre um PostgreSQL e um object store.
 
@@ -135,6 +160,19 @@ def build_retrieval_container(
     ciente = RetrieveAvailabilityAwareHistoricalNeighbors(
         exact=recuperar, coverage_policy=coverage_policy
     )
+    # O PR-06.3 ACRESCENTA DUAS DEPENDÊNCIAS, e as duas são de METADADO ou de
+    # object store — nenhuma é fato canônico. `raw_datasets` existe para ler a
+    # GRADE da versão crua de origem: a compatibilidade de lookback é um fato
+    # do dataset, e recebê-la por parâmetro faria a conferência validar o que o
+    # chamador disse em vez do que o dataset é.
+    datasets_crus = PostgresHistoricalFeatureDatasetRepository(database)
+    leitor_de_trajetoria = ParquetHistoricalTrajectorySource(store)
+    trajetorias = RetrieveExactHistoricalTrajectories(
+        exact=recuperar,
+        raw_datasets=datasets_crus,
+        trajectory_source=leitor_de_trajetoria,
+        coverage_policy=trajectory_coverage_policy,
+    )
     return RetrievalContainer(
         plan=plano,
         normalized=normalizados,
@@ -144,6 +182,12 @@ def build_retrieval_container(
         coverage_policy=coverage_policy,
         retrieve=recuperar,
         describe=DescribeCandidateUniverse(retriever=recuperar, source=leitor),
+        trajectory_coverage_policy=trajectory_coverage_policy,
         retrieve_aware=ciente,
         compare=CompareExactRetrievalPolicies(exact=recuperar, aware=ciente),
+        raw_datasets=datasets_crus,
+        trajectory_source=leitor_de_trajetoria,
+        retrieve_trajectory=trajetorias,
+        describe_trajectory=DescribeTrajectory(retriever=trajetorias),
+        compare_state_trajectory=CompareStateAndTrajectory(state=ciente, trajectory=trajetorias),
     )

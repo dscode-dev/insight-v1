@@ -385,3 +385,210 @@ def compare(
         + "  [dim](diagnóstico — uma sobreposição baixa é o comportamento "
         "pretendido, e não um erro)[/dim]"
     )
+
+
+# ------------------------------------------------------------- trajetória --
+
+#: Os horizontes que a saída abre em coluna. Ele espelha a política da V1, e é
+#: uma constante da APRESENTAÇÃO: a política é a autoridade, e a saída mostra
+#: o que ela declara.
+_HORIZONTES_DA_SAIDA: tuple[int, ...] = (1, 3, 5)
+
+
+@app.command("trajectory")
+def trajectory(
+    dataset_version: Annotated[str, typer.Argument(help="A versão normalizada PUBLICADA")],
+    query_snapshot: Annotated[
+        str, typer.Argument(help="A âncora de AVALIAÇÃO: <match_id>#<grid_index>")
+    ],
+    k: Annotated[int, typer.Option(help="Quantos vizinhos")] = 10,
+    actor: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """O top-K de MOVIMENTO recente — deslocamentos em 1/3/5 minutos (PR-06.3).
+
+    ELE RESPONDE OUTRA PERGUNTA. `engine retrieval availability-aware` diz
+    quais jogos estão PARECIDOS AGORA; este diz quais CHEGARAM ATÉ AQUI de
+    forma parecida. Os dois números não se comparam entre si, e não há soma dos
+    dois — ver `compare-state-trajectory`.
+    """
+    _ator(actor)
+    chave = _chave(query_snapshot)
+
+    async def acao(grafo: Any) -> Any:
+        return await grafo.retrieve_trajectory.execute(version_id=dataset_version, key=chave, k=k)
+
+    resultado = _executar(acao, version_id=dataset_version)
+
+    titulo = (
+        f"trajetória · {resultado.query_anchor_key.text}@{resultado.query_anchor_position.text}"
+    )
+    cabecalho = Table(title=titulo)
+    cabecalho.add_column("o quê")
+    cabecalho.add_column("valor", justify="right")
+    cabecalho.add_row("competição", resultado.competition)
+    cabecalho.add_row(
+        "espaço",
+        f"{resultado.axis_count} eixos x {resultado.horizon_count} horizontes "
+        f"= {resultado.cell_count} células",
+    )
+    cabecalho.add_row(
+        "cobertura da query",
+        f"{resultado.query_usable_cells}/{resultado.cell_count} "
+        f"({resultado.query_coverage:.1%}) em {resultado.query_usable_horizons} horiz.",
+    )
+    cabecalho.add_row("universo", f"{resultado.universe_count:_}")
+    cabecalho.add_row(
+        "elegíveis",
+        f"{resultado.trajectory_eligible_count:_} ({resultado.eligible_ratio:.1%})",
+    )
+    cabecalho.add_row("sem trajetória", f"{resultado.trajectory_ineligible_count:_}")
+    cabecalho.add_row("estruturais", f"{resultado.structural_ineligible_count:_}")
+    cabecalho.add_row("K", f"{resultado.returned_k}/{resultado.requested_k}")
+    cabecalho.add_row("no piso", f"{resultado.floor_pressure}")
+    cabecalho.add_row("horizonte cheio", f"{resultado.full_horizon_neighbors}")
+    console.print(cabecalho)
+
+    for motivo, contagem in sorted(resultado.ineligible.items()):
+        console.print(f"[yellow]inelegível[/yellow] {motivo}: {contagem:_}")
+
+    if resultado.is_empty:
+        console.print(
+            "[yellow]nenhum vizinho com evidência temporal bastante[/yellow] — e isto "
+            "é um resultado: nenhum candidato desta competição compartilhou "
+            "horizontes suficientes com a query neste instante."
+        )
+    else:
+        vizinhos = Table(title="vizinhos por MOVIMENTO")
+        vizinhos.add_column("#", justify="right")
+        vizinhos.add_column("candidato")
+        # O RÓTULO DIZ `D_T`, e nunca `D`: são grandezas diferentes.
+        vizinhos.add_column("D_T", justify="right")
+        vizinhos.add_column("células", justify="right")
+        vizinhos.add_column("horiz.", justify="right")
+        for horizonte in _HORIZONTES_DA_SAIDA:
+            vizinhos.add_column(f"{horizonte}m", justify="right")
+        vizinhos.add_column("% incerto", justify="right")
+        for vizinho in resultado.neighbors:
+            parcela = vizinho.penalty_share
+            por_horizonte = {c.horizon_minutes: c for c in vizinho.evidence.breakdown.horizons}
+            colunas = []
+            for horizonte in _HORIZONTES_DA_SAIDA:
+                contribuicao = por_horizonte.get(horizonte)
+                if contribuicao is None:
+                    colunas.append("-")
+                else:
+                    colunas.append(f"{contribuicao.observed:.3g}/{contribuicao.shared_axes}")
+            vizinhos.add_row(
+                str(vizinho.rank),
+                vizinho.anchor_key.text,
+                distance_text(vizinho.trajectory_dissimilarity),
+                f"{vizinho.shared_cells}/{resultado.cell_count}",
+                str(vizinho.shared_horizons),
+                *colunas,
+                "-" if parcela is None else f"{parcela:.0%}",
+            )
+        console.print(vizinhos)
+        console.print("[dim]cada coluna de horizonte mostra «observado/eixos compartilhados»[/dim]")
+
+    console.print(
+        f"[dim]janela {resultado.window_policy_fingerprint[:16]} · "
+        f"perfil {resultado.trajectory_profile_fingerprint[:16]} · "
+        f"cobertura {resultado.coverage_policy_fingerprint[:16]}[/dim]"
+    )
+    console.print(
+        f"[dim]universo {resultado.candidate_universe_fingerprint[:16]} · "
+        f"trajetória {resultado.query_trajectory_fingerprint[:16]} · "
+        f"resultado {resultado.fingerprint[:16]}[/dim]"
+    )
+    console.print(
+        "[dim]a trajetória mede MOVIMENTO, e não nível. Ela NÃO se soma ao estado: "
+        "os dois são sinais independentes, e combiná-los é do PR-06.5.[/dim]"
+    )
+
+
+@app.command("compare-state-trajectory")
+def compare_state_trajectory(
+    dataset_version: Annotated[str, typer.Argument(help="A versão normalizada PUBLICADA")],
+    query_snapshot: Annotated[
+        str, typer.Argument(help="A âncora de AVALIAÇÃO: <match_id>#<grid_index>")
+    ],
+    k: Annotated[int, typer.Option(help="Quantos vizinhos")] = 10,
+    actor: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Estado e trajetória lado a lado — APRESENTADOS, e nunca somados.
+
+    NÃO HÁ `D_total` AQUI (§147). Combinar os dois exige escolher pesos, e não
+    há rótulo de verdade com que calibrá-los antes do PR-06.5. O que este
+    comando mostra é quanto os dois rankings se afastam — e um afastamento
+    grande pode ser exatamente o sinal desejado.
+    """
+    _ator(actor)
+    chave = _chave(query_snapshot)
+
+    async def acao(grafo: Any) -> Any:
+        return await grafo.compare_state_trajectory.execute(
+            version_id=dataset_version, key=chave, k=k
+        )
+
+    lado_a_lado = _executar(acao, version_id=dataset_version)
+    resumo = lado_a_lado.summary()
+    elegiveis_estado = resumo["state_eligible"]
+    elegiveis_trajetoria = resumo["trajectory_eligible"]
+    devolvidos_estado = resumo["state_returned"]
+    devolvidos_trajetoria = resumo["trajectory_returned"]
+
+    if lado_a_lado.trajectory_not_applicable:
+        trajetoria_comparavel = "não aplicável"
+    elif lado_a_lado.trajectory_rejected:
+        trajetoria_comparavel = "não"
+    else:
+        trajetoria_comparavel = "sim"
+
+    tabela = Table(title=f"estado contra trajetória · {lado_a_lado.key.text}")
+    tabela.add_column("o quê")
+    tabela.add_column("estado (D)", justify="right")
+    tabela.add_column("trajetória (D_T)", justify="right")
+    tabela.add_row(
+        "query comparável",
+        "não" if lado_a_lado.state_rejected else "sim",
+        trajetoria_comparavel,
+    )
+    tabela.add_row(
+        "candidatos medidos",
+        "-" if elegiveis_estado is None else f"{elegiveis_estado:_}",
+        "-" if elegiveis_trajetoria is None else f"{elegiveis_trajetoria:_}",
+    )
+    tabela.add_row(
+        "vizinhos devolvidos",
+        "-" if devolvidos_estado is None else str(devolvidos_estado),
+        "-" if devolvidos_trajetoria is None else str(devolvidos_trajetoria),
+    )
+    console.print(tabela)
+
+    sobreposicao = lado_a_lado.top_k_overlap
+    console.print(
+        "sobreposição do top-K  "
+        + ("-" if sobreposicao is None else f"{sobreposicao:.0%}")
+        + "  [dim](diagnóstico — estado e trajetória medem conceitos diferentes, "
+        "e uma sobreposição baixa pode ser o sinal desejado)[/dim]"
+    )
+
+    if lado_a_lado.state is not None and lado_a_lado.trajectory is not None:
+        do_estado = [v.key.text for v in lado_a_lado.state.neighbors]
+        da_trajetoria = [v.anchor_key.text for v in lado_a_lado.trajectory.neighbors]
+        rankings = Table(title="os dois top-K")
+        rankings.add_column("#", justify="right")
+        rankings.add_column("por ESTADO")
+        rankings.add_column("por MOVIMENTO")
+        for posicao in range(max(len(do_estado), len(da_trajetoria))):
+            rankings.add_row(
+                str(posicao + 1),
+                do_estado[posicao] if posicao < len(do_estado) else "-",
+                da_trajetoria[posicao] if posicao < len(da_trajetoria) else "-",
+            )
+        console.print(rankings)
+
+    console.print(
+        "[dim]os dois números NÃO se somam: `D` é média de diferença de nível sobre "
+        "m eixos, `D_T` é média de diferença de MOVIMENTO sobre 3m células.[/dim]"
+    )

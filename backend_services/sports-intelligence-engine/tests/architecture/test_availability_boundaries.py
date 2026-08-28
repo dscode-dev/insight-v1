@@ -292,16 +292,29 @@ class TestNaoAntecipaOsPRsSeguintes:
 class TestSemMigracao:
     """§119, §174 — nada de novo é persistido."""
 
-    def test_a_ultima_migracao_continua_sendo_a_0013(self) -> None:
+    def test_as_migracoes_anteriores_nao_mudaram(self) -> None:
+        """A afirmação era FASE-LOCAL, e a fase mudou (PR-06.4).
+
+        O QUE ELA DIZIA: «a última migração é a 0013». Isso era verdade
+        enquanto nada da recuperação era persistido — e o PR-06.4 passou a
+        persistir a PROJEÇÃO de recuperação, que é justamente o que elimina a
+        releitura do Parquet a cada consulta.
+
+        O QUE ELA PASSA A DIZER, e é o invariante que sempre importou: as
+        migrações ANTERIORES continuam intactas, e a nova é ADITIVA. Apagar o
+        teste teria descartado a proteção junto com a afirmação vencida; o que
+        se perde ao mudá-lo é só a data de validade.
+        """
         migracoes = sorted(p.name for p in (RAIZ / "migrations").glob("*.sql"))
-        assert migracoes[-1] == "0013_normalized_feature_dataset.sql", (
-            "o PR-06.2 não persiste resultado nem evidência: uma migração nova aqui "
-            f"precisa de justificativa explícita — {migracoes[-3:]}"
+        assert migracoes[-1] == "0014_historical_retrieval_projection.sql", (
+            "a migração do PR-06.4 é a última; uma posterior precisa de "
+            f"justificativa explícita — {migracoes[-3:]}"
         )
-
-
-class TestOPR061ContinuaIntacto:
-    """§4, §73, §175 — as impressões e o oráculo, byte a byte."""
+        # AS ANTERIORES CONTINUAM LÁ, E COM OS MESMOS NOMES. Uma migração
+        # renomeada é uma migração reescrita para o aplicador, que guarda o
+        # SHA-256 de cada uma e recusa seguir quando o arquivo muda.
+        assert migracoes[12] == "0013_normalized_feature_dataset.sql"
+        assert len(migracoes) == 14
 
     def test_as_impressoes_do_PR_06_1_nao_mudaram(self) -> None:
         """Os goldens, escritos por extenso.

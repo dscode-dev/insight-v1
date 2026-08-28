@@ -247,7 +247,15 @@ Cinco deles decidem a maior parte das dúvidas do dia a dia:
   denominador é o perfil, e nunca a interseção;
 - **ADR-0044** — a ausência é PENALIZADA em unidade de IQR² (`p = 1`) sobre
   denominador fixo, e nunca preenchida: evidência real substitui incerteza, e
-  o resultado NÃO é uma métrica.
+  o resultado NÃO é uma métrica;
+- **ADR-0045** — a trajetória é DESLOCAMENTO multi-horizonte (`1/3/5` min)
+  DENTRO do período: sem concatenar níveis, sem atravessar o intervalo, sem
+  olhar o futuro, sem interpolar e sem velocidade;
+- **ADR-0046** — a dissimilaridade de trajetória tem célula
+  `(horizonte, eixo)`, piso de DOIS horizontes evidenciais, e NÃO se soma à do
+  estado: os dois são sinais independentes. **Oito células é um mínimo
+  absoluto, e não o piso**: o que decide é `E_s = max(8, ceil(3n/5))`, e no
+  perfil real da competição isso vale **27**, não 8.
 
 Contratos de dados:
 
@@ -325,6 +333,14 @@ evidência; o oráculo do PR-06.1 continua executável ao lado):
 - [`docs/retrieval/AVAILABILITY_AWARE_DISTANCE_V1.md`](docs/retrieval/AVAILABILITY_AWARE_DISTANCE_V1.md)
 - [`docs/retrieval/NEIGHBOR_EVIDENCE_V1.md`](docs/retrieval/NEIGHBOR_EVIDENCE_V1.md)
 - [`docs/performance/PR06_AVAILABILITY_AWARE_BASELINE.md`](docs/performance/PR06_AVAILABILITY_AWARE_BASELINE.md)
+
+Recuperação de TRAJETÓRIA (PR-06.3 — movimento recente, um sinal independente
+do estado; os dois NÃO se somam):
+
+- [`docs/retrieval/TRAJECTORY_WINDOW_POLICY_V1.md`](docs/retrieval/TRAJECTORY_WINDOW_POLICY_V1.md)
+- [`docs/retrieval/TRAJECTORY_REPRESENTATION_V1.md`](docs/retrieval/TRAJECTORY_REPRESENTATION_V1.md)
+- [`docs/retrieval/TRAJECTORY_DISTANCE_V1.md`](docs/retrieval/TRAJECTORY_DISTANCE_V1.md)
+- [`docs/performance/PR06_TRAJECTORY_RETRIEVAL_BASELINE.md`](docs/performance/PR06_TRAJECTORY_RETRIEVAL_BASELINE.md)
 
 ---
 

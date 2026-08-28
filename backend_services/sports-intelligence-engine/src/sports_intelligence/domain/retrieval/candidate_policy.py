@@ -119,6 +119,14 @@ class IneligibilityReason(StrEnum):
     #: em comum, e não TANTOS quanto a política exige para que a comparação
     #: signifique alguma coisa.
     INSUFFICIENT_SHARED_COVERAGE = "INSUFFICIENT_SHARED_COVERAGE"
+    #: O PR-06.3 ACRESCENTOU TRÊS, e eles são de TRAJETÓRIA. Um par pode ter
+    #: eixos de sobra e movimento de menos, e as três causas são diferentes:
+    #: a interseção não alcança o piso EFETIVO de células `max(8, ceil(3n/5))`;
+    INSUFFICIENT_SHARED_TRAJECTORY_CELLS = "INSUFFICIENT_SHARED_TRAJECTORY_CELLS"
+    #: o par não alcança dois horizontes — o começo do período, e não a feature;
+    INSUFFICIENT_SHARED_HORIZONS = "INSUFFICIENT_SHARED_HORIZONS"
+    #: os horizontes existem, e nenhum tem eixos bastante para ser evidencial.
+    INSUFFICIENT_PER_HORIZON_COVERAGE = "INSUFFICIENT_PER_HORIZON_COVERAGE"
     #: Mesma partida da query. Fail-closed, ainda que a divisão já o impeça.
     SAME_MATCH = "SAME_MATCH"
     #: A linha declara uma representação diferente da da query.
@@ -128,14 +136,20 @@ class IneligibilityReason(StrEnum):
     def is_structural(self) -> bool:
         """Se ela indica defeito, e não ausência de dado.
 
-        `INCOMPLETE_PROFILE` e `INSUFFICIENT_SHARED_COVERAGE` SÃO NORMAIS —
-        eles medem ausência de dado, e são o produto científico da atrição. As
-        outras duas são estruturais: elas não deveriam acontecer num dataset
-        íntegro, e contá-las junto esconderia isso.
+        OS CINCO MOTIVOS DE COBERTURA SÃO NORMAIS — eles medem ausência de
+        dado, e são o produto científico da atrição. Os três de trajetória
+        entram nessa lista pelo mesmo argumento que o irmão de estado: um
+        candidato no começo do período não é um defeito de dataset, é um
+        candidato com pouca história. As outras duas são estruturais: elas não
+        deveriam acontecer num dataset íntegro, e contá-las junto esconderia
+        isso.
         """
         return self not in (
             IneligibilityReason.INCOMPLETE_PROFILE,
             IneligibilityReason.INSUFFICIENT_SHARED_COVERAGE,
+            IneligibilityReason.INSUFFICIENT_SHARED_TRAJECTORY_CELLS,
+            IneligibilityReason.INSUFFICIENT_SHARED_HORIZONS,
+            IneligibilityReason.INSUFFICIENT_PER_HORIZON_COVERAGE,
         )
 
 

@@ -1,10 +1,17 @@
-# Infraestrutura local do PR-02 — e nada além do que ele usa.
+# Infraestrutura local — e nada além do que o código exercita.
 #
-# DOIS SERVIÇOS, PORQUE SÃO DOIS OS QUE O CÓDIGO EXERCITA. Redis, ClickHouse e
-# pgvector estão nos ADRs e não têm uma linha de código que fale com eles. Um
-# compose que sobe seis contêineres para exercitar dois cobra RAM de quem
-# desenvolve todo dia e transforma `docker compose up` numa espera — que é como
-# um ambiente local deixa de ser usado.
+# DOIS SERVIÇOS, PORQUE SÃO DOIS OS QUE O CÓDIGO EXERCITA. Redis e ClickHouse
+# estão nos ADRs e não têm uma linha de código que fale com eles. Um compose
+# que sobe seis contêineres para exercitar dois cobra RAM de quem desenvolve
+# todo dia e transforma `docker compose up` numa espera — que é como um
+# ambiente local deixa de ser usado.
+#
+# O PGVECTOR SAIU DESSA LISTA NO PR-06.4. Ele deixou de ser um ADR sem código
+# no dia em que o índice de recuperação passou a existir, e por isso a imagem
+# do PostgreSQL aqui é a `pgvector/pgvector:pg17` e não a `postgres:17`: o
+# operador `<->` e o índice HNSW são exercitados DE VERDADE nos testes de
+# integração e no benchmark, e um duplo em memória provaria exatamente nada
+# sobre recall de ANN.
 #
 # OS SEGREDOS AQUI SÃO DE DESENVOLVIMENTO E ESTÃO À VISTA DE PROPÓSITO. Um
 # `minioadmin` que não se esconde é reconhecível como local; um segredo
@@ -19,7 +26,10 @@ name: sports-intelligence-engine
 
 services:
   postgres:
-    image: postgres:17-alpine
+    # PostgreSQL 17 COM pgvector. A imagem oficial da extensão é derivada da
+    # `postgres:17` (Debian), e não da Alpine — trocar de base é o preço de ter
+    # o `vector` compilado, e ele é um preço que este repositório paga uma vez.
+    image: pgvector/pgvector:pg17
     container_name: sie-postgres
     environment:
       POSTGRES_DB: sports_intelligence
