@@ -65,11 +65,17 @@ make migrate
 make migrate-status
 ```
 
-Só esses dois serviços: são os que o código de fato exercita hoje. Redis,
-ClickHouse e pgvector estão nos ADRs e não têm uma linha que fale com eles —
-um compose que sobe seis contêineres para exercitar dois transforma
-`docker compose up` numa espera, e é assim que um ambiente local deixa de ser
-usado.
+Só esses dois serviços: são os que o código de fato exercita hoje. Redis e
+ClickHouse estão nos ADRs e não têm uma linha que fale com eles — um compose
+que sobe seis contêineres para exercitar dois transforma `docker compose up`
+numa espera, e é assim que um ambiente local deixa de ser usado.
+
+O `pgvector` saiu dessa lista por medição, e não por inércia. O PR-06.4 o
+implementou por inteiro, mediu o recall do proxy e o ponto de virada do
+planejador, e **não o adotou**: o `CandidateUniverse` real tem ~47 candidatos, e
+aproximar não se justifica nessa escala (ADR-0048). A imagem do PostgreSQL no
+compose continua sendo a `pgvector/pgvector:pg17` — **capacidade de imagem não é
+dependência de aplicação**, e trocá-la de volta seria churn sem ganho.
 
 ### Verificar o ambiente
 

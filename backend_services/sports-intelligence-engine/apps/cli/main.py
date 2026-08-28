@@ -30,6 +30,7 @@ from apps.cli import feature_dataset as comandos_de_features
 from apps.cli import normalized_dataset as comandos_de_normalizacao
 from apps.cli import resolution as comandos_de_resolucao
 from apps.cli import retrieval as comandos_de_recuperacao
+from apps.cli import retrieval_projection as comandos_de_projecao
 from sports_intelligence.config.settings import (
     AppSettings,
     ClickHouseSettings,
@@ -55,6 +56,7 @@ app.add_typer(comandos_de_corpus.app)
 app.add_typer(comandos_de_features.app)
 app.add_typer(comandos_de_normalizacao.app)
 app.add_typer(comandos_de_recuperacao.app)
+app.add_typer(comandos_de_projecao.app)
 
 
 class Estado(StrEnum):

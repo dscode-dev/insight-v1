@@ -43,6 +43,11 @@ from sports_intelligence.adapters.postgres.normalized_dataset import (
 from sports_intelligence.adapters.postgres.normalizer_artifacts import (
     PostgresNormalizerArtifactSetRepository,
 )
+from sports_intelligence.adapters.postgres.retrieval_projection import (
+    PostgresRetrievalProjectionReader,
+    PostgresRetrievalProjectionRepository,
+    PostgresRetrievalProjectionWriter,
+)
 from sports_intelligence.application.use_cases.availability_retrieval import (
     CompareExactRetrievalPolicies,
     RetrieveAvailabilityAwareHistoricalNeighbors,
@@ -113,6 +118,17 @@ class RetrievalContainer:
     raw_datasets: PostgresHistoricalFeatureDatasetRepository
     trajectory_source: ParquetHistoricalTrajectorySource
     retrieve_trajectory: RetrieveExactHistoricalTrajectories
+
+    #: A PROJEÇÃO DO PR-06.4 VIAJA NO CONTÊINER como todo o resto.
+    #:
+    #: ELA NÃO É IMPORTADA PELA CLI. A guarda `apps não importam adapters
+    #: diretamente` existe porque um app que instancia o adapter escolhe a
+    #: infraestrutura por conta própria — e no dia em que houver um segundo
+    #: armazenamento, é ele que fica para trás. A composição é o único lugar
+    #: que decide isso.
+    projection_repository: PostgresRetrievalProjectionRepository
+    projection_writer: PostgresRetrievalProjectionWriter
+    projection_reader: PostgresRetrievalProjectionReader
     describe_trajectory: DescribeTrajectory
     compare_state_trajectory: CompareStateAndTrajectory
 
@@ -188,6 +204,9 @@ def build_retrieval_container(
         raw_datasets=datasets_crus,
         trajectory_source=leitor_de_trajetoria,
         retrieve_trajectory=trajetorias,
+        projection_repository=PostgresRetrievalProjectionRepository(database),
+        projection_writer=PostgresRetrievalProjectionWriter(database),
+        projection_reader=PostgresRetrievalProjectionReader(database),
         describe_trajectory=DescribeTrajectory(retriever=trajetorias),
         compare_state_trajectory=CompareStateAndTrajectory(state=ciente, trajectory=trajetorias),
     )
