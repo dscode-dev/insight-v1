@@ -434,3 +434,14 @@ def projected_trajectory(
         )
     console.print(vizinhos)
     console.print(_tempos(saida.timings))
+
+
+# ------------------------------------------- reusado pela agregação (PR-06.5) --
+#
+# A AGREGAÇÃO RODA SOBRE EXATAMENTE ESTE GRAFO. `engine retrieval aggregate-state`
+# recupera pelo caminho projetado e só depois pondera; reimplementar a montagem
+# do contêiner lá criaria um segundo caminho de composição, e no dia em que este
+# mudasse o outro continuaria montando o grafo antigo, calado.
+executar_sob_versao = _executar
+chave_de_snapshot = _chave
+projecao_da_composicao = _projecao

@@ -102,6 +102,45 @@ def _alvos() -> list[Path]:
     return [*files_in(RETRIEVAL), *(FONTE / caminho for caminho in FORA_DO_DOMINIO)]
 
 
+def _alvos_sem_agregacao() -> list[Path]:
+    """Os mesmos alvos, MENOS o pacote de agregação do PR-06.5.
+
+    ## Por que esta segunda lista existe
+
+    Duas guardas deste arquivo — «sem peso por eixo» e «sem rótulo nem
+    desfecho» — proíbem os termos `weights`, `weighted`, `lambda_` e
+    `effective_sample` em todo `domain/retrieval/`. Elas foram escritas quando
+    ponderar QUALQUER COISA dentro da recuperação era, de fato, o defeito que se
+    queria impedir:
+
+        o oráculo do PR-06.1 não pondera eixo
+        a distância do PR-06.2 não pondera eixo
+        e nenhum dos dois conhece tamanho efetivo de amostra
+
+    O PR-06.5 introduz ponderação de VIZINHOS, que é outra coisa — e a diferença
+    é o PR inteiro:
+
+        PONDERAR EIXO       alpha*x1 + beta*x2 dentro da distância.
+                            Continua proibido, e em todo lugar.
+
+        PONDERAR VIZINHO    exp(-lambda*d) sobre um top-K já calculado.
+                            É o que o PR-06.5 existe para fazer.
+
+    Manter a guarda ampla exigiria que o PR-06.5 não existisse; apagar os termos
+    dela deixaria o oráculo e a distância desprotegidos. A saída é a mesma que o
+    PR-06.2 já usou aqui com `CASO_COMPLETO`: estreitar o alvo e dizer por quê.
+
+    O QUE SUBSTITUI A COBERTURA PERDIDA. O pacote de agregação tem guardas
+    próprias em `test_aggregation_boundaries.py`, e elas são MAIS estritas no
+    que importa: nada de desfecho, nada de probabilidade, nada de confiança,
+    nada de infraestrutura, e nenhuma redefinição de distância. E a proibição de
+    peso POR EIXO continua valendo lá — está em
+    `test_a_agregacao_nao_pondera_EIXO`, logo abaixo.
+    """
+    agregacao = FONTE / "domain" / "retrieval" / "aggregation"
+    return [caminho for caminho in _alvos() if agregacao not in caminho.parents]
+
+
 #: Os módulos do CASO COMPLETO — o oráculo do PR-06.1, e só ele.
 #:
 #: A LISTA EXISTE DESDE O PR-06.2, e o motivo é que o pacote passou a ter DUAS
@@ -213,9 +252,14 @@ class TestNaoEhInteligencia:
             "confidence",
             "trend",
             "prediction",
+            # `effective_sample` ENTROU AQUI ANTES DE O N_eff EXISTIR, quando
+            # tamanho efetivo de amostra só podia ser coisa de inferência. O
+            # PR-06.5 o define como concentração de pesos (§16) e o proíbe
+            # explicitamente de virar confiança (§17) — a guarda que garante
+            # isso é `TestNaoChamaPesoDeProbabilidade`, no arquivo da agregação.
             "effective_sample",
         )
-        for arquivo in _alvos():
+        for arquivo in _alvos_sem_agregacao():
             corpo = code_only(arquivo).lower()
             for termo in proibidos:
                 assert termo not in corpo, f"{arquivo.name}: {termo}"
@@ -281,8 +325,14 @@ class TestNaoImputaNemPondera:
     """§57, §58, §115, §116, §117 — pesos iguais, caso completo, e nada mais."""
 
     def test_sem_peso_por_eixo(self) -> None:
+        """Nenhum coeficiente por eixo — e a agregação tem a guarda dela.
+
+        `_alvos_sem_agregacao` explica a exclusão: ponderar EIXO dentro da
+        distância continua proibido em todo lugar; ponderar VIZINHO sobre um
+        top-K pronto é o PR-06.5, e as duas coisas só compartilham a palavra.
+        """
         proibidos = ("alpha", "beta", "gamma", "lambda_", "weights", "weighted")
-        for arquivo in _alvos():
+        for arquivo in _alvos_sem_agregacao():
             corpo = code_only(arquivo).lower()
             for termo in proibidos:
                 assert termo not in corpo, f"{arquivo.name}: {termo}"

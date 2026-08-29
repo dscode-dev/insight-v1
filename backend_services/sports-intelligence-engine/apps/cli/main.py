@@ -30,6 +30,7 @@ from apps.cli import feature_dataset as comandos_de_features
 from apps.cli import normalized_dataset as comandos_de_normalizacao
 from apps.cli import resolution as comandos_de_resolucao
 from apps.cli import retrieval as comandos_de_recuperacao
+from apps.cli import retrieval_aggregation as comandos_de_agregacao
 from apps.cli import retrieval_projection as comandos_de_projecao
 from sports_intelligence.config.settings import (
     AppSettings,
@@ -57,6 +58,11 @@ app.add_typer(comandos_de_features.app)
 app.add_typer(comandos_de_normalizacao.app)
 app.add_typer(comandos_de_recuperacao.app)
 app.add_typer(comandos_de_projecao.app)
+
+# A AGREGAÇÃO SE PENDURA NO GRUPO `retrieval`, e não abre um grupo próprio: ela
+# é a continuação do top-K — `aggregate-state` fica ao lado de
+# `availability-aware`, que é onde alguém procuraria por ela.
+comandos_de_agregacao.registrar(comandos_de_recuperacao.app)
 
 
 class Estado(StrEnum):
